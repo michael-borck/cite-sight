@@ -1,5 +1,5 @@
 [project]
-name = "documentlens"
+name = "document-lens"
 version = "1.0.0"
 description = "Multi-Modal Document Analysis Microservice"
 readme = "README.md"

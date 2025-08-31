@@ -164,7 +164,7 @@ GET /api/analyze/roadmap  # View planned features
 
 ### Project Structure
 ```
-documentlens/
+document-lens/
 ├── app/
 │   ├── analyzers/          # Text analysis modules
 │   ├── api/routes/         # API endpoints
@@ -232,8 +232,8 @@ SECRET_KEY=your-secret-key-here
 ### Docker (Recommended)
 ```dockerfile
 # Dockerfile included in repository
-docker build -t documentlens .
-docker run -p 8000:8000 documentlens
+docker build -t document-lens .
+docker run -p 8000:8000 document-lens
 ```
 
 ### Production Server

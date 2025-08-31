@@ -36,13 +36,13 @@ fi
 
 echo ""
 echo "🎯 This script will:"
-echo "1. Create a new 'documentlens' repository from current cite-sight"
+echo "1. Create a new 'document-lens' repository from current cite-sight"
 echo "2. Transform it into a backend-only service"
 echo "3. Transform original cite-sight into frontend-only app"
 echo ""
 
-read -p "📝 Enter the path where you want to create the documentlens project (default: ../documentlens): " DOCUMENTLENS_PATH
-DOCUMENTLENS_PATH=${DOCUMENTLENS_PATH:-../documentlens}
+read -p "📝 Enter the path where you want to create the document-lens project (default: ../document-lens): " DOCUMENTLENS_PATH
+DOCUMENTLENS_PATH=${DOCUMENTLENS_PATH:-../document-lens}
 
 echo ""
 echo "📋 Summary:"
@@ -367,9 +367,9 @@ echo "   ./start.sh"
 echo "   # App: http://localhost:5173"
 echo ""
 echo "3. 📚 Create GitHub repositories:"
-echo "   # For DocumentLens:"
+echo "   # For Document-Lens:"
 echo "   cd $DOCUMENTLENS_PATH"
-echo "   git remote set-url origin git@github.com:michael-borck/documentlens.git"
+echo "   git remote set-url origin git@github.com:michael-borck/document-lens.git"
 echo "   git add -A && git commit -m 'Transform into DocumentLens microservice'"
 echo "   git push -u origin main"
 echo ""

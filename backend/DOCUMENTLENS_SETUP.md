@@ -15,9 +15,9 @@ DocumentLens transforms your documents into actionable insights through:
 ### Step 1: Create DocumentLens Repository
 
 ```bash
-# Clone the current repository to create DocumentLens
-git clone git@github.com:michael-borck/cite-sight.git documentlens
-cd documentlens
+# Clone the current repository to create Document-Lens
+git clone git@github.com:michael-borck/cite-sight.git document-lens
+cd document-lens
 
 # Remove frontend and move backend to root
 rm -rf frontend/
@@ -50,8 +50,8 @@ mv start-frontend.sh start.sh
 ### Step 3: Create New GitHub Repository
 
 ```bash
-# In the documentlens folder
-git remote set-url origin git@github.com:michael-borck/documentlens.git
+# In the document-lens folder
+git remote set-url origin git@github.com:michael-borck/document-lens.git
 git add -A
 git commit -m "Transform CiteSight backend into DocumentLens microservice
 
