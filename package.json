@@ -1,5 +1,5 @@
 {
-  "name": "frontend",
+  "name": "cite-sight",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@michaelborck/lens-platform-sdk": "^0.1.0",
     "@types/react-tabs": "^5.0.4",
     "axios": "^1.11.0",
     "react": "^19.1.1",
