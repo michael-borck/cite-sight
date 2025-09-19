@@ -1,5 +1,5 @@
 // Direct HTTP integration test with lens services
-// This demonstrates how external apps can integrate without the SDK
+// This demonstrates the clean, simple integration pattern (no SDK needed)
 
 async function testDirectDocumentLensIntegration() {
   console.log('Testing direct HTTP integration with document-lens...')
