@@ -1,0 +1,15 @@
+appId: com.citesight.desktop
+productName: CiteSight
+directories:
+  output: release
+  buildResources: resources
+files:
+  - dist/**/*
+  - package.json
+mac:
+  target: dmg
+  category: public.app-category.education
+win:
+  target: nsis
+linux:
+  target: AppImage

@@ -1,0 +1,25 @@
+{
+  "name": "@cite-sight/core",
+  "version": "1.0.0",
+  "description": "Core analysis library for CiteSight",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "mammoth": "^1.9.0",
+    "pdfjs-dist": "^4.10.38"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
+  }
+}

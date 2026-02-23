@@ -1,0 +1,19 @@
+{
+  "name": "@cite-sight/cli",
+  "version": "1.0.0",
+  "description": "CLI tool for CiteSight academic integrity checking",
+  "type": "module",
+  "bin": {
+    "cite-sight": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@cite-sight/core": "*",
+    "commander": "^13.0.0",
+    "chalk": "^5.4.0"
+  }
+}

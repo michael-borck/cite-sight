@@ -1,0 +1,32 @@
+{
+  "name": "@cite-sight/desktop",
+  "version": "1.0.0",
+  "description": "CiteSight Desktop - Academic integrity checker",
+  "type": "module",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "electron": "electron .",
+    "start": "npm run build && electron .",
+    "package": "electron-builder"
+  },
+  "dependencies": {
+    "@cite-sight/core": "*",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-dropzone": "^14.3.8",
+    "react-tabs": "^6.1.0",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "@types/react-tabs": "^5.0.4",
+    "@vitejs/plugin-react": "^5.0.0",
+    "electron": "^34.0.0",
+    "electron-builder": "^25.1.8",
+    "typescript": "~5.8.3",
+    "vite": "^7.1.2"
+  }
+}
