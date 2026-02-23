@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { ProcessingOptions, AnalysisResult, ProgressUpdate } from '@cite-sight/core';
+import type { ProcessingOptions, AnalysisResult, ProgressUpdate } from '@michaelborck/cite-sight-core';
 
 contextBridge.exposeInMainWorld('citeSight', {
   analyzeFile: (filePath: string, options: ProcessingOptions): Promise<AnalysisResult> => {

@@ -1,7 +1,7 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron';
-import { analyzePipeline } from '@cite-sight/core';
+import { analyzePipeline } from '@michaelborck/cite-sight-core';
 import { takeScreenshot } from './screenshot.js';
-import type { ProcessingOptions } from '@cite-sight/core';
+import type { ProcessingOptions } from '@michaelborck/cite-sight-core';
 
 export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   // Handle document analysis

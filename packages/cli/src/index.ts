@@ -3,8 +3,8 @@
 import { program } from 'commander';
 import chalk from 'chalk';
 import { resolve } from 'path';
-import { analyzePipeline } from '@cite-sight/core';
-import type { AnalysisResult, ProcessingOptions, ProgressCallback } from '@cite-sight/core';
+import { analyzePipeline } from '@michaelborck/cite-sight-core';
+import type { AnalysisResult, ProcessingOptions, ProgressCallback } from '@michaelborck/cite-sight-core';
 
 // -------------------------------------------------------
 // Helpers

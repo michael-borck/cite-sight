@@ -1,6 +1,7 @@
 {
-  "name": "@cite-sight/desktop",
+  "name": "@michaelborck/cite-sight-desktop",
   "version": "1.0.0",
+  "private": true,
   "description": "CiteSight Desktop - Academic integrity checker",
   "type": "module",
   "main": "dist/main/main.js",
@@ -12,7 +13,7 @@
     "package": "electron-builder"
   },
   "dependencies": {
-    "@cite-sight/core": "*",
+    "@michaelborck/cite-sight-core": "*",
     "electron-updater": "^6.3.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

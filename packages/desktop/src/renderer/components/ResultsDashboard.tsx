@@ -5,7 +5,7 @@ import type {
   ReferenceVerification,
   VerificationStatus,
   IntegrityPattern,
-} from '@cite-sight/core';
+} from '@michaelborck/cite-sight-core';
 import 'react-tabs/style/react-tabs.css';
 import './ResultsDashboard.css';
 

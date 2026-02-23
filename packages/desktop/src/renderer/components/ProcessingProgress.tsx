@@ -1,4 +1,4 @@
-import type { ProgressUpdate } from '@cite-sight/core';
+import type { ProgressUpdate } from '@michaelborck/cite-sight-core';
 import './ProcessingProgress.css';
 
 interface ProcessingProgressProps {

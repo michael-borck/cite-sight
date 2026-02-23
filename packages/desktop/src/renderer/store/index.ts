@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { AnalysisResult, ProcessingOptions, ProgressUpdate } from '@cite-sight/core';
+import type { AnalysisResult, ProcessingOptions, ProgressUpdate } from '@michaelborck/cite-sight-core';
 
 interface AppState {
   // Files

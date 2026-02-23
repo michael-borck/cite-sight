@@ -1,4 +1,4 @@
-import type { AnalysisResult, ProcessingOptions, ProgressUpdate } from '@cite-sight/core';
+import type { AnalysisResult, ProcessingOptions, ProgressUpdate } from '@michaelborck/cite-sight-core';
 
 declare global {
   interface Window {

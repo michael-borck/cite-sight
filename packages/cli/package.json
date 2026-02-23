@@ -1,18 +1,28 @@
 {
-  "name": "@cite-sight/cli",
+  "name": "cite-sight",
   "version": "1.0.0",
-  "description": "CLI tool for CiteSight academic integrity checking",
+  "description": "CLI tool for checking academic references and citations",
   "type": "module",
+  "license": "MIT",
+  "author": "Michael Borck",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/michael-borck/cite-sight.git",
+    "directory": "packages/cli"
+  },
+  "keywords": ["academic", "integrity", "citations", "references", "cli", "verification"],
   "bin": {
     "cite-sight": "./dist/index.js"
   },
   "main": "./dist/index.js",
+  "files": ["dist"],
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@cite-sight/core": "*",
+    "@michaelborck/cite-sight-core": "^1.0.0",
     "commander": "^13.0.0",
     "chalk": "^5.4.0"
   }
