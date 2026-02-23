@@ -15,4 +15,27 @@ contextBridge.exposeInMainWorld('citeSight', {
       callback(update);
     });
   },
+
+  // Auto-update API
+  onUpdateAvailable: (callback: (info: { version: string; releaseNotes?: string }) => void): void => {
+    ipcRenderer.on('cite-sight:update-available', (_event, info) => callback(info));
+  },
+  onUpdateNotAvailable: (callback: () => void): void => {
+    ipcRenderer.on('cite-sight:update-not-available', () => callback());
+  },
+  onUpdateProgress: (callback: (progress: { percent: number }) => void): void => {
+    ipcRenderer.on('cite-sight:update-progress', (_event, progress) => callback(progress));
+  },
+  onUpdateDownloaded: (callback: () => void): void => {
+    ipcRenderer.on('cite-sight:update-downloaded', () => callback());
+  },
+  onUpdateError: (callback: (message: string) => void): void => {
+    ipcRenderer.on('cite-sight:update-error', (_event, message) => callback(message));
+  },
+  downloadUpdate: (): Promise<void> => {
+    return ipcRenderer.invoke('cite-sight:download-update') as Promise<void>;
+  },
+  installUpdate: (): Promise<void> => {
+    return ipcRenderer.invoke('cite-sight:install-update') as Promise<void>;
+  },
 });
