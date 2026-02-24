@@ -46,7 +46,7 @@ const webDistPath = join(__dirname, '..', '..', 'web', 'dist');
 if (existsSync(webDistPath)) {
   app.use(express.static(webDistPath));
   // SPA fallback: serve index.html for non-API routes
-  app.get('*', (_req, res) => {
+  app.get('{*path}', (_req, res) => {
     res.sendFile(join(webDistPath, 'index.html'));
   });
   console.log(`[cite-sight-server] Serving web frontend from ${webDistPath}`);
