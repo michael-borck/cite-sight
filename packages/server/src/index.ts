@@ -1,7 +1,13 @@
 import express from 'express';
 import cors from 'cors';
+import { existsSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { router } from './routes.js';
 import { requestLogger, errorHandler } from './middleware.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -34,6 +40,17 @@ app.use(requestLogger);
 
 // Routes
 app.use(router);
+
+// Serve web frontend in production (Docker bundles it alongside the server)
+const webDistPath = join(__dirname, '..', '..', 'web', 'dist');
+if (existsSync(webDistPath)) {
+  app.use(express.static(webDistPath));
+  // SPA fallback: serve index.html for non-API routes
+  app.get('*', (_req, res) => {
+    res.sendFile(join(webDistPath, 'index.html'));
+  });
+  console.log(`[cite-sight-server] Serving web frontend from ${webDistPath}`);
+}
 
 // Error handling (must be registered after routes)
 app.use(errorHandler);

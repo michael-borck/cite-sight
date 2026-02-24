@@ -1,0 +1,19 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - CORS_ORIGIN=*
+      # Uncomment to enable job queue:
+      # - REDIS_URL=redis://redis:6379
+    # Uncomment for job queue support:
+    # depends_on:
+    #   - redis
+
+  # Optional: uncomment for job queue support
+  # redis:
+  #   image: redis:7-alpine
+  #   ports:
+  #     - "6379:6379"
