@@ -1,0 +1,178 @@
+/* ── About page ───────────────────────────────────────────────────────────── */
+
+.about-page {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.about-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Sections ───────────────────────────────────────────────────────────────── */
+
+.about-section {
+  background: white;
+  border-radius: 10px;
+  padding: 36px 40px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.about-section-alt {
+  background: #f8f9ff;
+  border: 1px solid #e4e8ff;
+}
+
+.about-section h2 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #333;
+  padding-bottom: 14px;
+  border-bottom: 2px solid #667eea;
+  margin-bottom: 20px;
+}
+
+.about-section p {
+  font-size: 15px;
+  color: #555;
+  line-height: 1.75;
+  margin-bottom: 14px;
+}
+
+.about-section p:last-child {
+  margin-bottom: 0;
+}
+
+/* ── Verification steps list ────────────────────────────────────────────────── */
+
+.verification-steps {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 20px;
+  counter-reset: step;
+}
+
+.verification-steps li {
+  counter-increment: step;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 15px;
+  color: #555;
+  line-height: 1.6;
+}
+
+.verification-steps li:last-child {
+  border-bottom: none;
+}
+
+.verification-steps li::before {
+  content: counter(step);
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+}
+
+/* ── Score / definition list ────────────────────────────────────────────────── */
+
+.score-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 16px 0 0;
+}
+
+.score-item {
+  padding: 14px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.score-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.score-item dt {
+  font-size: 14px;
+  font-weight: 700;
+  color: #444;
+  margin-bottom: 5px;
+}
+
+.score-item dd {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ── Integrity list ─────────────────────────────────────────────────────────── */
+
+.integrity-list {
+  margin: 14px 0 18px 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.integrity-list li {
+  padding: 9px 12px 9px 36px;
+  margin-bottom: 6px;
+  background: #fafafa;
+  border-left: 3px solid #667eea;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #555;
+  line-height: 1.5;
+  position: relative;
+}
+
+.integrity-list li::before {
+  content: '→';
+  position: absolute;
+  left: 12px;
+  color: #667eea;
+  font-weight: 700;
+}
+
+/* ── GitHub link ────────────────────────────────────────────────────────────── */
+
+.github-link {
+  display: inline-block;
+  margin-top: 14px;
+  padding: 10px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.25s;
+}
+
+.github-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  color: white;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .about-section {
+    padding: 24px 20px;
+  }
+}
