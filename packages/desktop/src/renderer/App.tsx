@@ -21,9 +21,9 @@ export function App() {
     reset,
   } = useStore();
 
-  // Register progress listener once on mount
+  // Register progress listener once on mount (only available in Electron)
   useEffect(() => {
-    window.citeSight.onProgress((update) => {
+    window.citeSight?.onProgress((update) => {
       setProgress(update);
     });
   }, [setProgress]);
@@ -37,7 +37,9 @@ export function App() {
     setProcessing(true);
 
     try {
-      // Analyze the first file; multi-file support can batch here
+      if (!window.citeSight) {
+        throw new Error('CiteSight API not available. Are you running inside Electron?');
+      }
       const result = await window.citeSight.analyzeFile(filePaths[0], options);
       setResults(result);
     } catch (err) {
