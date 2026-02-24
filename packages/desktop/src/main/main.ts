@@ -25,7 +25,21 @@ function createWindow(): BrowserWindow {
   });
 
   if (isDev) {
-    void win.loadURL('http://localhost:5173');
+    const devUrl = 'http://localhost:5173';
+    // Retry connecting to Vite dev server (it may still be starting)
+    const loadDev = async () => {
+      for (let i = 0; i < 10; i++) {
+        try {
+          await win.loadURL(devUrl);
+          return;
+        } catch {
+          await new Promise(r => setTimeout(r, 1000));
+        }
+      }
+      // Fallback: show error in the window
+      win.loadURL(`data:text/html,<h2>Could not connect to Vite dev server at ${devUrl}</h2><p>Start it with: <code>cd packages/desktop && npx vite</code></p>`);
+    };
+    void loadDev();
     win.webContents.openDevTools();
   } else {
     const indexPath = join(__dirname, '..', 'renderer', 'index.html');
