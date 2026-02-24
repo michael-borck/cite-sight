@@ -2,7 +2,7 @@
 
 **Academic integrity tool for checking student assignments.**
 
-A desktop app and CLI tool that loads a student assignment, extracts references and in-text citations, verifies every reference exists via academic databases, checks URLs, validates citation formatting, and flags suspicious or fabricated references.
+A desktop app, CLI tool, and web service that loads a student assignment, extracts references and in-text citations, verifies every reference exists via academic databases, checks URLs, validates citation formatting, and flags suspicious or fabricated references.
 
 ## Features
 
@@ -16,18 +16,96 @@ A desktop app and CLI tool that loads a student assignment, extracts references 
 - **Integrity Checks** — AI-typical patterns, citation anomalies, placeholder text detection
 - **File Support** — PDF, DOCX, TXT, Markdown, JSON
 
-## Quick Start
+## Install
+
+Three ways to use CiteSight:
+
+| Method | Best for | Install |
+|--------|----------|---------|
+| **Desktop app** | Offline use, URL screenshots | [Download for your platform](https://github.com/michael-borck/cite-sight/releases/latest) |
+| **CLI** | Automation, CI pipelines | `npm install -g cite-sight` |
+| **Docker** | VPS hosting, shared access | `docker pull michaelborck/cite-sight` |
+
+## Deploy on a VPS
+
+Pull the pre-built Docker image — no Node.js or build tools needed on the server.
+
+### Quick deploy
+
+```bash
+docker run -d -p 3000:3000 --restart unless-stopped --name cite-sight michaelborck/cite-sight
+```
+
+The web app and API are available at `http://your-server:3000`.
+
+### Using docker-compose (recommended)
+
+Create a `docker-compose.yml` on your VPS:
+
+```yaml
+services:
+  app:
+    image: michaelborck/cite-sight:latest
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    environment:
+      - PORT=3000
+```
+
+Then:
+
+```bash
+docker compose up -d
+```
+
+### Update to latest version
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+### With Redis job queue (optional)
+
+For heavier usage, add Redis to queue analysis jobs instead of processing synchronously:
+
+```yaml
+services:
+  app:
+    image: michaelborck/cite-sight:latest
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    environment:
+      - PORT=3000
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+```
+
+### Behind a reverse proxy (Nginx/Caddy)
+
+If you're serving on a domain with HTTPS, point your reverse proxy at port 3000. Example Caddy config:
+
+```
+citesight.yourdomain.com {
+    reverse_proxy localhost:3000
+}
+```
+
+## Quick Start (Development)
 
 ### Desktop App
 
 ```bash
-# Install dependencies
 npm install
-
-# Build the core library
 npm run build:core
 
-# Start the Electron app in dev mode
 # Terminal 1: Vite dev server
 cd packages/desktop && npx vite
 
@@ -36,20 +114,38 @@ npx tsc -p packages/desktop/tsconfig.json
 cd packages/desktop && npx electron .
 ```
 
+### Web App + Server
+
+```bash
+npm install
+npm run build:core
+npm run build:server
+
+# Terminal 1: API server
+node packages/server/dist/index.js
+
+# Terminal 2: Web frontend
+cd packages/web && npx vite
+```
+
+Open `http://localhost:5173` — Vite proxies API calls to the server.
+
 ### CLI
 
 ```bash
 npm run build:core
 npx tsc -p packages/cli/tsconfig.json
 
-# Analyze a document
-node packages/cli/dist/index.js check paper.pdf
+cite-sight check paper.pdf
+cite-sight check paper.pdf --json
+cite-sight check paper.pdf --style apa --email you@example.com --verbose
+```
 
-# JSON output
-node packages/cli/dist/index.js check paper.pdf --json
+### Docker (local build)
 
-# Options
-node packages/cli/dist/index.js check paper.pdf --style apa --email you@example.com --verbose
+```bash
+docker compose up --build
+# Open http://localhost:3000
 ```
 
 ## Project Structure
@@ -57,22 +153,14 @@ node packages/cli/dist/index.js check paper.pdf --style apa --email you@example.
 ```
 cite-sight/
 ├── packages/
-│   ├── core/                # Shared library (CLI + desktop both use this)
-│   │   └── src/
-│   │       ├── extractors/  # PDF, DOCX, text extraction
-│   │       ├── analyzers/   # Readability, writing quality, word analysis, integrity
-│   │       ├── references/  # Extraction, format validation, API clients, verification
-│   │       ├── pipeline.ts  # Full analysis orchestrator
-│   │       └── types.ts     # All shared types
-│   ├── desktop/             # Electron app
-│   │   └── src/
-│   │       ├── main/        # Electron main process, IPC, screenshots, auto-update
-│   │       └── renderer/    # React UI
-│   └── cli/                 # CLI tool
-│       └── src/
-│           └── index.ts     # Commander.js CLI
-├── package.json             # Workspace root
-└── tsconfig.base.json
+│   ├── core/          # Shared analysis library
+│   ├── desktop/       # Electron app
+│   ├── cli/           # CLI tool
+│   ├── server/        # Express API server
+│   └── web/           # Landing page + online tool
+├── Dockerfile
+├── docker-compose.yml
+└── package.json       # Workspace root
 ```
 
 ## How Reference Verification Works
@@ -99,12 +187,17 @@ git tag v1.0.0
 git push --tags
 ```
 
-This builds installers for macOS (DMG), Windows (NSIS), and Linux (AppImage) and creates a GitHub Release with auto-update support.
+This triggers:
+- **Electron installers** — macOS (DMG), Windows (NSIS), Linux (AppImage) with auto-update
+- **npm publish** — `@michaelborck/cite-sight-core` + `cite-sight` CLI
+- **Docker images** — pushed to Docker Hub and GitHub Container Registry (amd64 + arm64)
 
 ## Technology Stack
 
 - **Core**: TypeScript, pdfjs-dist, mammoth
 - **Desktop**: Electron, React 19, Zustand, Vite, electron-updater
+- **Web**: React 19, Vite
+- **Server**: Express, multer, BullMQ (optional)
 - **CLI**: Commander.js, chalk
 - **APIs**: Crossref, Semantic Scholar, OpenAlex (all free tier)
 
