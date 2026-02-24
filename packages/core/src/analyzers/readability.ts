@@ -1,4 +1,4 @@
-import { ReadabilityResult } from '../types';
+import { ReadabilityResult } from '../types.js';
 
 // ---------------------------------------------------------------------------
 // Syllable counting

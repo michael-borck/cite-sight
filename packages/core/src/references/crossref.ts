@@ -1,4 +1,4 @@
-import type { AcademicWork } from '../types';
+import type { AcademicWork } from '../types.js';
 
 // ============================================================
 // Rate limiting

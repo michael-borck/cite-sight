@@ -1,5 +1,5 @@
-import type { AcademicWork } from '../types';
-import { lookupDoi } from './crossref';
+import type { AcademicWork } from '../types.js';
+import { lookupDoi } from './crossref.js';
 
 // ============================================================
 // Public API

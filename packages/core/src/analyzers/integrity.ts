@@ -1,4 +1,4 @@
-import { IntegrityPattern, IntegrityResult } from '../types';
+import { IntegrityPattern, IntegrityResult } from '../types.js';
 
 // ---------------------------------------------------------------------------
 // Constants

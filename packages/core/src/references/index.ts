@@ -2,11 +2,11 @@
 // References module — barrel export
 // ============================================================
 
-export { extractReferences } from './extractor';
-export { validateFormat } from './formatValidator';
-export { searchCrossref, lookupDoi } from './crossref';
-export { searchSemanticScholar } from './semanticScholar';
-export { searchOpenAlex } from './openAlex';
-export { resolveDoi } from './doiResolver';
-export { checkUrl } from './urlChecker';
-export { verifyReferences, titleSimilarity } from './verifier';
+export { extractReferences } from './extractor.js';
+export { validateFormat } from './formatValidator.js';
+export { searchCrossref, lookupDoi } from './crossref.js';
+export { searchSemanticScholar } from './semanticScholar.js';
+export { searchOpenAlex } from './openAlex.js';
+export { resolveDoi } from './doiResolver.js';
+export { checkUrl } from './urlChecker.js';
+export { verifyReferences, titleSimilarity } from './verifier.js';

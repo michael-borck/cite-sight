@@ -1,4 +1,4 @@
-import type { ParsedReference, CitationStyle, FormatIssue } from '../types';
+import type { ParsedReference, CitationStyle, FormatIssue } from '../types.js';
 
 // ============================================================
 // Helpers

@@ -1,4 +1,4 @@
-import { WordAnalysisResult, WordFrequency, PhraseFrequency } from '../types';
+import { WordAnalysisResult, WordFrequency, PhraseFrequency } from '../types.js';
 
 // ---------------------------------------------------------------------------
 // Stop words

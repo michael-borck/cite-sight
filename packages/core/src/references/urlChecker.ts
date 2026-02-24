@@ -1,4 +1,4 @@
-import type { UrlCheckResult, UrlStatus } from '../types';
+import type { UrlCheckResult, UrlStatus } from '../types.js';
 
 const TIMEOUT_MS = 10_000;
 const USER_AGENT =

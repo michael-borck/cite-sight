@@ -1,4 +1,4 @@
-export { analyzeReadability } from './readability';
-export { analyzeWritingQuality } from './writingQuality';
-export { analyzeWords } from './wordAnalysis';
-export { analyzeIntegrity } from './integrity';
+export { analyzeReadability } from './readability.js';
+export { analyzeWritingQuality } from './writingQuality.js';
+export { analyzeWords } from './wordAnalysis.js';
+export { analyzeIntegrity } from './integrity.js';

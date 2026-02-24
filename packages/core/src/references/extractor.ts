@@ -1,4 +1,4 @@
-import type { ParsedReference, InTextCitation, CitationStyle } from '../types';
+import type { ParsedReference, InTextCitation, CitationStyle } from '../types.js';
 
 // ============================================================
 // Regex constants

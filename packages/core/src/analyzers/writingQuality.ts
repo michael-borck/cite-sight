@@ -1,4 +1,4 @@
-import { WritingQualityResult } from '../types';
+import { WritingQualityResult } from '../types.js';
 
 // ---------------------------------------------------------------------------
 // Shared sentence splitter (same lightweight logic as readability module)

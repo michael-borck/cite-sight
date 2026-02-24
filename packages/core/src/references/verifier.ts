@@ -5,13 +5,13 @@ import type {
   VerificationStatus,
   AcademicWork,
   FormatIssue,
-} from '../types';
-import { validateFormat } from './formatValidator';
-import { resolveDoi } from './doiResolver';
-import { searchCrossref } from './crossref';
-import { searchSemanticScholar } from './semanticScholar';
-import { searchOpenAlex } from './openAlex';
-import { checkUrl } from './urlChecker';
+} from '../types.js';
+import { validateFormat } from './formatValidator.js';
+import { resolveDoi } from './doiResolver.js';
+import { searchCrossref } from './crossref.js';
+import { searchSemanticScholar } from './semanticScholar.js';
+import { searchOpenAlex } from './openAlex.js';
+import { checkUrl } from './urlChecker.js';
 
 // ============================================================
 // Title similarity (Jaccard on word sets)
