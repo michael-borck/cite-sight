@@ -1,6 +1,6 @@
 {
   "name": "@michaelborck/cite-sight-web",
-  "version": "1.0.0",
+  "version": "0.2.0",
   "private": true,
   "description": "CiteSight web application and landing page",
   "type": "module",

@@ -1,6 +1,6 @@
 {
   "name": "@michaelborck/cite-sight-server",
-  "version": "1.0.0",
+  "version": "0.2.0",
   "description": "CiteSight web API server",
   "type": "module",
   "main": "dist/index.js",
