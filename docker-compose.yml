@@ -9,6 +9,8 @@ services:
       # Uncomment to enable job queue:
       # - REDIS_URL=redis://redis:6379
     restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     # Uncomment for job queue support:
     # depends_on:
     #   - redis
