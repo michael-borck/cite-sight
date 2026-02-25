@@ -47,8 +47,8 @@ const FEATURES = [
     icon: '≡',
   },
   {
-    title: 'Integrity Detection',
-    description: 'Flags AI-typical writing patterns, citation anomalies, and other academic integrity concerns.',
+    title: 'Writing Patterns',
+    description: 'Highlights citation issues, incomplete sections, and notable writing style patterns for review.',
     icon: '⚑',
   },
 ];
@@ -105,7 +105,7 @@ export function LandingPage({ onNavigate }: Props) {
             <div className="step-number">3</div>
             <div className="step-content">
               <h3>Detailed Report</h3>
-              <p>Review a comprehensive report with verification status, format issues, readability scores, and integrity flags for each citation.</p>
+              <p>Review a comprehensive report with verification status, format issues, readability scores, and writing pattern observations for each citation.</p>
             </div>
           </div>
         </div>

@@ -432,55 +432,42 @@
 .word-tag-purple { background: #f3e5f5; color: #6a1b9a; border-color: #e1bee7; }
 .word-tag-orange { background: #fff3e0; color: #e65100; border-color: #ffe0b2; }
 
-/* ── Integrity panel ────────────────────────────────────────────────────────── */
-.risk-gauge {
+/* ── Writing Patterns panel ─────────────────────────────────────────────────── */
+.tab-badge-neutral { background-color: #667eea; }
+
+.category-counts {
   display: flex;
-  align-items: center;
-  gap: 30px;
-  margin-bottom: 28px;
-  padding: 20px;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 16px 20px;
   background: #fafafa;
   border-radius: 8px;
 }
 
-.risk-score-wrap { text-align: center; }
+.category-count-item {
+  flex: 1;
+  text-align: center;
+  padding: 12px 8px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
 
-.risk-score {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  border: 4px solid;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 26px;
+.category-count-num {
+  font-size: 24px;
   font-weight: 700;
-  margin: 0 auto 6px;
+  color: #333;
+  margin-bottom: 4px;
 }
 
-.risk-label { font-size: 11px; color: #777; text-transform: uppercase; letter-spacing: 0.4px; }
-
-.risk-bar-wrap { flex: 1; }
-.risk-bar-track {
-  height: 20px;
-  background: #e0e0e0;
-  border-radius: 10px;
-  overflow: hidden;
-  margin-bottom: 8px;
+.category-count-label {
+  font-size: 12px;
+  color: #777;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
 }
 
-.risk-bar-fill {
-  height: 100%;
-  border-radius: 10px;
-  transition: width 0.5s ease;
-}
-
-.risk-bar-labels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 11px;
-  color: #999;
-}
+.patterns-category-group { margin-bottom: 20px; }
 
 .patterns-list h4 { margin-bottom: 14px; }
 

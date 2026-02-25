@@ -8,10 +8,10 @@ export function AboutPage() {
         <section className="about-section">
           <h2>What is CiteSight?</h2>
           <p>
-            CiteSight is an academic integrity tool that helps educators and students verify the
-            accuracy of citations and references in academic work. It automatically checks whether
-            referenced sources actually exist, validates citation formatting, and flags potential
-            issues.
+            CiteSight is a pre-submission check that helps students and educators verify citations
+            and references before handing in academic work. It checks whether referenced sources
+            actually exist, validates citation formatting, and highlights anything that might need
+            a second look — so you can fix issues before they become problems.
           </p>
         </section>
 
@@ -23,13 +23,32 @@ export function AboutPage() {
             <li>The reference is searched in Crossref using title and author information.</li>
             <li>If not found, Semantic Scholar is searched as a fallback.</li>
             <li>If still not found, OpenAlex provides a third verification attempt.</li>
+            <li>
+              For non-academic sources (YouTube videos, blog posts, books, podcasts, reports),
+              CiteSight verifies via YouTube/Vimeo oEmbed, Open Library, or the web page's own
+              metadata — so valid non-academic references aren't incorrectly flagged as missing.
+            </li>
             <li>Any URLs in the reference are checked for accessibility.</li>
             <li>In-text citations are matched against bibliography entries.</li>
           </ol>
           <p>
             Each reference receives a confidence score and one of four statuses:
-            <strong> Verified</strong>, <strong>Likely Valid</strong>,
-            <strong> Suspicious</strong>, or <strong>Not Found</strong>.
+            <strong> Verified</strong>, <strong> Likely Valid</strong>,
+            <strong> Suspicious</strong>, or <strong> Not Found</strong>.
+            Academic sources verified via DOI can reach full confidence, while non-academic web
+            sources are capped at a lower confidence to reflect the less structured verification.
+          </p>
+        </section>
+
+        <section className="about-section">
+          <h2>Citation Style Checking</h2>
+          <p>
+            CiteSight checks formatting against the broad rules of APA, MLA, and Chicago — things
+            like author name order, title capitalisation, year placement, and whether DOIs or URLs
+            are included. It does not distinguish between sub-versions of each style (e.g. APA 6th
+            vs 7th, or Chicago notes-bibliography vs author-date), so it won't flag you for
+            version-specific differences. Think of it as a quick sanity check for the most common
+            formatting mistakes, not a replacement for your style guide.
           </p>
         </section>
 
@@ -78,17 +97,16 @@ export function AboutPage() {
         </section>
 
         <section className="about-section">
-          <h2>Integrity Checks</h2>
-          <p>CiteSight looks for patterns that may indicate issues with academic integrity:</p>
-          <ul className="integrity-list">
-            <li>Citation anomalies such as future dates or unusual year clusters</li>
-            <li>Mixed citation styles within the same document</li>
-            <li>AI-typical writing patterns including repetitive sentence starters and formulaic transitions</li>
-            <li>Placeholder text and self-referencing issues</li>
+          <h2>Writing Patterns</h2>
+          <p>CiteSight scans for notable writing patterns grouped into three categories:</p>
+          <ul className="writing-patterns-list">
+            <li><strong>Citation Issues</strong> — future dates, unusual year clusters, mixed citation styles</li>
+            <li><strong>Completeness</strong> — placeholder text such as TODO, lorem ipsum, or [citation needed]</li>
+            <li><strong>Style Observations</strong> — repetitive sentence starters, formulaic transitions, overused vocabulary, self-referencing, emojis, excessive em-dashes, intensifier phrases, hyperbole, wordy phrases, and excessive bullet points</li>
           </ul>
           <p>
-            Each detected pattern is assigned a severity level (High, Medium, or Low) and contributes
-            to an overall risk score from 0 to 100.
+            Each pattern is assigned a severity level (High, Medium, or Low). These are observations
+            for the reviewer — the human makes the final decision on significance.
           </p>
         </section>
 

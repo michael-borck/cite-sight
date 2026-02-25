@@ -64,18 +64,21 @@ export interface WordAnalysisResult {
   trigrams: PhraseFrequency[];
 }
 
-// --- Integrity ---
+// --- Writing Patterns ---
 
-export interface IntegrityPattern {
+export type PatternCategory = 'citation_issues' | 'completeness' | 'style_observations';
+
+export interface WritingPattern {
   type: string;
   description: string;
   severity: 'high' | 'medium' | 'low';
+  category: PatternCategory;
   evidence?: string;
 }
 
-export interface IntegrityResult {
-  patterns: IntegrityPattern[];
-  riskScore: number; // 0-100
+export interface WritingPatternsResult {
+  patterns: WritingPattern[];
+  categoryCounts: Record<PatternCategory, number>;
 }
 
 // --- References ---
@@ -176,7 +179,7 @@ export interface AnalysisResult {
   readability: ReadabilityResult;
   writingQuality: WritingQualityResult;
   wordAnalysis: WordAnalysisResult;
-  integrity: IntegrityResult;
+  writingPatterns: WritingPatternsResult;
   references: ReferenceAnalysisResult;
   processingTime: number;
 }
@@ -188,7 +191,7 @@ export type AnalysisStage =
   | 'analyzing_readability'
   | 'analyzing_writing'
   | 'analyzing_words'
-  | 'analyzing_integrity'
+  | 'analyzing_writing_patterns'
   | 'extracting_references'
   | 'verifying_references'
   | 'checking_urls'

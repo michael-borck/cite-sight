@@ -15,12 +15,6 @@ function formatDuration(ms: number): string {
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
-function riskColor(score: number): string {
-  if (score >= 70) return chalk.red(score.toFixed(0));
-  if (score >= 40) return chalk.yellow(score.toFixed(0));
-  return chalk.green(score.toFixed(0));
-}
-
 function statusBadge(status: string): string {
   switch (status) {
     case 'verified':     return chalk.green('✔ verified');
@@ -48,7 +42,7 @@ function printSectionHeader(title: string): void {
 }
 
 function printReport(result: AnalysisResult, verbose: boolean): void {
-  const { readability, writingQuality, references, integrity, processingTime } = result;
+  const { readability, writingQuality, references, writingPatterns, processingTime } = result;
 
   // Header
   console.log('');
@@ -122,9 +116,9 @@ function printReport(result: AnalysisResult, verbose: boolean): void {
     }
   }
 
-  for (const p of integrity.patterns) {
+  for (const p of writingPatterns.patterns) {
     issues.push({
-      label: `Integrity: ${p.type}`,
+      label: `Pattern: ${p.type}`,
       detail: p.description + (p.evidence ? ` (e.g. "${p.evidence.slice(0, 60)}")` : ''),
       severity: p.severity === 'high' ? 'error' : p.severity === 'medium' ? 'warn' : 'info',
     });
@@ -176,27 +170,20 @@ function printReport(result: AnalysisResult, verbose: boolean): void {
     }
   }
 
-  // Integrity risk score
-  printSectionHeader('Integrity Risk Score');
-  const score = integrity.riskScore;
-  const bar = buildBar(score);
-  console.log(`  Score: ${riskColor(score)} / 100  ${bar}`);
-  if (score >= 70) {
-    console.log(`  ${chalk.red.bold('High risk')} — manual review strongly recommended.`);
-  } else if (score >= 40) {
-    console.log(`  ${chalk.yellow('Moderate risk')} — some patterns detected, review advised.`);
+  // Writing patterns summary
+  printSectionHeader('Writing Patterns');
+  const { categoryCounts } = writingPatterns;
+  console.log(`  Citation Issues:     ${categoryCounts.citation_issues}`);
+  console.log(`  Completeness:        ${categoryCounts.completeness}`);
+  console.log(`  Style Observations:  ${categoryCounts.style_observations}`);
+  const totalPatterns = writingPatterns.patterns.length;
+  if (totalPatterns === 0) {
+    console.log(`  ${chalk.green('No notable writing patterns detected.')}`);
   } else {
-    console.log(`  ${chalk.green('Low risk')} — no significant integrity concerns detected.`);
+    console.log(`  ${chalk.cyan(`${totalPatterns} pattern(s) detected — review recommended.`)}`);
   }
 
   console.log('');
-}
-
-function buildBar(score: number, width = 20): string {
-  const filled = Math.round((score / 100) * width);
-  const empty = width - filled;
-  const color = score >= 70 ? chalk.red : score >= 40 ? chalk.yellow : chalk.green;
-  return color('█'.repeat(filled)) + chalk.gray('░'.repeat(empty));
 }
 
 // -------------------------------------------------------
@@ -304,7 +291,7 @@ program
 // Explicit sub-command: cite-sight check <file>
 program
   .command('check <file>')
-  .description('Check a document for citation and integrity issues')
+  .description('Check a document for citation and writing pattern issues')
   .option('--style <style>', 'Citation style (auto|apa|mla|chicago)', 'auto')
   .option('--no-urls', 'Skip URL checking')
   .option('--no-doi', 'Skip DOI verification')

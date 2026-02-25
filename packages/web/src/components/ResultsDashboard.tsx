@@ -4,7 +4,8 @@ import type {
   AnalysisResult,
   ReferenceVerification,
   VerificationStatus,
-  IntegrityPattern,
+  WritingPattern,
+  PatternCategory,
 } from '../types';
 import 'react-tabs/style/react-tabs.css';
 import './ResultsDashboard.css';
@@ -35,8 +36,16 @@ function statusClass(s: VerificationStatus): string {
   }
 }
 
-function severityClass(s: IntegrityPattern['severity']): string {
+function severityClass(s: WritingPattern['severity']): string {
   return `severity-${s}`;
+}
+
+function categoryLabel(c: PatternCategory): string {
+  switch (c) {
+    case 'citation_issues': return 'Citation Issues';
+    case 'completeness': return 'Completeness';
+    case 'style_observations': return 'Style Observations';
+  }
 }
 
 function pct(value: number, decimals = 1): string {
@@ -50,9 +59,8 @@ function bar(value: number, max = 100): number {
 // ─── sub-panels ───────────────────────────────────────────────────────────────
 
 function OverviewPanel({ results }: Props) {
-  const { readability, references, integrity, processingTime } = results;
-  const riskColor =
-    integrity.riskScore >= 70 ? '#f44336' : integrity.riskScore >= 40 ? '#ff9800' : '#4CAF50';
+  const { readability, references, writingPatterns, processingTime } = results;
+  const totalPatterns = writingPatterns.patterns.length;
 
   return (
     <div className="panel overview-panel">
@@ -101,11 +109,11 @@ function OverviewPanel({ results }: Props) {
           <span className="omv">{readability.fleschKincaidGrade.toFixed(1)}</span>
         </div>
         <div className="overview-metric-row">
-          <span className="oml">Integrity Risk</span>
+          <span className="oml">Writing Patterns</span>
           <div className="ombar-wrap">
-            <div className="ombar" style={{ width: `${bar(integrity.riskScore)}%`, background: riskColor }} />
+            <div className="ombar" style={{ width: `${bar(totalPatterns, 20)}%`, background: '#667eea' }} />
           </div>
-          <span className="omv" style={{ color: riskColor }}>{integrity.riskScore.toFixed(0)}/100</span>
+          <span className="omv">{totalPatterns} found</span>
         </div>
       </div>
 
@@ -430,56 +438,53 @@ function WordsPanel({ results }: Props) {
   );
 }
 
-function IntegrityPanel({ results }: Props) {
-  const { integrity } = results;
-  const riskColor =
-    integrity.riskScore >= 70 ? '#f44336' : integrity.riskScore >= 40 ? '#ff9800' : '#4CAF50';
+function WritingPatternsPanel({ results }: Props) {
+  const { writingPatterns } = results;
+  const { categoryCounts } = writingPatterns;
+  const categories: PatternCategory[] = ['citation_issues', 'completeness', 'style_observations'];
 
   return (
-    <div className="panel integrity-panel">
-      <h3>Integrity Analysis</h3>
+    <div className="panel patterns-panel">
+      <h3>Writing Patterns</h3>
 
-      <div className="risk-gauge">
-        <div className="risk-score-wrap">
-          <div className="risk-score" style={{ color: riskColor, borderColor: riskColor }}>
-            {integrity.riskScore.toFixed(0)}
+      <div className="category-counts">
+        {categories.map((cat) => (
+          <div key={cat} className="category-count-item">
+            <div className="category-count-num">{categoryCounts[cat]}</div>
+            <div className="category-count-label">{categoryLabel(cat)}</div>
           </div>
-          <div className="risk-label">Risk Score / 100</div>
-        </div>
-        <div className="risk-bar-wrap">
-          <div className="risk-bar-track">
-            <div
-              className="risk-bar-fill"
-              style={{ width: `${integrity.riskScore}%`, background: riskColor }}
-            />
-          </div>
-          <div className="risk-bar-labels">
-            <span>Low</span><span>Medium</span><span>High</span>
-          </div>
-        </div>
+        ))}
       </div>
 
-      {integrity.patterns.length > 0 ? (
+      {writingPatterns.patterns.length > 0 ? (
         <div className="patterns-list">
-          <h4>Detected Patterns ({integrity.patterns.length})</h4>
-          {integrity.patterns.map((p, i) => (
-            <div key={i} className={`pattern-card ${severityClass(p.severity)}`}>
-              <div className="pattern-header">
-                <span className="pattern-type">{p.type}</span>
-                <span className={`severity-badge ${p.severity}`}>{p.severity}</span>
+          {categories.map((cat) => {
+            const catPatterns = writingPatterns.patterns.filter(p => p.category === cat);
+            if (catPatterns.length === 0) return null;
+            return (
+              <div key={cat} className="patterns-category-group">
+                <h4>{categoryLabel(cat)} ({catPatterns.length})</h4>
+                {catPatterns.map((p, i) => (
+                  <div key={i} className={`pattern-card ${severityClass(p.severity)}`}>
+                    <div className="pattern-header">
+                      <span className="pattern-type">{p.type}</span>
+                      <span className={`severity-badge ${p.severity}`}>{p.severity}</span>
+                    </div>
+                    <p className="pattern-description">{p.description}</p>
+                    {p.evidence && (
+                      <div className="pattern-evidence">
+                        <strong>Evidence:</strong> {p.evidence}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-              <p className="pattern-description">{p.description}</p>
-              {p.evidence && (
-                <div className="pattern-evidence">
-                  <strong>Evidence:</strong> {p.evidence}
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div className="no-patterns">
-          <p>No suspicious integrity patterns detected.</p>
+          <p>No notable writing patterns detected.</p>
         </div>
       )}
     </div>
@@ -488,10 +493,11 @@ function IntegrityPanel({ results }: Props) {
 
 // ─── main component ───────────────────────────────────────────────────────────
 
-const TAB_NAMES = ['overview', 'references', 'cross', 'quality', 'words', 'integrity'];
+const TAB_NAMES = ['overview', 'references', 'cross', 'quality', 'words', 'patterns'];
 
 export function ResultsDashboard({ results }: Props) {
   const [tabIndex, setTabIndex] = useState(0);
+  const totalPatterns = results.writingPatterns.patterns.length;
 
   return (
     <div className="results-dashboard">
@@ -519,10 +525,10 @@ export function ResultsDashboard({ results }: Props) {
           <Tab>Quality</Tab>
           <Tab>Words</Tab>
           <Tab>
-            Integrity
-            {results.integrity.riskScore >= 40 && (
-              <span className={`tab-badge ${results.integrity.riskScore >= 70 ? 'tab-badge-high' : 'tab-badge-warn'}`}>
-                {results.integrity.riskScore.toFixed(0)}
+            Writing Patterns
+            {totalPatterns > 0 && (
+              <span className="tab-badge tab-badge-neutral">
+                {totalPatterns}
               </span>
             )}
           </Tab>
@@ -533,7 +539,7 @@ export function ResultsDashboard({ results }: Props) {
         <TabPanel><CrossReferencesPanel results={results} /></TabPanel>
         <TabPanel><QualityPanel results={results} /></TabPanel>
         <TabPanel><WordsPanel results={results} /></TabPanel>
-        <TabPanel><IntegrityPanel results={results} /></TabPanel>
+        <TabPanel><WritingPatternsPanel results={results} /></TabPanel>
       </Tabs>
 
       <div className="tab-hint">

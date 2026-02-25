@@ -2,7 +2,7 @@ import { extract } from './extractors/index.js';
 import { analyzeReadability } from './analyzers/readability.js';
 import { analyzeWritingQuality } from './analyzers/writingQuality.js';
 import { analyzeWords } from './analyzers/wordAnalysis.js';
-import { analyzeIntegrity } from './analyzers/integrity.js';
+import { analyzeWritingPatterns } from './analyzers/writingPatterns.js';
 import { extractReferences } from './references/extractor.js';
 import { verifyReferences } from './references/verifier.js';
 import type {
@@ -90,9 +90,9 @@ export async function analyzePipeline(
   onProgress?.({ stage: 'analyzing_words', progress: 35, message: 'Analyzing word patterns...' });
   const wordAnalysis = analyzeWords(doc.text);
 
-  // Stage 5: Integrity
-  onProgress?.({ stage: 'analyzing_integrity', progress: 45, message: 'Checking integrity patterns...' });
-  const integrity = analyzeIntegrity(doc.text);
+  // Stage 5: Writing patterns
+  onProgress?.({ stage: 'analyzing_writing_patterns', progress: 45, message: 'Analyzing writing patterns...' });
+  const writingPatterns = analyzeWritingPatterns(doc.text);
 
   // Stage 6: Extract references
   onProgress?.({ stage: 'extracting_references', progress: 55, message: 'Extracting references...' });
@@ -141,7 +141,7 @@ export async function analyzePipeline(
     readability,
     writingQuality,
     wordAnalysis,
-    integrity,
+    writingPatterns,
     references: referenceResult,
     processingTime: Date.now() - startTime,
   };

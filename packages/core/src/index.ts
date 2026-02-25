@@ -4,7 +4,7 @@ export { extract, extractPdf, extractDocx } from './extractors/index.js';
 export { analyzeReadability } from './analyzers/readability.js';
 export { analyzeWritingQuality } from './analyzers/writingQuality.js';
 export { analyzeWords } from './analyzers/wordAnalysis.js';
-export { analyzeIntegrity } from './analyzers/integrity.js';
+export { analyzeWritingPatterns } from './analyzers/writingPatterns.js';
 export { extractReferences } from './references/extractor.js';
 export { validateFormat } from './references/formatValidator.js';
 export { searchCrossref, lookupDoi } from './references/crossref.js';

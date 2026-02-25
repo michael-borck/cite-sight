@@ -120,15 +120,15 @@
   margin: 0;
 }
 
-/* ── Integrity list ─────────────────────────────────────────────────────────── */
+/* ── Writing patterns list ──────────────────────────────────────────────────── */
 
-.integrity-list {
+.writing-patterns-list {
   margin: 14px 0 18px 0;
   padding-left: 0;
   list-style: none;
 }
 
-.integrity-list li {
+.writing-patterns-list li {
   padding: 9px 12px 9px 36px;
   margin-bottom: 6px;
   background: #fafafa;
@@ -140,7 +140,7 @@
   position: relative;
 }
 
-.integrity-list li::before {
+.writing-patterns-list li::before {
   content: '→';
   position: absolute;
   left: 12px;
