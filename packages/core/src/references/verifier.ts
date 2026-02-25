@@ -12,6 +12,7 @@ import { searchCrossref } from './crossref.js';
 import { searchSemanticScholar } from './semanticScholar.js';
 import { searchOpenAlex } from './openAlex.js';
 import { checkUrl } from './urlChecker.js';
+import { verifyWebSource } from './webSourceVerifier.js';
 
 // ============================================================
 // Title similarity (Jaccard on word sets)
@@ -184,20 +185,48 @@ async function verifySingleReference(
     }
   }
 
-  // --- Step 6: URL check ---
+  // --- Step 6: Web source verification (non-academic fallback) ---
+  let isWebSource = false;
+  if (!matched && (ref.url || ref.raw)) {
+    const webResult = await verifyWebSource(ref);
+    if (webResult) {
+      const sim = ref.title ? titleSimilarity(ref.title, webResult.title) : 0;
+      if (sim >= 0.3 || !ref.title) {
+        matched = webResult;
+        similarity = sim;
+        isWebSource = true;
+      }
+    }
+  }
+
+  // --- Step 7: URL check ---
   let urlCheck = undefined;
   if (ref.url) {
     urlCheck = await checkUrl(ref.url);
   }
 
-  // --- Step 7: Confidence score ---
-  const confidenceScore = computeConfidence(matched, similarity, doiResolved);
+  // --- Step 8: Confidence score ---
+  let confidenceScore: number;
+  if (isWebSource && matched) {
+    // Non-academic sources get capped confidence
+    const isStructuredApi = matched.source === 'youtube' || matched.source === 'vimeo' || matched.source === 'open_library';
+    const maxConfidence = isStructuredApi ? 0.75 : 0.6;
+    confidenceScore = Math.min(maxConfidence, similarity >= 0.5 ? maxConfidence : maxConfidence * 0.8);
+  } else {
+    confidenceScore = computeConfidence(matched, similarity, doiResolved);
+  }
 
-  // --- Step 8: Flags ---
+  // --- Step 9: Flags ---
   const hasFormatIssues = formatIssues.length > 0;
 
-  // Add broken_url flag if applicable
   let flags = computeFlags(ref, matched, similarity, hasFormatIssues);
+
+  // Skip no_doi flag for non-academic sources (irrelevant)
+  if (isWebSource) {
+    flags = flags.filter((f) => f !== 'no_doi');
+    flags.push('web_source');
+  }
+
   if (urlCheck && (urlCheck.status === 'dead' || urlCheck.status === 'timeout' || urlCheck.status === 'error')) {
     flags = [...flags, 'broken_url'];
   }

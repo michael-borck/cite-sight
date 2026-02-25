@@ -125,7 +125,7 @@ export interface AcademicWork {
   year: number | null;
   doi?: string;
   journal?: string;
-  source: 'crossref' | 'semantic_scholar' | 'openalex';
+  source: 'crossref' | 'semantic_scholar' | 'openalex' | 'youtube' | 'vimeo' | 'open_library' | 'web_metadata';
   url?: string;
   citationCount?: number;
 }
