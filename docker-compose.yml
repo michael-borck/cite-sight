@@ -1,6 +1,6 @@
 services:
   app:
-    build: .
+    image: michaelborck/cite-sight:latest
     ports:
       - "3000:3000"
     environment:
@@ -8,9 +8,19 @@ services:
       - CORS_ORIGIN=*
       # Uncomment to enable job queue:
       # - REDIS_URL=redis://redis:6379
+    restart: unless-stopped
     # Uncomment for job queue support:
     # depends_on:
     #   - redis
+
+  watchtower:
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=300
+    restart: unless-stopped
 
   # Optional: uncomment for job queue support
   # redis:
