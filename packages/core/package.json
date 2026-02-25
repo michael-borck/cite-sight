@@ -1,6 +1,6 @@
 {
   "name": "@michaelborck/cite-sight-core",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "Core analysis library for CiteSight academic integrity checking",
   "type": "module",
   "license": "MIT",
@@ -10,7 +10,16 @@
     "url": "https://github.com/michael-borck/cite-sight.git",
     "directory": "packages/core"
   },
-  "keywords": ["academic", "integrity", "citations", "references", "verification", "apa", "mla", "chicago"],
+  "keywords": [
+    "academic",
+    "integrity",
+    "citations",
+    "references",
+    "verification",
+    "apa",
+    "mla",
+    "chicago"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -19,7 +28,9 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
