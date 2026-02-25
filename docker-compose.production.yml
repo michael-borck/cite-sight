@@ -1,0 +1,32 @@
+# Example production docker-compose for VPS deployment
+# Copy this file to your server and adjust as needed.
+#
+# Usage:
+#   docker compose -f docker-compose.production.yml up -d
+#
+# Watchtower automatically pulls new images when you push a release tag.
+# Caddy network assumes you have a Caddy reverse proxy for HTTPS.
+
+services:
+  cite-sight:
+    image: michaelborck/cite-sight:latest
+    container_name: cite-sight
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    networks:
+      - caddy_default
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=300
+    restart: unless-stopped
+
+networks:
+  caddy_default:
+    external: true
