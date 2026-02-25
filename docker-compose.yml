@@ -1,6 +1,6 @@
 services:
   app:
-    image: michaelborck/cite-sight:latest
+    build: .
     ports:
       - "3000:3000"
     environment:
@@ -12,15 +12,6 @@ services:
     # Uncomment for job queue support:
     # depends_on:
     #   - redis
-
-  watchtower:
-    image: containrrr/watchtower
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      - WATCHTOWER_CLEANUP=true
-      - WATCHTOWER_POLL_INTERVAL=300
-    restart: unless-stopped
 
   # Optional: uncomment for job queue support
   # redis:
