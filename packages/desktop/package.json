@@ -4,6 +4,11 @@
   "private": true,
   "description": "CiteSight Desktop - Academic integrity checker",
   "author": "Michael Borck",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/michael-borck/cite-sight.git",
+    "directory": "packages/desktop"
+  },
   "type": "module",
   "main": "dist/main/main.js",
   "scripts": {
