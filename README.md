@@ -13,7 +13,7 @@ A desktop app, CLI tool, and web service that loads a student assignment, extrac
 - **DOI Resolution** — Validates DOIs via Crossref
 - **Readability Analysis** — Flesch Reading Ease, Flesch-Kincaid Grade, Coleman-Liau, ARI
 - **Writing Quality** — Passive voice, hedging phrases, transitions, academic tone scoring
-- **Integrity Checks** — AI-typical patterns, citation anomalies, placeholder text detection
+- **Writing Patterns** — Citation issues, completeness checks, and style observations for reviewer consideration
 - **File Support** — PDF, DOCX, TXT, Markdown, JSON
 
 ## Install
