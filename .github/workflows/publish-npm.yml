@@ -27,7 +27,7 @@ jobs:
 
       - name: Set package versions from tag
         run: |
-          npm version ${{ steps.version.outputs.version }} --no-git-tag-version --workspace=packages/core --workspace=packages/cli
+          npm version ${{ steps.version.outputs.version }} --no-git-tag-version --allow-same-version --workspace=packages/core --workspace=packages/cli
           # Update the CLI's dependency on core to match
           cd packages/cli
           npm pkg set "dependencies.@michaelborck/cite-sight-core=${{ steps.version.outputs.version }}"

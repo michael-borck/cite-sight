@@ -1,11 +1,7 @@
 import { app, BrowserWindow } from 'electron';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
-import { registerIpcHandlers } from './ipc.js';
-import { initAutoUpdater } from './updater.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { join } from 'node:path';
+import { registerIpcHandlers } from './ipc';
+import { initAutoUpdater } from './updater';
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
