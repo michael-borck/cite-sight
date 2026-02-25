@@ -1,6 +1,6 @@
 {
   "name": "cite-sight",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "CLI tool for checking academic references and citations",
   "type": "module",
   "license": "MIT",
