@@ -248,6 +248,62 @@
   margin-top: 6px;
 }
 
+/* ── Comparison columns ────────────────────────────────────────────────────── */
+
+.comparison {
+  display: flex;
+  gap: 40px;
+  justify-content: center;
+  text-align: left;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+}
+
+.comparison-col {
+  flex: 0 1 260px;
+}
+
+.comparison-heading {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #555;
+  margin-bottom: 12px;
+}
+
+.comparison-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.comparison-list li {
+  font-size: 14px;
+  color: #444;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.check-icon {
+  color: #4CAF50;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.desktop-icon {
+  color: #764ba2;
+}
+
+.comparison-list--desktop li {
+  font-weight: 600;
+  color: #333;
+}
+
 /* ── Responsive ─────────────────────────────────────────────────────────────── */
 
 @media (max-width: 900px) {

@@ -129,8 +129,33 @@ export function LandingPage({ onNavigate }: Props) {
       <section className="download-section">
         <h2 className="section-heading">Get the Desktop App</h2>
         <p className="download-sub">
-          Process documents locally with no file uploads. Supports PDF, DOCX, and plain text.
+          Everything the web version offers, plus powerful extras that run entirely on your machine.
         </p>
+
+        <div className="comparison">
+          <div className="comparison-col">
+            <h3 className="comparison-heading">Shared Features</h3>
+            <ul className="comparison-list">
+              <li><span className="check-icon">✓</span> Reference verification</li>
+              <li><span className="check-icon">✓</span> Citation format checking</li>
+              <li><span className="check-icon">✓</span> URL checking</li>
+              <li><span className="check-icon">✓</span> Cross-reference matching</li>
+              <li><span className="check-icon">✓</span> Readability analysis</li>
+              <li><span className="check-icon">✓</span> Writing patterns</li>
+              <li><span className="check-icon">✓</span> PDF &amp; CSV reports</li>
+            </ul>
+          </div>
+          <div className="comparison-col">
+            <h3 className="comparison-heading">Desktop Only</h3>
+            <ul className="comparison-list comparison-list--desktop">
+              <li><span className="check-icon desktop-icon">★</span> Fully offline — no file uploads</li>
+              <li><span className="check-icon desktop-icon">★</span> Screenshot verification of URLs</li>
+              <li><span className="check-icon desktop-icon">★</span> Bulk document processing</li>
+              <li><span className="check-icon desktop-icon">★</span> No file size limits</li>
+            </ul>
+          </div>
+        </div>
+
         <a
           className="download-btn"
           href={download.url}

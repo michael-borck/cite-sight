@@ -41,6 +41,7 @@ export function ToolPage() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string>('');
   const [progressMsg, setProgressMsg] = useState<string>('');
+  const [showDesktopTip, setShowDesktopTip] = useState(true);
 
   const onDrop = useCallback((accepted: File[]) => {
     if (accepted.length > 0) {
@@ -252,6 +253,19 @@ export function ToolPage() {
             </div>
           </div>
           <ResultsDashboard results={result} />
+          {showDesktopTip && (
+            <div className="desktop-tip">
+              <span>
+                Want offline analysis and screenshot verification?{' '}
+                <a href="https://github.com/michael-borck/cite-sight/releases/latest" target="_blank" rel="noopener noreferrer">
+                  Try the desktop app
+                </a>.
+              </span>
+              <button className="desktop-tip-dismiss" onClick={() => setShowDesktopTip(false)} aria-label="Dismiss">
+                ×
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
