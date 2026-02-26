@@ -1,6 +1,6 @@
 {
   "name": "@michaelborck/cite-sight-core",
-  "version": "0.2.10",
+  "version": "0.2.11",
   "description": "Core analysis library for CiteSight academic integrity checking",
   "type": "module",
   "license": "MIT",
