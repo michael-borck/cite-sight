@@ -3,6 +3,7 @@
 .header-content { max-width: 1200px; margin: 0 auto; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; }
 .header-content h1 { margin: 0; font-size: 1.8rem; font-weight: bold; }
 .header-nav { display: flex; gap: 8px; }
+.header-version { font-size: 0.75rem; color: rgba(255, 255, 255, 0.5); align-self: center; }
 .nav-link { background: none; border: none; color: rgba(255,255,255,0.8); font-size: 14px; padding: 8px 16px; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
 .nav-link:hover, .nav-link.active { color: white; background: rgba(255,255,255,0.15); }
 .app-main { flex: 1; padding: 40px 20px; }

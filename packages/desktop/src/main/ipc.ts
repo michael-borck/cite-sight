@@ -1,9 +1,10 @@
-import { ipcMain, dialog, BrowserWindow } from 'electron';
+import { ipcMain, dialog, BrowserWindow, app } from 'electron';
 import { analyzePipeline } from '@michaelborck/cite-sight-core';
 import { takeScreenshot } from './screenshot';
 import type { ProcessingOptions } from '@michaelborck/cite-sight-core';
 
 export function registerIpcHandlers(mainWindow: BrowserWindow): void {
+  ipcMain.handle('cite-sight:get-version', () => app.getVersion());
   // Handle document analysis
   ipcMain.handle(
     'cite-sight:analyze',

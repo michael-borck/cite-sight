@@ -4,6 +4,8 @@ import { ToolPage } from './pages/ToolPage';
 import { AboutPage } from './pages/AboutPage';
 import './App.css';
 
+declare const __APP_VERSION__: string;
+
 export function App() {
   const [page, setPage] = useState<'landing' | 'tool' | 'about'>('landing');
 
@@ -17,6 +19,7 @@ export function App() {
             <button onClick={() => setPage('tool')} className={`nav-link ${page === 'tool' ? 'active' : ''}`}>Check Citations</button>
             <button onClick={() => setPage('about')} className={`nav-link ${page === 'about' ? 'active' : ''}`}>About</button>
           </nav>
+          <span className="header-version">v{__APP_VERSION__}</span>
         </div>
       </header>
 

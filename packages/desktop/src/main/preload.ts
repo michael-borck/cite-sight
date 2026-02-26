@@ -38,4 +38,8 @@ contextBridge.exposeInMainWorld('citeSight', {
   installUpdate: (): Promise<void> => {
     return ipcRenderer.invoke('cite-sight:install-update') as Promise<void>;
   },
+
+  getVersion: (): Promise<string> => {
+    return ipcRenderer.invoke('cite-sight:get-version') as Promise<string>;
+  },
 });

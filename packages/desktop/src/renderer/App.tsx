@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { FileUpload } from './components/FileUpload';
 import { ProcessingOptions } from './components/ProcessingOptions';
 import { ProcessingProgress } from './components/ProcessingProgress';
@@ -20,6 +20,13 @@ export function App() {
     setError,
     reset,
   } = useStore();
+
+  const [version, setVersion] = useState('');
+
+  // Fetch app version on mount
+  useEffect(() => {
+    window.citeSight?.getVersion().then(v => setVersion(v));
+  }, []);
 
   // Register progress listener once on mount (only available in Electron)
   useEffect(() => {
@@ -55,8 +62,11 @@ export function App() {
     <div className="app">
       <header className="app-header">
         <div className="header-content">
-          <h1>CiteSight</h1>
-          <p>Academic Integrity &amp; Citation Checker</p>
+          <div className="header-title">
+            <h1>CiteSight</h1>
+            <p>Academic Integrity &amp; Citation Checker</p>
+          </div>
+          {version && <span className="header-version">v{version}</span>}
         </div>
       </header>
 

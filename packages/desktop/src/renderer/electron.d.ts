@@ -13,6 +13,7 @@ declare global {
       onUpdateError: (callback: (message: string) => void) => void;
       downloadUpdate: () => Promise<void>;
       installUpdate: () => Promise<void>;
+      getVersion: () => Promise<string>;
     };
   }
 }
