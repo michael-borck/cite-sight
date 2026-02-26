@@ -21,7 +21,8 @@
     "dev:web": "npm run dev -w packages/web",
     "dev:server": "npm run dev -w packages/server",
     "dev:core": "npm run dev -w packages/core",
-    "lint": "eslint packages/*/src/**/*.ts packages/*/src/**/*.tsx"
+    "lint": "eslint packages/*/src/**/*.ts packages/*/src/**/*.tsx",
+    "bump": "bash scripts/bump.sh"
   },
   "devDependencies": {
     "typescript": "~5.8.3"

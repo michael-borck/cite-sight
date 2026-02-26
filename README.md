@@ -26,6 +26,16 @@ Three ways to use CiteSight:
 | **CLI** | Automation, CI pipelines | `npm install -g cite-sight` |
 | **Docker** | VPS hosting, shared access | `docker pull michaelborck/cite-sight` |
 
+### Platform Comparison
+
+| Feature | Web / Docker | Desktop | CLI |
+|---------|-------------|---------|-----|
+| File input | Single file | Multiple files | Single file |
+| File types | PDF, DOCX, TXT | PDF, DOCX, TXT, MD | PDF, DOCX, TXT, MD, JSON |
+| URL screenshots | — | Yes | — |
+| PDF/CSV export | Yes | — | — |
+| Output format | Browser dashboard | Desktop dashboard | Text or JSON (stdout) |
+
 ## Deploy on a VPS
 
 Pull the pre-built Docker image — no Node.js or build tools needed on the server.
@@ -180,14 +190,24 @@ For each reference in the bibliography:
 
 ## Building Releases
 
-Releases are built automatically via GitHub Actions when a tag is pushed:
+Releases are built automatically via GitHub Actions when a version tag is pushed.
+
+### Version bump script
+
+Use the bump script to update all workspace versions, commit, tag, and push in one step:
 
 ```bash
-git tag v1.0.0
-git push --tags
+npm run bump -- patch   # 0.2.9 → 0.2.10
+npm run bump -- minor   # 0.2.9 → 0.3.0
+npm run bump -- major   # 0.2.9 → 1.0.0
+npm run bump -- 1.0.0   # exact version
 ```
 
-This triggers:
+The script updates all 6 `package.json` files, commits, creates an annotated `vX.Y.Z` tag, and prompts before pushing.
+
+### What the tag triggers
+
+Pushing a `v*` tag triggers:
 - **Electron installers** — macOS (DMG), Windows (NSIS), Linux (AppImage) with auto-update
 - **npm publish** — `@michaelborck/cite-sight-core` + `cite-sight` CLI
 - **Docker images** — pushed to Docker Hub and GitHub Container Registry (amd64 + arm64)
