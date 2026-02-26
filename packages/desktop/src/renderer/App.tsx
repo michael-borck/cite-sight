@@ -63,10 +63,12 @@ export function App() {
       <header className="app-header">
         <div className="header-content">
           <div className="header-title">
-            <h1>CiteSight</h1>
+            <div className="header-title-group">
+              <h1>CiteSight</h1>
+              {version && <span className="header-version">v{version}</span>}
+            </div>
             <p>Academic Integrity &amp; Citation Checker</p>
           </div>
-          {version && <span className="header-version">v{version}</span>}
         </div>
       </header>
 
