@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { tmpdir } from 'os';
-import { unlink } from 'fs/promises';
+import { rename, unlink } from 'fs/promises';
 import path from 'path';
 import { analyzePipeline } from '@michaelborck/cite-sight-core';
 import type { ProcessingOptions } from '@michaelborck/cite-sight-core';
@@ -50,7 +50,12 @@ router.post(
       return;
     }
 
-    const filePath = req.file.path;
+    // Multer saves temp files without an extension (e.g. /tmp/abc123).
+    // The core extractor relies on the extension to determine file type, so
+    // rename the temp file to preserve the original extension.
+    const ext = path.extname(req.file.originalname).toLowerCase();
+    const filePath = req.file.path + ext;
+    await rename(req.file.path, filePath);
 
     // Parse options from request body (all optional, with safe defaults)
     const body = req.body as Record<string, string | undefined>;

@@ -222,7 +222,7 @@ export function ToolPage() {
               onClick={handleAnalyze}
               disabled={!file || isProcessing}
             >
-              {isProcessing ? 'Analyzing...' : 'Analyze Citations'}
+              {isProcessing ? 'Analysing...' : 'Analyse Citations'}
             </button>
             {(file || state === 'error') && (
               <button className="reset-btn" onClick={handleReset} disabled={isProcessing}>
@@ -238,7 +238,7 @@ export function ToolPage() {
           <div className="results-toolbar">
             <h3 className="results-file-name">{result.fileName}</h3>
             <button className="reset-btn" onClick={handleReset}>
-              Analyze Another File
+              Analyse Another File
             </button>
           </div>
           <ResultsDashboard results={result} />

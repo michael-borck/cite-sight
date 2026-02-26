@@ -118,7 +118,7 @@ function OverviewPanel({ results }: Props) {
       </div>
 
       <div className="processing-info">
-        Analyzed {results.fileName} in {(processingTime / 1000).toFixed(2)}s
+        Analysed {results.fileName} in {(processingTime / 1000).toFixed(2)}s
       </div>
     </div>
   );

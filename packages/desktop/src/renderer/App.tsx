@@ -77,7 +77,7 @@ export function App() {
                         disabled={isProcessing}
                         className="analyze-btn"
                       >
-                        {isProcessing ? 'Processing...' : 'Analyze Document'}
+                        {isProcessing ? 'Processing...' : 'Analyse Document'}
                       </button>
 
                       <button
