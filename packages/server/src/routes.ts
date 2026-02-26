@@ -33,6 +33,13 @@ const upload = multer({
 });
 
 // ---------------------------------------------------------------------------
+// Concurrent upload limit
+// ---------------------------------------------------------------------------
+
+const MAX_CONCURRENT_UPLOADS = 10;
+let activeUploads = 0;
+
+// ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
 
@@ -43,9 +50,20 @@ export const router = Router();
 router.post(
   '/api/analyze',
   fileCleanup,
+  (_req, res, next) => {
+    if (activeUploads >= MAX_CONCURRENT_UPLOADS) {
+      res.status(503).json({
+        error: 'The server is busy processing other uploads. Please try again in a moment.',
+      });
+      return;
+    }
+    activeUploads++;
+    next();
+  },
   upload.single('file'),
   async (req, res, next) => {
     if (!req.file) {
+      activeUploads--;
       res.status(400).json({ error: 'No file uploaded. Use field name "file".' });
       return;
     }
@@ -79,9 +97,11 @@ router.post(
           checkInText,
         });
 
+        activeUploads--;
         // File ownership transferred to the worker — do NOT delete here.
         res.status(202).json({ status: 'queued', jobId });
       } catch (err) {
+        activeUploads--;
         next(err);
       }
       return;
@@ -102,6 +122,7 @@ router.post(
     } catch (err) {
       next(err);
     } finally {
+      activeUploads--;
       // Always clean up — even when response was already sent via next(err).
       await unlink(filePath).catch(() => undefined);
     }

@@ -13,6 +13,19 @@ services:
     container_name: cite-sight
     ports:
       - "3000:3000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - caddy_default
+
+  redis:
+    image: redis:7-alpine
+    container_name: cite-sight-redis
+    volumes:
+      - redis-data:/data
     restart: unless-stopped
     networks:
       - caddy_default
@@ -26,6 +39,9 @@ services:
       - WATCHTOWER_CLEANUP=true
       - WATCHTOWER_POLL_INTERVAL=300
     restart: unless-stopped
+
+volumes:
+  redis-data:
 
 networks:
   caddy_default:
