@@ -1,12 +1,12 @@
+import { createRequire } from 'node:module';
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import type { ExtractedDocument } from '../types.js';
 
-// Disable the worker entirely — we are running in Node.js (Electron main process
-// or CLI), where there is no browser Worker API and the worker is not needed.
-GlobalWorkerOptions.workerSrc = '';
-// @ts-expect-error — pdfjs-dist checks for a globalThis.Worker; setting it to
-// undefined prevents the library from trying to spin up a worker thread.
-(GlobalWorkerOptions as Record<string, unknown>).workerPort = null;
+// Point workerSrc at the bundled worker file so pdfjs-dist doesn't throw
+// "No GlobalWorkerOptions.workerSrc specified".  In Node the worker won't
+// actually be spawned, but the path must resolve for the check to pass.
+const require = createRequire(import.meta.url);
+GlobalWorkerOptions.workerSrc = require.resolve('pdfjs-dist/legacy/build/pdf.worker.mjs');
 
 /**
  * Extract all text from a PDF file supplied as a Node.js Buffer.
