@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { ResultsDashboard } from '../components/ResultsDashboard';
+import { downloadPdfReport } from '../utils/generatePdfReport';
+import { downloadCsvReport } from '../utils/generateCsvReport';
 import type { AnalysisResult, ProcessingOptions } from '../types';
 import './ToolPage.css';
 
@@ -237,9 +239,17 @@ export function ToolPage() {
         <div className="results-section">
           <div className="results-toolbar">
             <h3 className="results-file-name">{result.fileName}</h3>
-            <button className="reset-btn" onClick={handleReset}>
-              Analyse Another File
-            </button>
+            <div className="results-toolbar-actions">
+              <button className="download-pdf-btn" onClick={() => downloadPdfReport(result)}>
+                Download PDF Report
+              </button>
+              <button className="download-csv-btn" onClick={() => downloadCsvReport(result)}>
+                Download CSV
+              </button>
+              <button className="reset-btn" onClick={handleReset}>
+                Analyse Another File
+              </button>
+            </div>
           </div>
           <ResultsDashboard results={result} />
         </div>
