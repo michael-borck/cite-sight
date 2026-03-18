@@ -1,4 +1,5 @@
 import type { ParsedReference, AcademicWork } from '../types.js';
+import { isPrivateUrl } from './ssrf.js';
 
 // ============================================================
 // Web Source Verifier — non-academic reference verification
@@ -163,6 +164,9 @@ function extractHtmlTitle(html: string): string | null {
 }
 
 async function verifyWebPage(url: string): Promise<AcademicWork | null> {
+  // Block requests to private/internal networks (SSRF protection)
+  if (isPrivateUrl(url)) return null;
+
   const res = await safeFetch(url);
   if (!res || !res.ok) return null;
 

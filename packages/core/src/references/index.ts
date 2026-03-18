@@ -11,3 +11,4 @@ export { resolveDoi } from './doiResolver.js';
 export { checkUrl } from './urlChecker.js';
 export { verifyReferences, titleSimilarity } from './verifier.js';
 export { verifyWebSource } from './webSourceVerifier.js';
+export { isPrivateUrl } from './ssrf.js';

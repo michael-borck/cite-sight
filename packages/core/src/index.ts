@@ -13,6 +13,7 @@ export { searchOpenAlex } from './references/openAlex.js';
 export { resolveDoi } from './references/doiResolver.js';
 export { checkUrl } from './references/urlChecker.js';
 export { verifyReferences } from './references/verifier.js';
+export { isPrivateUrl } from './references/ssrf.js';
 
 // Re-export all types
 export type * from './types.js';

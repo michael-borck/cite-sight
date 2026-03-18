@@ -1,4 +1,5 @@
 import type { UrlCheckResult, UrlStatus } from '../types.js';
+import { isPrivateUrl } from './ssrf.js';
 
 const TIMEOUT_MS = 10_000;
 const USER_AGENT =
@@ -16,6 +17,11 @@ const USER_AGENT =
  * - Returns a UrlCheckResult describing the outcome.
  */
 export async function checkUrl(url: string): Promise<UrlCheckResult> {
+  // Block requests to private/internal networks (SSRF protection)
+  if (isPrivateUrl(url)) {
+    return { url, status: 'error', error: 'URL points to a private or internal network address' };
+  }
+
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
