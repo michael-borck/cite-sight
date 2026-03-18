@@ -22,3 +22,9 @@
 .dismiss-btn { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #c00; font-size: 20px; cursor: pointer; padding: 5px; line-height: 1; }
 .results-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding: 20px; background-color: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
 .results-header h2 { margin: 0; color: #333; }
+.results-file-nav { display: flex; flex-direction: column; gap: 8px; }
+.file-selector { display: flex; align-items: center; gap: 8px; }
+.file-select { padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; min-width: 200px; }
+.nav-arrow { width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 4px; background: white; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+.nav-arrow:hover:not(:disabled) { background-color: #f0f0f0; }
+.nav-arrow:disabled { opacity: 0.3; cursor: not-allowed; }

@@ -1,19 +1,52 @@
 import { ipcMain, dialog, BrowserWindow, app } from 'electron';
 import { analyzePipeline } from '@michaelborck/cite-sight-core';
 import { takeScreenshot } from './screenshot';
-import type { ProcessingOptions } from '@michaelborck/cite-sight-core';
+import { readdirSync } from 'node:fs';
+import { join, extname } from 'node:path';
+import type { ProcessingOptions, AnalysisResult } from '@michaelborck/cite-sight-core';
+
+const SUPPORTED_EXTENSIONS = new Set(['.pdf', '.docx', '.txt', '.md']);
+
+/** Recursively collect supported files from a directory. */
+function collectFiles(dir: string): string[] {
+  const results: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const fullPath = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...collectFiles(fullPath));
+    } else if (SUPPORTED_EXTENSIONS.has(extname(entry.name).toLowerCase())) {
+      results.push(fullPath);
+    }
+  }
+  return results;
+}
 
 export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle('cite-sight:get-version', () => app.getVersion());
-  // Handle document analysis
+
+  // Handle document analysis (with optional post-analysis screenshots)
   ipcMain.handle(
     'cite-sight:analyze',
     async (_event, filePath: string, options: ProcessingOptions) => {
-      const result = await analyzePipeline(filePath, options, (update) => {
+      const result: AnalysisResult = await analyzePipeline(filePath, options, (update) => {
         if (!mainWindow.isDestroyed()) {
           mainWindow.webContents.send('cite-sight:progress', update);
         }
       });
+
+      // Take screenshots of live URLs if requested
+      if (options.screenshotUrls && result.references?.verifications) {
+        for (const v of result.references.verifications) {
+          if (v.urlCheck?.url && v.urlCheck.status === 'live') {
+            try {
+              v.urlCheck.screenshotPath = await takeScreenshot(v.urlCheck.url);
+            } catch {
+              // Skip failed screenshots — non-critical
+            }
+          }
+        }
+      }
+
       return result;
     },
   );
@@ -39,6 +72,20 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
       return [];
     }
     return filePaths;
+  });
+
+  // Handle folder selection — collect all supported files recursively
+  ipcMain.handle('cite-sight:select-folder', async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+      title: 'Select Folder',
+      properties: ['openDirectory'],
+    });
+
+    if (canceled || filePaths.length === 0) {
+      return [];
+    }
+
+    return collectFiles(filePaths[0]);
   });
 
   // Handle URL screenshot capture

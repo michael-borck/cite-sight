@@ -78,6 +78,17 @@
   transform: translateX(-50%);
 }
 
+.progress-filename {
+  text-align: center;
+  color: #333;
+  font-weight: 500;
+  margin: 0 0 12px;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .progress-message {
   text-align: center;
   color: #666;

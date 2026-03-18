@@ -14,20 +14,24 @@ interface AppState {
 
   // Processing
   isProcessing: boolean;
+  cancelRequested: boolean;
   progress: ProgressUpdate | null;
-  results: AnalysisResult | null;
+  batchIndex: number;
+  batchTotal: number;
+  results: AnalysisResult[];
+  currentResultIndex: number;
   error: string | null;
 
   // Actions
   setProcessing: (processing: boolean) => void;
+  requestCancel: () => void;
+  clearCancel: () => void;
   setProgress: (update: ProgressUpdate) => void;
-  setResults: (results: AnalysisResult) => void;
+  setBatch: (index: number, total: number) => void;
+  addResult: (result: AnalysisResult) => void;
+  setCurrentResultIndex: (index: number) => void;
   setError: (error: string | null) => void;
   reset: () => void;
-
-  // UI
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
 }
 
 const defaultOptions: ProcessingOptions = {
@@ -42,28 +46,40 @@ export const useStore = create<AppState>((set) => ({
   filePaths: [],
   options: defaultOptions,
   isProcessing: false,
+  cancelRequested: false,
   progress: null,
-  results: null,
+  batchIndex: 0,
+  batchTotal: 0,
+  results: [],
+  currentResultIndex: 0,
   error: null,
-  activeTab: 'overview',
 
-  addFiles: (paths) => set((s) => ({ filePaths: [...s.filePaths, ...paths], error: null })),
+  addFiles: (paths) => set((s) => {
+    const unique = paths.filter((p) => !s.filePaths.includes(p));
+    return { filePaths: [...s.filePaths, ...unique], error: null };
+  }),
   removeFile: (path) => set((s) => ({ filePaths: s.filePaths.filter((p) => p !== path) })),
-  clearFiles: () => set({ filePaths: [], results: null, error: null }),
+  clearFiles: () => set({ filePaths: [], results: [], currentResultIndex: 0, error: null }),
   updateOptions: (opts) => set((s) => ({ options: { ...s.options, ...opts } })),
   setProcessing: (isProcessing) => set({ isProcessing, error: null }),
+  requestCancel: () => set({ cancelRequested: true }),
+  clearCancel: () => set({ cancelRequested: false }),
   setProgress: (progress) => set({ progress }),
-  setResults: (results) => set({ results, isProcessing: false, progress: null }),
+  setBatch: (batchIndex, batchTotal) => set({ batchIndex, batchTotal }),
+  addResult: (result) => set((s) => ({ results: [...s.results, result] })),
+  setCurrentResultIndex: (currentResultIndex) => set({ currentResultIndex }),
   setError: (error) => set({ error, isProcessing: false, progress: null }),
   reset: () =>
     set({
       filePaths: [],
       options: defaultOptions,
       isProcessing: false,
+      cancelRequested: false,
       progress: null,
-      results: null,
+      batchIndex: 0,
+      batchTotal: 0,
+      results: [],
+      currentResultIndex: 0,
       error: null,
-      activeTab: 'overview',
     }),
-  setActiveTab: (activeTab) => set({ activeTab }),
 }));

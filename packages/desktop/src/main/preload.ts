@@ -10,6 +10,10 @@ contextBridge.exposeInMainWorld('citeSight', {
     return ipcRenderer.invoke('cite-sight:select-files') as Promise<string[]>;
   },
 
+  selectFolder: (): Promise<string[]> => {
+    return ipcRenderer.invoke('cite-sight:select-folder') as Promise<string[]>;
+  },
+
   onProgress: (callback: (update: ProgressUpdate) => void): void => {
     ipcRenderer.on('cite-sight:progress', (_event, update: ProgressUpdate) => {
       callback(update);

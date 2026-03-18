@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FileUpload } from './components/FileUpload';
 import { ProcessingOptions } from './components/ProcessingOptions';
 import { ProcessingProgress } from './components/ProcessingProgress';
 import { ResultsDashboard } from './components/ResultsDashboard';
+import { UpdateNotification } from './components/UpdateNotification';
 import { useStore } from './store';
 import './App.css';
 
@@ -11,24 +12,36 @@ export function App() {
     filePaths,
     options,
     isProcessing,
+    cancelRequested,
     progress,
+    batchIndex,
+    batchTotal,
     results,
+    currentResultIndex,
     error,
     setProcessing,
+    requestCancel,
+    clearCancel,
     setProgress,
-    setResults,
+    setBatch,
+    addResult,
+    setCurrentResultIndex,
     setError,
     reset,
   } = useStore();
 
   const [version, setVersion] = useState('');
+  const cancelRef = useRef(false);
+
+  // Keep ref in sync with store so the async loop can read it
+  cancelRef.current = cancelRequested;
 
   // Fetch app version on mount
   useEffect(() => {
     window.citeSight?.getVersion().then(v => setVersion(v));
   }, []);
 
-  // Register progress listener once on mount (only available in Electron)
+  // Register progress listener once on mount
   useEffect(() => {
     window.citeSight?.onProgress((update) => {
       setProgress(update);
@@ -42,20 +55,46 @@ export function App() {
     }
 
     setProcessing(true);
+    clearCancel();
 
     try {
       if (!window.citeSight) {
         throw new Error('CiteSight API not available. Are you running inside Electron?');
       }
-      const result = await window.citeSight.analyzeFile(filePaths[0], options);
-      setResults(result);
+
+      const total = filePaths.length;
+      for (let i = 0; i < total; i++) {
+        // Check cancel between files
+        if (cancelRef.current) {
+          clearCancel();
+          break;
+        }
+
+        setBatch(i, total);
+        const result = await window.citeSight.analyzeFile(filePaths[i], options);
+        addResult(result);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred during analysis.');
+      return;
     }
+
+    setProcessing(false);
+  };
+
+  const handleCancel = () => {
+    requestCancel();
+    // Processing will stop after the current file completes
   };
 
   const handleReset = () => {
     reset();
+  };
+
+  const currentResult = results.length > 0 ? results[currentResultIndex] : null;
+
+  const getFileName = (path: string): string => {
+    return path.split(/[\\/]/).pop() ?? path;
   };
 
   return (
@@ -74,7 +113,7 @@ export function App() {
 
       <main className="app-main">
         <div className="container">
-          {!results ? (
+          {results.length === 0 ? (
             <>
               <section className="upload-section">
                 <FileUpload />
@@ -89,7 +128,11 @@ export function App() {
                         disabled={isProcessing}
                         className="analyze-btn"
                       >
-                        {isProcessing ? 'Processing...' : 'Analyse Document'}
+                        {isProcessing
+                          ? 'Processing...'
+                          : filePaths.length === 1
+                            ? 'Analyse Document'
+                            : `Analyse ${filePaths.length} Documents`}
                       </button>
 
                       <button
@@ -116,7 +159,40 @@ export function App() {
           ) : (
             <>
               <div className="results-header">
-                <h2>Analysis Results: {results.fileName}</h2>
+                {results.length === 1 ? (
+                  <h2>Analysis Results: {results[0].fileName}</h2>
+                ) : (
+                  <div className="results-file-nav">
+                    <h2>Analysis Results</h2>
+                    <div className="file-selector">
+                      <button
+                        className="nav-arrow"
+                        disabled={currentResultIndex === 0}
+                        onClick={() => setCurrentResultIndex(currentResultIndex - 1)}
+                      >
+                        &#9664;
+                      </button>
+                      <select
+                        value={currentResultIndex}
+                        onChange={(e) => setCurrentResultIndex(Number(e.target.value))}
+                        className="file-select"
+                      >
+                        {results.map((r, i) => (
+                          <option key={i} value={i}>
+                            {getFileName(filePaths[i] ?? r.fileName)} ({i + 1}/{results.length})
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        className="nav-arrow"
+                        disabled={currentResultIndex === results.length - 1}
+                        onClick={() => setCurrentResultIndex(currentResultIndex + 1)}
+                      >
+                        &#9654;
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <button onClick={handleReset} className="new-analysis-btn">
                   New Analysis
                 </button>
@@ -131,15 +207,23 @@ export function App() {
                 </div>
               )}
 
-              <ResultsDashboard results={results} />
+              {currentResult && <ResultsDashboard results={currentResult} />}
             </>
           )}
         </div>
       </main>
 
       {isProcessing && progress && (
-        <ProcessingProgress progress={progress} />
+        <ProcessingProgress
+          progress={progress}
+          batchIndex={batchIndex}
+          batchTotal={batchTotal}
+          currentFileName={getFileName(filePaths[batchIndex] ?? '')}
+          onCancel={handleCancel}
+        />
       )}
+
+      <UpdateNotification />
     </div>
   );
 }

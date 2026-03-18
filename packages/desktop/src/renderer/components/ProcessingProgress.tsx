@@ -3,7 +3,10 @@ import './ProcessingProgress.css';
 
 interface ProcessingProgressProps {
   progress: ProgressUpdate;
-  onCancel?: () => void;
+  batchIndex: number;
+  batchTotal: number;
+  currentFileName: string;
+  onCancel: () => void;
 }
 
 const STAGES = [
@@ -15,20 +18,27 @@ const STAGES = [
   { label: 'Complete', threshold: 100 },
 ];
 
-export function ProcessingProgress({ progress, onCancel }: ProcessingProgressProps) {
+export function ProcessingProgress({ progress, batchIndex, batchTotal, currentFileName, onCancel }: ProcessingProgressProps) {
   const pct = Math.round(progress.progress);
+  const isBatch = batchTotal > 1;
 
   return (
     <div className="processing-progress">
       <div className="progress-content">
         <div className="progress-header">
-          <h3>Analyzing Document</h3>
-          {onCancel && (
-            <button onClick={onCancel} className="cancel-btn">
-              Cancel
-            </button>
-          )}
+          <h3>
+            {isBatch
+              ? `Analyzing File ${batchIndex + 1} of ${batchTotal}`
+              : 'Analyzing Document'}
+          </h3>
+          <button onClick={onCancel} className="cancel-btn">
+            Cancel
+          </button>
         </div>
+
+        {isBatch && (
+          <p className="progress-filename">{currentFileName}</p>
+        )}
 
         <div className="progress-bar-container">
           <div className="progress-bar" style={{ width: `${pct}%` }}>

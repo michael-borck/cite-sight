@@ -36,8 +36,15 @@ export function FileUpload() {
     multiple: true,
   });
 
-  const handleBrowse = async () => {
+  const handleBrowseFiles = async () => {
     const selected = await window.citeSight.selectFiles();
+    if (selected.length > 0) {
+      addFiles(selected);
+    }
+  };
+
+  const handleBrowseFolder = async () => {
+    const selected = await window.citeSight.selectFolder();
     if (selected.length > 0) {
       addFiles(selected);
     }
@@ -70,16 +77,28 @@ export function FileUpload() {
           ) : (
             <>
               <p>Drag &amp; drop documents here, or</p>
-              <button
-                type="button"
-                className="browse-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void handleBrowse();
-                }}
-              >
-                Browse Files
-              </button>
+              <div className="browse-buttons">
+                <button
+                  type="button"
+                  className="browse-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void handleBrowseFiles();
+                  }}
+                >
+                  Browse Files
+                </button>
+                <button
+                  type="button"
+                  className="browse-btn browse-folder-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void handleBrowseFolder();
+                  }}
+                >
+                  Browse Folder
+                </button>
+              </div>
               <p className="file-types">Supported: PDF, DOCX, TXT, MD (max 50MB each)</p>
             </>
           )}
