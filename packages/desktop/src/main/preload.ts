@@ -46,4 +46,8 @@ contextBridge.exposeInMainWorld('citeSight', {
   getVersion: (): Promise<string> => {
     return ipcRenderer.invoke('cite-sight:get-version') as Promise<string>;
   },
+
+  readScreenshot: (filePath: string): Promise<string | null> => {
+    return ipcRenderer.invoke('cite-sight:read-screenshot', filePath) as Promise<string | null>;
+  },
 });

@@ -28,3 +28,9 @@
 .nav-arrow { width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 4px; background: white; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; }
 .nav-arrow:hover:not(:disabled) { background-color: #f0f0f0; }
 .nav-arrow:disabled { opacity: 0.3; cursor: not-allowed; }
+.results-actions { display: flex; gap: 10px; align-items: center; }
+.export-btn { padding: 10px 20px; font-size: 14px; font-weight: 600; border: none; border-radius: 6px; cursor: pointer; transition: all 0.3s ease; color: white; }
+.export-pdf { background-color: #d32f2f; }
+.export-pdf:hover { background-color: #b71c1c; }
+.export-csv { background-color: #1565c0; }
+.export-csv:hover { background-color: #0d47a1; }

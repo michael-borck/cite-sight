@@ -15,6 +15,7 @@ declare global {
       downloadUpdate: () => Promise<void>;
       installUpdate: () => Promise<void>;
       getVersion: () => Promise<string>;
+      readScreenshot: (filePath: string) => Promise<string | null>;
     };
   }
 }

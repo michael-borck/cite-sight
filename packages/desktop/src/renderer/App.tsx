@@ -4,6 +4,8 @@ import { ProcessingOptions } from './components/ProcessingOptions';
 import { ProcessingProgress } from './components/ProcessingProgress';
 import { ResultsDashboard } from './components/ResultsDashboard';
 import { UpdateNotification } from './components/UpdateNotification';
+import { downloadPdfReport } from './utils/generatePdfReport';
+import { downloadCsvReport } from './utils/generateCsvReport';
 import { useStore } from './store';
 import './App.css';
 
@@ -193,9 +195,23 @@ export function App() {
                     </div>
                   </div>
                 )}
-                <button onClick={handleReset} className="new-analysis-btn">
-                  New Analysis
-                </button>
+                <div className="results-actions">
+                  <button
+                    className="export-btn export-pdf"
+                    onClick={() => void downloadPdfReport(results)}
+                  >
+                    Export PDF
+                  </button>
+                  <button
+                    className="export-btn export-csv"
+                    onClick={() => downloadCsvReport(results)}
+                  >
+                    Export CSV
+                  </button>
+                  <button onClick={handleReset} className="new-analysis-btn">
+                    New Analysis
+                  </button>
+                </div>
               </div>
 
               {error && (

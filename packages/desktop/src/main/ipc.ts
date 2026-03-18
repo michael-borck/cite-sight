@@ -1,7 +1,7 @@
 import { ipcMain, dialog, BrowserWindow, app } from 'electron';
 import { analyzePipeline } from '@michaelborck/cite-sight-core';
 import { takeScreenshot } from './screenshot';
-import { readdirSync } from 'node:fs';
+import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import type { ProcessingOptions, AnalysisResult } from '@michaelborck/cite-sight-core';
 
@@ -91,5 +91,12 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   // Handle URL screenshot capture
   ipcMain.handle('cite-sight:take-screenshot', async (_event, url: string) => {
     return takeScreenshot(url);
+  });
+
+  // Read a screenshot file and return as data URL for renderer use
+  ipcMain.handle('cite-sight:read-screenshot', (_event, filePath: string) => {
+    if (!existsSync(filePath)) return null;
+    const data = readFileSync(filePath);
+    return `data:image/png;base64,${data.toString('base64')}`;
   });
 }

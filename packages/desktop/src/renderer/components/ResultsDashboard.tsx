@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import type {
   AnalysisResult,
@@ -124,6 +124,24 @@ function OverviewPanel({ results }: Props) {
   );
 }
 
+function ScreenshotThumbnail({ path }: { path: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    window.citeSight?.readScreenshot(path).then((dataUrl) => {
+      if (dataUrl) setSrc(dataUrl);
+    });
+  }, [path]);
+
+  if (!src) return null;
+
+  return (
+    <div className="ref-screenshot">
+      <img src={src} alt="Page screenshot" className="screenshot-img" />
+    </div>
+  );
+}
+
 function ReferenceRow({ v, index }: { v: ReferenceVerification; index: number }) {
   const [expanded, setExpanded] = useState(false);
   const ref = v.reference;
@@ -138,14 +156,14 @@ function ReferenceRow({ v, index }: { v: ReferenceVerification; index: number })
         <td className="ref-index">{index + 1}</td>
         <td className="ref-title" title={ref.raw}>{title}</td>
         <td><span className={`status-badge ${statusClass(v.status)}`}>{statusLabel(v.status)}</span></td>
-        <td className="ref-doi">{ref.doi ?? '—'}</td>
+        <td className="ref-doi">{ref.doi ?? '\u2014'}</td>
         <td className="ref-url-status">
           {v.urlCheck ? (
             <span className={`url-status url-${v.urlCheck.status}`}>{v.urlCheck.status}</span>
-          ) : '—'}
+          ) : '\u2014'}
         </td>
         <td className="ref-confidence">{(v.confidenceScore * 100).toFixed(0)}%</td>
-        <td className="ref-expand">{expanded ? '▲' : '▼'}</td>
+        <td className="ref-expand">{expanded ? '\u25B2' : '\u25BC'}</td>
       </tr>
       {expanded && (
         <tr className="ref-detail-row">
@@ -156,7 +174,7 @@ function ReferenceRow({ v, index }: { v: ReferenceVerification; index: number })
                 <div className="ref-detail-matched">
                   <strong>Matched:</strong> {v.matchedWork.title}
                   {v.matchedWork.year ? ` (${v.matchedWork.year})` : ''}
-                  {' — '}<em>{v.matchedWork.source}</em>
+                  {' \u2014 '}<em>{v.matchedWork.source}</em>
                   {v.matchedWork.doi && <> &mdash; DOI: {v.matchedWork.doi}</>}
                 </div>
               )}
@@ -174,6 +192,9 @@ function ReferenceRow({ v, index }: { v: ReferenceVerification; index: number })
                 <div className="ref-detail-flags">
                   <strong>Flags:</strong> {v.flags.join(', ')}
                 </div>
+              )}
+              {v.urlCheck?.screenshotPath && (
+                <ScreenshotThumbnail path={v.urlCheck.screenshotPath} />
               )}
             </div>
           </td>
