@@ -1,7 +1,7 @@
 {
   "name": "cite-sight",
   "private": true,
-  "version": "0.2.12",
+  "version": "0.2.13",
   "description": "Academic integrity tool for checking student assignments",
   "workspaces": [
     "packages/core",
