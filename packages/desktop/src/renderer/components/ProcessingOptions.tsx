@@ -28,7 +28,7 @@ export function ProcessingOptions() {
         </div>
 
         <div className="option-group">
-          <label htmlFor="contact-email">Contact Email (API polite pool)</label>
+          <label htmlFor="contact-email">Your email (optional — speeds up reference lookups)</label>
           <input
             id="contact-email"
             type="email"
