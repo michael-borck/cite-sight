@@ -1,23 +1,55 @@
+import { useState, useEffect } from 'react';
 import './LandingPage.css';
 
 interface Props {
   onNavigate: (page: 'landing' | 'tool' | 'about') => void;
 }
 
-function detectPlatform(): { label: string; url: string } {
+type Platform = 'mac' | 'windows' | 'linux';
+
+const PLATFORM_LABELS: Record<Platform, string> = {
+  mac: 'macOS',
+  windows: 'Windows',
+  linux: 'Linux',
+};
+
+const FALLBACK_URL = 'https://github.com/michael-borck/cite-sight/releases/latest';
+
+function detectPlatform(): Platform {
   const ua = navigator.userAgent.toLowerCase();
   const platform = navigator.platform?.toLowerCase() ?? '';
 
-  if (platform.includes('mac') || ua.includes('macintosh') || ua.includes('mac os')) {
-    return { label: 'Download for macOS', url: 'https://github.com/michael-borck/cite-sight/releases/latest' };
+  if (platform.includes('mac') || ua.includes('macintosh') || ua.includes('mac os')) return 'mac';
+  if (platform.includes('win') || ua.includes('windows')) return 'windows';
+  if (ua.includes('linux') || platform.includes('linux')) return 'linux';
+  return 'mac';
+}
+
+function matchAsset(assets: { name: string; browser_download_url: string }[], platform: Platform): string | null {
+  for (const asset of assets) {
+    const name = asset.name.toLowerCase();
+    if (platform === 'mac' && name.endsWith('.dmg')) return asset.browser_download_url;
+    if (platform === 'windows' && name.endsWith('.exe')) return asset.browser_download_url;
+    if (platform === 'linux' && name.endsWith('.appimage')) return asset.browser_download_url;
   }
-  if (platform.includes('win') || ua.includes('windows')) {
-    return { label: 'Download for Windows', url: 'https://github.com/michael-borck/cite-sight/releases/latest' };
-  }
-  if (ua.includes('linux') || platform.includes('linux')) {
-    return { label: 'Download for Linux', url: 'https://github.com/michael-borck/cite-sight/releases/latest' };
-  }
-  return { label: 'Download Desktop App', url: 'https://github.com/michael-borck/cite-sight/releases/latest' };
+  return null;
+}
+
+function useReleaseAssets() {
+  const [assets, setAssets] = useState<{ name: string; browser_download_url: string }[]>([]);
+  const [version, setVersion] = useState<string>('');
+
+  useEffect(() => {
+    fetch('https://api.github.com/repos/michael-borck/cite-sight/releases/latest')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.assets) setAssets(data.assets);
+        if (data.tag_name) setVersion(data.tag_name);
+      })
+      .catch(() => {});
+  }, []);
+
+  return { assets, version };
 }
 
 const FEATURES = [
@@ -54,7 +86,11 @@ const FEATURES = [
 ];
 
 export function LandingPage({ onNavigate }: Props) {
-  const download = detectPlatform();
+  const [selectedPlatform, setSelectedPlatform] = useState<Platform>(detectPlatform);
+  const { assets, version } = useReleaseAssets();
+
+  const downloadUrl = matchAsset(assets, selectedPlatform) ?? FALLBACK_URL;
+  const label = `Download for ${PLATFORM_LABELS[selectedPlatform]}`;
 
   return (
     <div className="landing">
@@ -69,13 +105,8 @@ export function LandingPage({ onNavigate }: Props) {
             <button className="cta-primary" onClick={() => onNavigate('tool')}>
               Check Citations Online
             </button>
-            <a
-              className="cta-secondary"
-              href={download.url}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {download.label}
+            <a className="cta-secondary" href={downloadUrl}>
+              {label}
             </a>
           </div>
         </div>
@@ -156,14 +187,23 @@ export function LandingPage({ onNavigate }: Props) {
           </div>
         </div>
 
-        <a
-          className="download-btn"
-          href={download.url}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {download.label}
+        <a className="download-btn" href={downloadUrl}>
+          {label}
         </a>
+
+        <div className="platform-selector">
+          {(['mac', 'windows', 'linux'] as Platform[]).map((p) => (
+            <button
+              key={p}
+              className={`platform-option ${p === selectedPlatform ? 'platform-option--active' : ''}`}
+              onClick={() => setSelectedPlatform(p)}
+            >
+              {PLATFORM_LABELS[p]}
+            </button>
+          ))}
+        </div>
+
+        {version && <p className="download-version">Latest: {version}</p>}
         <p className="download-fine">Free and open source</p>
       </section>
     </div>

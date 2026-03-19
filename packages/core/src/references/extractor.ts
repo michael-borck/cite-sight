@@ -8,9 +8,11 @@ const DOI_RE = /10\.\d{4,9}\/[-._;()/:A-Z0-9]+/gi;
 const URL_RE = /https?:\/\/[^\s)]+/g;
 const YEAR_STRICT_RE = /\b(19|20)\d{2}\b/;
 
-// Headings that indicate the start of a reference/bibliography section
+// Headings that indicate the start of a reference/bibliography section.
+// Allows optional markdown heading markers (e.g. "## References") and
+// trailing dashes/equals used as underline-style headings.
 const REF_SECTION_RE =
-  /^(references|bibliography|works\s+cited|literature\s+cited)\s*$/i;
+  /^(?:#{1,6}\s+)?(references|bibliography|works\s+cited|literature\s+cited)\s*$/i;
 
 // ============================================================
 // Style detection helpers
@@ -203,16 +205,56 @@ function findReferenceSection(text: string): string | null {
     }
   }
 
-  if (startIdx < 0) return null;
-  return lines.slice(startIdx).join('\n');
+  // Fallback for PDF extraction: the heading may appear inline within a long
+  // text block rather than on its own line. Search for common heading patterns
+  // followed by a reference-like entry (e.g. "References Borck, M. (2026)...").
+  if (startIdx < 0) {
+    const inlineRe =
+      /(?:^|\s)(References|Bibliography|Works\s+Cited|Literature\s+Cited)\s+([A-Z])/i;
+    for (let i = 0; i < lines.length; i++) {
+      const m = lines[i].match(inlineRe);
+      if (m && m.index !== undefined) {
+        // Return everything after the heading keyword on this line onward
+        const offset = m.index + m[0].length - 1; // start at the capital letter
+        const remainder = lines[i].slice(offset) + '\n' + lines.slice(i + 1).join('\n');
+        return remainder;
+      }
+    }
+    return null;
+  }
+
+  // Stop at the next section heading or markdown horizontal rule (---/***/___)
+  // to avoid pulling in non-reference content like checklists or appendices.
+  let endIdx = lines.length;
+  for (let i = startIdx; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    // Markdown heading (## Foo) or horizontal rule (---, ***, ___)
+    if (/^#{1,6}\s+\S/.test(trimmed) || /^[-*_]{3,}\s*$/.test(trimmed)) {
+      endIdx = i;
+      break;
+    }
+  }
+
+  return lines.slice(startIdx, endIdx).join('\n');
 }
 
 /**
  * Split a reference-section block into individual reference strings.
- * Handles numbered lists ("1. ", "1) "), bulleted lists, and blank-line
- * separated blocks.
+ * Handles numbered lists ("1. ", "1) "), bulleted lists, blank-line
+ * separated blocks, and continuous text from PDF extraction.
  */
 function splitIntoReferences(block: string): string[] {
+  // First try line-based splitting (works for md, txt, docx)
+  const lineRefs = splitByLines(block);
+  if (lineRefs.length > 1) return lineRefs;
+
+  // Fallback: split continuous text by detecting reference boundaries.
+  // A new reference typically starts with an author name pattern after a
+  // period, closing paren, or URL — e.g. "...Press. Borck, M. (2026)..."
+  return splitContinuousText(block);
+}
+
+function splitByLines(block: string): string[] {
   const lines = block.split('\n');
   const refs: string[] = [];
   let current = '';
@@ -247,6 +289,39 @@ function splitIntoReferences(block: string): string[] {
   if (current.trim()) refs.push(current.trim());
 
   return refs.filter((r) => r.length > 10);
+}
+
+function splitContinuousText(block: string): string[] {
+  // Match boundaries where a new APA-style reference starts:
+  // Look for "Author, I." or "Organization Name." followed by "(Year)."
+  // preceded by sentence-ending punctuation or a URL.
+  const refStartRe =
+    /(?<=\.\s+|(?:https?:\/\/\S+)\s+)([A-Z][a-zA-Z\-']+(?:,\s*[A-Z]\.(?:\s*[A-Z]\.)*|(?:\s+[A-Z][a-zA-Z\-']+)+)(?:,?\s*(?:and|&)\s*[A-Z][a-zA-Z\-']+(?:,\s*[A-Z]\.(?:\s*[A-Z]\.)*)?)*\s*[.(])/g;
+
+  const text = block.trim();
+  const indices: number[] = [0];
+
+  for (const m of text.matchAll(refStartRe)) {
+    if (m.index !== undefined && m.index > 0) {
+      indices.push(m.index);
+    }
+  }
+
+  if (indices.length <= 1) {
+    // Could not split — return the whole block as one reference if it looks
+    // like a reference, otherwise return empty
+    return text.length > 10 ? [text] : [];
+  }
+
+  const refs: string[] = [];
+  for (let i = 0; i < indices.length; i++) {
+    const start = indices[i];
+    const end = i + 1 < indices.length ? indices[i + 1] : text.length;
+    const ref = text.slice(start, end).trim();
+    if (ref.length > 10) refs.push(ref);
+  }
+
+  return refs;
 }
 
 // ============================================================

@@ -242,6 +242,49 @@
   color: white;
 }
 
+.platform-selector {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+  margin-bottom: 8px;
+}
+
+.platform-option {
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  background: transparent;
+  color: #667eea;
+  border: 1.5px solid #d0d6f0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.platform-option:hover {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.06);
+}
+
+.platform-option--active {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+}
+
+.platform-option--active:hover {
+  background: #5a70d6;
+  border-color: #5a70d6;
+}
+
+.download-version {
+  font-size: 13px;
+  color: #888;
+  margin-top: 4px;
+  margin-bottom: 0;
+}
+
 .download-fine {
   font-size: 13px;
   color: #999;
