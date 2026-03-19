@@ -1,15 +1,13 @@
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist/legacy/build/pdf.mjs';
-import { fileURLToPath } from 'node:url';
 import type { ExtractedDocument } from '../types.js';
 
 // Point workerSrc at the bundled worker file so pdfjs-dist doesn't throw
 // "No GlobalWorkerOptions.workerSrc specified". In Node the worker won't
 // actually be spawned, but the path must resolve for the check to pass.
-// Use import.meta.resolve (stable in Node 20+) which returns a file:// URL,
-// then convert to a file path. This avoids createRequire which fails on
-// Windows in Electron ESM.
-const workerUrl = import.meta.resolve('pdfjs-dist/legacy/build/pdf.worker.mjs');
-GlobalWorkerOptions.workerSrc = fileURLToPath(workerUrl);
+// import.meta.resolve returns a file:// URL which is what the ESM loader
+// expects. Do NOT convert to a native path — on Windows, a bare "C:\..."
+// path is rejected by the ESM loader as an invalid URL scheme.
+GlobalWorkerOptions.workerSrc = import.meta.resolve('pdfjs-dist/legacy/build/pdf.worker.mjs');
 
 /**
  * Extract all text from a PDF file supplied as a Node.js Buffer.
