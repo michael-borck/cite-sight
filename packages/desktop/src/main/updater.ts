@@ -1,4 +1,5 @@
-import { autoUpdater } from 'electron-updater';
+import electronUpdater from 'electron-updater';
+const { autoUpdater } = electronUpdater;
 import type { BrowserWindow } from 'electron';
 import { ipcMain } from 'electron';
 
