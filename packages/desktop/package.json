@@ -2,6 +2,7 @@
   "name": "@michaelborck/cite-sight-desktop",
   "version": "0.2.14",
   "private": true,
+  "type": "module",
   "description": "CiteSight Desktop - Academic integrity checker",
   "author": "Michael Borck",
   "repository": {

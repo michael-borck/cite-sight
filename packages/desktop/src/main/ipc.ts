@@ -1,6 +1,6 @@
 import { ipcMain, dialog, BrowserWindow, app } from 'electron';
 import { analyzePipeline } from '@michaelborck/cite-sight-core';
-import { takeScreenshot } from './screenshot';
+import { takeScreenshot } from './screenshot.js';
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import type { ProcessingOptions, AnalysisResult } from '@michaelborck/cite-sight-core';
