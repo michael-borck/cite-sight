@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import type {
   AnalysisResult,
   ReferenceVerification,
@@ -7,7 +6,6 @@ import type {
   WritingPattern,
   PatternCategory,
 } from '@michaelborck/cite-sight-core';
-import 'react-tabs/style/react-tabs.css';
 import './ResultsDashboard.css';
 
 interface Props {
@@ -59,66 +57,42 @@ function bar(value: number, max = 100): number {
 // ─── sub-panels ───────────────────────────────────────────────────────────────
 
 function OverviewPanel({ results }: Props) {
-  const { readability, references, writingPatterns, processingTime } = results;
+  const { readability, writingPatterns, processingTime } = results;
   const totalPatterns = writingPatterns.patterns.length;
 
   return (
-    <div className="panel overview-panel">
-      <h3>Analysis Overview</h3>
-
-      <div className="stats-grid">
-        <div className="stat-card stat-blue">
-          <div className="stat-value">{readability.wordCount.toLocaleString()}</div>
-          <div className="stat-label">Words</div>
-        </div>
-        <div className="stat-card stat-green">
-          <div className="stat-value">{references.totalReferences}</div>
-          <div className="stat-label">References</div>
-        </div>
-        <div className="stat-card stat-teal">
-          <div className="stat-value">{references.verifiedCount}</div>
-          <div className="stat-label">Verified</div>
-        </div>
-        <div className="stat-card stat-orange">
-          <div className="stat-value">{references.suspiciousCount}</div>
-          <div className="stat-label">Suspicious</div>
-        </div>
-        <div className="stat-card stat-red">
-          <div className="stat-value">{references.notFoundCount}</div>
-          <div className="stat-label">Not Found</div>
-        </div>
-        <div className="stat-card stat-purple">
-          <div className="stat-value">{references.brokenUrlCount}</div>
-          <div className="stat-label">Broken URLs</div>
-        </div>
+    <div className="panel-card">
+      <div className="panel-header">
+        <h3>Analysis Overview</h3>
       </div>
+      <div className="panel-body">
+        <div className="overview-metrics">
+          <div className="overview-metric-row">
+            <span className="oml">Readability (Flesch)</span>
+            <div className="ombar-wrap">
+              <div className="ombar" style={{ width: `${bar(readability.fleschReadingEase)}%`, background: 'var(--verified)' }} />
+            </div>
+            <span className="omv">{readability.fleschReadingEase.toFixed(1)}</span>
+          </div>
+          <div className="overview-metric-row">
+            <span className="oml">F-K Grade Level</span>
+            <div className="ombar-wrap">
+              <div className="ombar" style={{ width: `${bar(readability.fleschKincaidGrade, 20)}%`, background: 'var(--accent)' }} />
+            </div>
+            <span className="omv">{readability.fleschKincaidGrade.toFixed(1)}</span>
+          </div>
+          <div className="overview-metric-row">
+            <span className="oml">Writing Patterns</span>
+            <div className="ombar-wrap">
+              <div className="ombar" style={{ width: `${bar(totalPatterns, 20)}%`, background: 'var(--accent)' }} />
+            </div>
+            <span className="omv">{totalPatterns} found</span>
+          </div>
+        </div>
 
-      <div className="overview-metrics">
-        <div className="overview-metric-row">
-          <span className="oml">Readability (Flesch)</span>
-          <div className="ombar-wrap">
-            <div className="ombar" style={{ width: `${bar(readability.fleschReadingEase)}%`, background: '#4CAF50' }} />
-          </div>
-          <span className="omv">{readability.fleschReadingEase.toFixed(1)}</span>
+        <div className="processing-info">
+          Analysed {results.fileName} in {(processingTime / 1000).toFixed(2)}s
         </div>
-        <div className="overview-metric-row">
-          <span className="oml">F-K Grade Level</span>
-          <div className="ombar-wrap">
-            <div className="ombar" style={{ width: `${bar(readability.fleschKincaidGrade, 20)}%`, background: '#667eea' }} />
-          </div>
-          <span className="omv">{readability.fleschKincaidGrade.toFixed(1)}</span>
-        </div>
-        <div className="overview-metric-row">
-          <span className="oml">Writing Patterns</span>
-          <div className="ombar-wrap">
-            <div className="ombar" style={{ width: `${bar(totalPatterns, 20)}%`, background: '#667eea' }} />
-          </div>
-          <span className="omv">{totalPatterns} found</span>
-        </div>
-      </div>
-
-      <div className="processing-info">
-        Analysed {results.fileName} in {(processingTime / 1000).toFixed(2)}s
       </div>
     </div>
   );
@@ -162,7 +136,19 @@ function ReferenceRow({ v, index }: { v: ReferenceVerification; index: number })
             <span className={`url-status url-${v.urlCheck.status}`}>{v.urlCheck.status}</span>
           ) : '\u2014'}
         </td>
-        <td className="ref-confidence">{(v.confidenceScore * 100).toFixed(0)}%</td>
+        <td>
+          <div className="confidence-meter">
+            <div className="confidence-bar">
+              <div
+                className={`confidence-fill ${v.confidenceScore >= 0.7 ? 'high' : v.confidenceScore >= 0.4 ? 'medium' : 'low'}`}
+                style={{ width: `${v.confidenceScore * 100}%` }}
+              />
+            </div>
+            <span className={`confidence-value ${v.confidenceScore >= 0.7 ? 'high' : v.confidenceScore >= 0.4 ? 'medium' : 'low'}`}>
+              {v.confidenceScore.toFixed(2)}
+            </span>
+          </div>
+        </td>
         <td className="ref-expand">{expanded ? '\u25B2' : '\u25BC'}</td>
       </tr>
       {expanded && (
@@ -208,60 +194,52 @@ function ReferencesPanel({ results }: Props) {
   const { references } = results;
 
   return (
-    <div className="panel references-panel">
-      <h3>Reference Verification</h3>
-
-      <div className="ref-summary-row">
-        <div className="ref-summary-item">
-          <span className="ref-summary-num">{references.totalReferences}</span>
-          <span className="ref-summary-lbl">Total</span>
-        </div>
-        <div className="ref-summary-item green">
-          <span className="ref-summary-num">{references.verifiedCount}</span>
-          <span className="ref-summary-lbl">Verified</span>
-        </div>
-        <div className="ref-summary-item orange">
-          <span className="ref-summary-num">{references.suspiciousCount}</span>
-          <span className="ref-summary-lbl">Suspicious</span>
-        </div>
-        <div className="ref-summary-item red">
-          <span className="ref-summary-num">{references.notFoundCount}</span>
-          <span className="ref-summary-lbl">Not Found</span>
-        </div>
-        <div className="ref-summary-item purple">
-          <span className="ref-summary-num">{references.brokenUrlCount}</span>
-          <span className="ref-summary-lbl">Broken URLs</span>
-        </div>
-        <div className="ref-summary-item blue">
-          <span className="ref-summary-num">{references.detectedStyle}</span>
-          <span className="ref-summary-lbl">Style</span>
-        </div>
+    <div className="panel-card">
+      <div className="panel-header">
+        <h3>Reference Verification</h3>
+        <span className="meta">{references.detectedStyle} style</span>
       </div>
-
-      {references.verifications.length > 0 ? (
-        <div className="ref-table-wrap">
-          <table className="ref-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Reference</th>
-                <th>Status</th>
-                <th>DOI</th>
-                <th>URL</th>
-                <th>Confidence</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {references.verifications.map((v, i) => (
-                <ReferenceRow key={i} v={v} index={i} />
-              ))}
-            </tbody>
-          </table>
+      <div className="panel-body">
+        <div className="status-summary">
+          <div className="status-chip verified">
+            <span className="count">{references.verifiedCount}</span> Verified
+          </div>
+          <div className="status-chip likely">
+            <span className="count">{references.verifications.filter(v => v.status === 'likely_valid').length}</span> Likely Valid
+          </div>
+          <div className="status-chip suspicious">
+            <span className="count">{references.suspiciousCount}</span> Suspicious
+          </div>
+          <div className="status-chip notfound">
+            <span className="count">{references.notFoundCount}</span> Not Found
+          </div>
         </div>
-      ) : (
-        <p className="no-data">No references found in this document.</p>
-      )}
+
+        {references.verifications.length > 0 ? (
+          <div className="ref-table-wrap">
+            <table className="ref-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Reference</th>
+                  <th>Status</th>
+                  <th>DOI</th>
+                  <th>URL</th>
+                  <th>Confidence</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {references.verifications.map((v, i) => (
+                  <ReferenceRow key={i} v={v} index={i} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="no-data">No references found in this document.</p>
+        )}
+      </div>
     </div>
   );
 }
@@ -270,48 +248,51 @@ function CrossReferencesPanel({ results }: Props) {
   const { crossReference } = results.references;
 
   return (
-    <div className="panel cross-panel">
-      <h3>Cross-Reference Check</h3>
-
-      <div className="cross-section">
-        <h4>
-          Unmatched Bibliography Entries
-          <span className="count-badge">{crossReference.unmatchedBibliography.length}</span>
-        </h4>
-        {crossReference.unmatchedBibliography.length > 0 ? (
-          <ul className="cross-list">
-            {crossReference.unmatchedBibliography.map((ref, i) => (
-              <li key={i} className="cross-item cross-biblio">
-                <span className="cross-icon">B</span>
-                <span>{ref.raw}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="no-issues">All bibliography entries have corresponding in-text citations.</p>
-        )}
+    <div className="panel-card">
+      <div className="panel-header">
+        <h3>Cross-Reference Check</h3>
       </div>
+      <div className="panel-body">
+        <div className="cross-section">
+          <h4>
+            Unmatched Bibliography Entries
+            <span className="count-badge">{crossReference.unmatchedBibliography.length}</span>
+          </h4>
+          {crossReference.unmatchedBibliography.length > 0 ? (
+            <ul className="cross-list">
+              {crossReference.unmatchedBibliography.map((ref, i) => (
+                <li key={i} className="cross-item cross-biblio">
+                  <span className="cross-icon">B</span>
+                  <span>{ref.raw}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="no-issues">All bibliography entries have corresponding in-text citations.</p>
+          )}
+        </div>
 
-      <div className="cross-section">
-        <h4>
-          Orphaned In-Text Citations
-          <span className="count-badge">{crossReference.unmatchedInText.length}</span>
-        </h4>
-        {crossReference.unmatchedInText.length > 0 ? (
-          <ul className="cross-list">
-            {crossReference.unmatchedInText.map((cite, i) => (
-              <li key={i} className="cross-item cross-intext">
-                <span className="cross-icon">C</span>
-                <span>
-                  {cite.raw}
-                  {cite.year ? ` (${cite.year})` : ''}
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="no-issues">All in-text citations have corresponding bibliography entries.</p>
-        )}
+        <div className="cross-section">
+          <h4>
+            Orphaned In-Text Citations
+            <span className="count-badge">{crossReference.unmatchedInText.length}</span>
+          </h4>
+          {crossReference.unmatchedInText.length > 0 ? (
+            <ul className="cross-list">
+              {crossReference.unmatchedInText.map((cite, i) => (
+                <li key={i} className="cross-item cross-intext">
+                  <span className="cross-icon">C</span>
+                  <span>
+                    {cite.raw}
+                    {cite.year ? ` (${cite.year})` : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="no-issues">All in-text citations have corresponding bibliography entries.</p>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -325,75 +306,80 @@ function QualityPanel({ results }: Props) {
       label: 'Passive Voice',
       value: pct(wq.passiveVoicePercentage),
       barWidth: bar(wq.passiveVoicePercentage),
-      color: wq.passiveVoicePercentage > 20 ? '#ff9800' : '#4CAF50',
+      level: wq.passiveVoicePercentage > 20 ? 'warning' : 'good',
     },
     {
       label: 'Academic Tone',
       value: `${wq.academicToneScore.toFixed(1)}/10`,
       barWidth: bar(wq.academicToneScore, 10),
-      color: '#667eea',
+      level: wq.academicToneScore >= 7 ? 'good' : 'warning',
     },
     {
       label: 'Sentence Variety',
       value: `${wq.sentenceVarietyScore.toFixed(1)}/10`,
       barWidth: bar(wq.sentenceVarietyScore, 10),
-      color: '#4CAF50',
+      level: 'good',
     },
     {
       label: 'Complex Sentences',
       value: pct(wq.complexSentenceRatio * 100),
       barWidth: bar(wq.complexSentenceRatio * 100),
-      color: '#764ba2',
+      level: 'good',
     },
   ];
 
   return (
-    <div className="panel quality-panel">
-      <h3>Writing Quality</h3>
-
-      <div className="quality-metrics">
-        {metrics.map((m) => (
-          <div key={m.label} className="metric-item">
-            <span className="metric-label">{m.label}</span>
-            <div className="metric-bar">
-              <div className="metric-fill" style={{ width: `${m.barWidth}%`, background: m.color }} />
-            </div>
-            <span className="metric-value">{m.value}</span>
-          </div>
-        ))}
+    <div className="panel-card">
+      <div className="panel-header">
+        <h3>Writing Quality</h3>
       </div>
-
-      <div className="quality-details">
-        <h4>Details</h4>
-        <ul>
-          <li>Avg sentence length: {wq.avgSentenceLength.toFixed(1)} words</li>
-          <li>Transition words: {wq.transitionWordCount}</li>
-          <li>Hedging phrases: {wq.hedgingPhraseCount}</li>
-        </ul>
-
-        {wq.hedgingPhrases.length > 0 && (
-          <>
-            <h4>Top Hedging Phrases</h4>
-            <div className="word-items">
-              {wq.hedgingPhrases.slice(0, 10).map((h) => (
-                <span key={h.phrase} className="word-tag word-tag-orange">
-                  {h.phrase} ({h.count})
-                </span>
-              ))}
+      <div className="panel-body">
+        <div className="metrics-grid">
+          {metrics.map((m) => (
+            <div key={m.label} className="metric-item">
+              <div className="metric-label-row">
+                <span>{m.label}</span>
+                <span className="metric-val">{m.value}</span>
+              </div>
+              <div className="metric-bar">
+                <div className={`metric-bar-fill ${m.level}`} style={{ width: `${m.barWidth}%` }} />
+              </div>
             </div>
-          </>
-        )}
+          ))}
+        </div>
 
-        {wq.passiveVoiceSentences.length > 0 && (
-          <>
-            <h4>Sample Passive Voice Sentences</h4>
-            <ul className="passive-list">
-              {wq.passiveVoiceSentences.slice(0, 5).map((s, i) => (
-                <li key={i} className="passive-item">{s}</li>
-              ))}
-            </ul>
-          </>
-        )}
+        <div className="quality-details">
+          <h4>Details</h4>
+          <ul>
+            <li>Avg sentence length: {wq.avgSentenceLength.toFixed(1)} words</li>
+            <li>Transition words: {wq.transitionWordCount}</li>
+            <li>Hedging phrases: {wq.hedgingPhraseCount}</li>
+          </ul>
+
+          {wq.hedgingPhrases.length > 0 && (
+            <>
+              <h4>Top Hedging Phrases</h4>
+              <div className="word-items">
+                {wq.hedgingPhrases.slice(0, 10).map((h) => (
+                  <span key={h.phrase} className="word-tag word-tag-orange">
+                    {h.phrase} ({h.count})
+                  </span>
+                ))}
+              </div>
+            </>
+          )}
+
+          {wq.passiveVoiceSentences.length > 0 && (
+            <>
+              <h4>Sample Passive Voice Sentences</h4>
+              <ul className="passive-list">
+                {wq.passiveVoiceSentences.slice(0, 5).map((s, i) => (
+                  <li key={i} className="passive-item">{s}</li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -403,55 +389,58 @@ function WordsPanel({ results }: Props) {
   const wa = results.wordAnalysis;
 
   return (
-    <div className="panel words-panel">
-      <h3>Word Analysis</h3>
-
-      <div className="word-stats-grid">
-        <div className="stat-card stat-blue">
-          <div className="stat-value">{wa.totalWords.toLocaleString()}</div>
-          <div className="stat-label">Total Words</div>
-        </div>
-        <div className="stat-card stat-teal">
-          <div className="stat-value">{wa.uniqueWords.toLocaleString()}</div>
-          <div className="stat-label">Unique Words</div>
-        </div>
-        <div className="stat-card stat-purple">
-          <div className="stat-value">{(wa.vocabularyRichness * 100).toFixed(1)}%</div>
-          <div className="stat-label">Vocabulary Richness</div>
-        </div>
+    <div className="panel-card">
+      <div className="panel-header">
+        <h3>Word Analysis</h3>
       </div>
-
-      <div className="word-lists">
-        <div className="word-section">
-          <h4>Most Frequent Words</h4>
-          <div className="word-items">
-            {wa.topWords.slice(0, 20).map((w) => (
-              <span key={w.word} className="word-tag">
-                {w.word} ({w.count})
-              </span>
-            ))}
+      <div className="panel-body">
+        <div className="word-stats-grid">
+          <div className="stat-card stat-blue">
+            <div className="stat-value">{wa.totalWords.toLocaleString()}</div>
+            <div className="stat-label">Total Words</div>
+          </div>
+          <div className="stat-card stat-teal">
+            <div className="stat-value">{wa.uniqueWords.toLocaleString()}</div>
+            <div className="stat-label">Unique Words</div>
+          </div>
+          <div className="stat-card stat-purple">
+            <div className="stat-value">{(wa.vocabularyRichness * 100).toFixed(1)}%</div>
+            <div className="stat-label">Vocabulary Richness</div>
           </div>
         </div>
 
-        <div className="word-section">
-          <h4>Top Bigrams</h4>
-          <div className="word-items">
-            {wa.bigrams.slice(0, 15).map((b) => (
-              <span key={b.phrase} className="word-tag word-tag-green">
-                {b.phrase} ({b.count})
-              </span>
-            ))}
+        <div className="word-lists">
+          <div className="word-section">
+            <h4>Most Frequent Words</h4>
+            <div className="word-items">
+              {wa.topWords.slice(0, 20).map((w) => (
+                <span key={w.word} className="word-tag">
+                  {w.word} ({w.count})
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
 
-        <div className="word-section">
-          <h4>Top Trigrams</h4>
-          <div className="word-items">
-            {wa.trigrams.slice(0, 10).map((t) => (
-              <span key={t.phrase} className="word-tag word-tag-purple">
-                {t.phrase} ({t.count})
-              </span>
-            ))}
+          <div className="word-section">
+            <h4>Top Bigrams</h4>
+            <div className="word-items">
+              {wa.bigrams.slice(0, 15).map((b) => (
+                <span key={b.phrase} className="word-tag word-tag-green">
+                  {b.phrase} ({b.count})
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="word-section">
+            <h4>Top Trigrams</h4>
+            <div className="word-items">
+              {wa.trigrams.slice(0, 10).map((t) => (
+                <span key={t.phrase} className="word-tag word-tag-purple">
+                  {t.phrase} ({t.count})
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -465,107 +454,148 @@ function WritingPatternsPanel({ results }: Props) {
   const categories: PatternCategory[] = ['citation_issues', 'completeness', 'style_observations'];
 
   return (
-    <div className="panel patterns-panel">
-      <h3>Writing Patterns</h3>
-
-      <div className="category-counts">
-        {categories.map((cat) => (
-          <div key={cat} className="category-count-item">
-            <div className="category-count-num">{categoryCounts[cat]}</div>
-            <div className="category-count-label">{categoryLabel(cat)}</div>
-          </div>
-        ))}
+    <div className="panel-card">
+      <div className="panel-header">
+        <h3>Writing Patterns</h3>
       </div>
+      <div className="panel-body">
+        <div className="category-counts">
+          {categories.map((cat) => (
+            <div key={cat} className="category-count-item">
+              <div className="category-count-num">{categoryCounts[cat]}</div>
+              <div className="category-count-label">{categoryLabel(cat)}</div>
+            </div>
+          ))}
+        </div>
 
-      {writingPatterns.patterns.length > 0 ? (
-        <div className="patterns-list">
-          {categories.map((cat) => {
-            const catPatterns = writingPatterns.patterns.filter(p => p.category === cat);
-            if (catPatterns.length === 0) return null;
-            return (
-              <div key={cat} className="patterns-category-group">
-                <h4>{categoryLabel(cat)} ({catPatterns.length})</h4>
-                {catPatterns.map((p, i) => (
-                  <div key={i} className={`pattern-card ${severityClass(p.severity)}`}>
-                    <div className="pattern-header">
-                      <span className="pattern-type">{p.type}</span>
-                      <span className={`severity-badge ${p.severity}`}>{p.severity}</span>
-                    </div>
-                    <p className="pattern-description">{p.description}</p>
-                    {p.evidence && (
-                      <div className="pattern-evidence">
-                        <strong>Evidence:</strong> {p.evidence}
+        {writingPatterns.patterns.length > 0 ? (
+          <div className="patterns-list">
+            {categories.map((cat) => {
+              const catPatterns = writingPatterns.patterns.filter(p => p.category === cat);
+              if (catPatterns.length === 0) return null;
+              return (
+                <div key={cat} className="patterns-category-group">
+                  <h4>{categoryLabel(cat)} ({catPatterns.length})</h4>
+                  {catPatterns.map((p, i) => (
+                    <div key={i} className={`pattern-card ${severityClass(p.severity)}`}>
+                      <div>
+                        <div className="pattern-header">
+                          <span className="pattern-type">{p.type}</span>
+                          <span className={`severity-badge ${p.severity}`}>{p.severity}</span>
+                        </div>
+                        <p className="pattern-description">{p.description}</p>
+                        {p.evidence && (
+                          <div className="pattern-evidence">
+                            <strong>Evidence:</strong> {p.evidence}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="no-patterns">
-          <p>No notable writing patterns detected.</p>
-        </div>
-      )}
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="no-patterns">
+            <p>No notable writing patterns detected.</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
+// ─── sidebar sections ─────────────────────────────────────────────────────────
+
+const SECTIONS = [
+  { id: 'overview',    label: 'Overview',    icon: '\u25C6' },
+  { id: 'references',  label: 'References',  icon: '\uD83D\uDCDA' },
+  { id: 'crossrefs',   label: 'Cross-refs',  icon: '\u21C4' },
+  { id: 'quality',     label: 'Quality',     icon: '\u270E' },
+  { id: 'words',       label: 'Words',       icon: '\uD83D\uDD22' },
+  { id: 'patterns',    label: 'Patterns',    icon: '\uD83D\uDD0D' },
+];
+
 // ─── main component ───────────────────────────────────────────────────────────
 
-const TAB_NAMES = ['overview', 'references', 'cross', 'quality', 'words', 'patterns'];
-
 export function ResultsDashboard({ results }: Props) {
-  const [tabIndex, setTabIndex] = useState(0);
-  const totalPatterns = results.writingPatterns.patterns.length;
+  const [activeSection, setActiveSection] = useState('overview');
+  const refs = results.references;
+  const crossRefCount =
+    refs.crossReference.unmatchedBibliography.length +
+    refs.crossReference.unmatchedInText.length;
+  const issueCount = refs.suspiciousCount + refs.notFoundCount;
+  const patternCount = results.writingPatterns.patterns.length;
+
+  const getBadge = (id: string): { count: number | null; warn: boolean } => {
+    switch (id) {
+      case 'references': return { count: refs.totalReferences, warn: issueCount > 0 };
+      case 'crossrefs':  return { count: crossRefCount > 0 ? crossRefCount : null, warn: crossRefCount > 0 };
+      case 'patterns':   return { count: patternCount > 0 ? patternCount : null, warn: patternCount > 0 };
+      default:           return { count: null, warn: false };
+    }
+  };
 
   return (
-    <div className="results-dashboard">
-      <Tabs selectedIndex={tabIndex} onSelect={setTabIndex}>
-        <TabList>
-          <Tab>Overview</Tab>
-          <Tab>
-            References
-            {results.references.suspiciousCount + results.references.notFoundCount > 0 && (
-              <span className="tab-badge">
-                {results.references.suspiciousCount + results.references.notFoundCount}
-              </span>
-            )}
-          </Tab>
-          <Tab>
-            Cross-Refs
-            {(results.references.crossReference.unmatchedBibliography.length +
-              results.references.crossReference.unmatchedInText.length) > 0 && (
-              <span className="tab-badge tab-badge-warn">
-                {results.references.crossReference.unmatchedBibliography.length +
-                  results.references.crossReference.unmatchedInText.length}
-              </span>
-            )}
-          </Tab>
-          <Tab>Quality</Tab>
-          <Tab>Words</Tab>
-          <Tab>
-            Writing Patterns
-            {totalPatterns > 0 && (
-              <span className="tab-badge tab-badge-neutral">
-                {totalPatterns}
-              </span>
-            )}
-          </Tab>
-        </TabList>
+    <div className="results-shell">
+      <aside className="results-sidebar">
+        <div className="sidebar-filename">{results.fileName}</div>
+        <nav className="sidebar-nav">
+          {SECTIONS.map(s => {
+            const badge = getBadge(s.id);
+            return (
+              <button
+                key={s.id}
+                className={`sidebar-link ${activeSection === s.id ? 'active' : ''}`}
+                onClick={() => setActiveSection(s.id)}
+              >
+                <span><span className="icon">{s.icon}</span> {s.label}</span>
+                {badge.count !== null && (
+                  <span className={`sidebar-badge ${badge.warn ? 'warn' : ''}`}>{badge.count}</span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+      </aside>
 
-        <TabPanel><OverviewPanel results={results} /></TabPanel>
-        <TabPanel><ReferencesPanel results={results} /></TabPanel>
-        <TabPanel><CrossReferencesPanel results={results} /></TabPanel>
-        <TabPanel><QualityPanel results={results} /></TabPanel>
-        <TabPanel><WordsPanel results={results} /></TabPanel>
-        <TabPanel><WritingPatternsPanel results={results} /></TabPanel>
-      </Tabs>
+      <main className="results-content">
+        {/* Summary strip — always visible */}
+        <div className="summary-strip">
+          <div className="summary-stat teal">
+            <span className="value">{results.readability.wordCount.toLocaleString()}</span>
+            <span className="label">Words</span>
+          </div>
+          <div className="summary-stat teal">
+            <span className="value">{refs.totalReferences}</span>
+            <span className="label">References</span>
+          </div>
+          <div className="summary-stat">
+            <span className="value">{refs.verifiedCount}</span>
+            <span className="label">Verified</span>
+          </div>
+          <div className="summary-stat amber">
+            <span className="value">{refs.suspiciousCount}</span>
+            <span className="label">Suspicious</span>
+          </div>
+          <div className="summary-stat rose">
+            <span className="value">{refs.notFoundCount}</span>
+            <span className="label">Not Found</span>
+          </div>
+          <div className="summary-stat muted">
+            <span className="value">{crossRefCount}</span>
+            <span className="label">Orphaned</span>
+          </div>
+        </div>
 
-      <div className="tab-hint">
-        Tab: {TAB_NAMES[tabIndex] ?? 'overview'}
-      </div>
+        {activeSection === 'overview'    && <OverviewPanel results={results} />}
+        {activeSection === 'references'  && <ReferencesPanel results={results} />}
+        {activeSection === 'crossrefs'   && <CrossReferencesPanel results={results} />}
+        {activeSection === 'quality'     && <QualityPanel results={results} />}
+        {activeSection === 'words'       && <WordsPanel results={results} />}
+        {activeSection === 'patterns'    && <WritingPatternsPanel results={results} />}
+      </main>
     </div>
   );
 }
