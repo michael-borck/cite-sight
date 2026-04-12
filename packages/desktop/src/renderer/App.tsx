@@ -102,13 +102,10 @@ export function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <div className="header-content">
-          <div className="header-title">
-            <div className="header-title-group">
-              <h1>CiteSight</h1>
-              {version && <span className="header-version">v{version}</span>}
-            </div>
-            <p>Academic Integrity &amp; Citation Checker</p>
+        <div className="header-inner">
+          <div className="header-brand">
+            <h1>CiteSight<span className="dot"></span></h1>
+            {version && <span className="version">v{version}</span>}
           </div>
         </div>
       </header>
@@ -128,7 +125,7 @@ export function App() {
                       <button
                         onClick={() => void handleAnalyze()}
                         disabled={isProcessing}
-                        className="analyze-btn"
+                        className="btn btn-primary"
                       >
                         {isProcessing
                           ? 'Processing...'
@@ -140,7 +137,7 @@ export function App() {
                       <button
                         onClick={handleReset}
                         disabled={isProcessing}
-                        className="reset-btn"
+                        className="btn btn-secondary"
                       >
                         Reset
                       </button>
@@ -197,18 +194,18 @@ export function App() {
                 )}
                 <div className="results-actions">
                   <button
-                    className="export-btn export-pdf"
+                    className="btn btn-secondary"
                     onClick={() => void downloadPdfReport(results)}
                   >
                     Export PDF
                   </button>
                   <button
-                    className="export-btn export-csv"
+                    className="btn btn-secondary"
                     onClick={() => downloadCsvReport(results)}
                   >
                     Export CSV
                   </button>
-                  <button onClick={handleReset} className="new-analysis-btn">
+                  <button onClick={handleReset} className="btn btn-primary">
                     New Analysis
                   </button>
                 </div>
