@@ -149,8 +149,8 @@ export function ToolPage() {
             )}
           </div>
 
-          <div className="options-section">
-            <h3>Analysis Options</h3>
+          <details className="options-panel" open>
+            <summary>Analysis Options</summary>
             <div className="options-grid">
               <div className="option-row">
                 <label htmlFor="citationStyle">Citation Style</label>
@@ -203,7 +203,7 @@ export function ToolPage() {
                 </label>
               </div>
             </div>
-          </div>
+          </details>
 
           {isProcessing && (
             <div className="progress-indicator">
@@ -221,14 +221,14 @@ export function ToolPage() {
 
           <div className="action-buttons">
             <button
-              className="analyze-btn"
+              className="btn btn-primary"
               onClick={handleAnalyze}
               disabled={!file || isProcessing}
             >
               {isProcessing ? 'Analysing...' : 'Analyse Citations'}
             </button>
             {(file || state === 'error') && (
-              <button className="reset-btn" onClick={handleReset} disabled={isProcessing}>
+              <button className="btn btn-secondary" onClick={handleReset} disabled={isProcessing}>
                 Reset
               </button>
             )}
@@ -241,13 +241,13 @@ export function ToolPage() {
           <div className="results-toolbar">
             <h3 className="results-file-name">{result.fileName}</h3>
             <div className="results-toolbar-actions">
-              <button className="download-pdf-btn" onClick={() => downloadPdfReport(result)}>
+              <button className="btn btn-primary" onClick={() => downloadPdfReport(result)}>
                 Download PDF Report
               </button>
-              <button className="download-csv-btn" onClick={() => downloadCsvReport(result)}>
+              <button className="btn btn-secondary" onClick={() => downloadCsvReport(result)}>
                 Download CSV
               </button>
-              <button className="reset-btn" onClick={handleReset}>
+              <button className="btn btn-secondary" onClick={handleReset}>
                 Analyse Another File
               </button>
             </div>
