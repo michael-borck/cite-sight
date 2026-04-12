@@ -114,38 +114,44 @@ export function App() {
         <div className="container">
           {results.length === 0 ? (
             <>
-              <section className="upload-section">
-                <FileUpload />
-
-                {filePaths.length > 0 && (
-                  <>
-                    <ProcessingOptions />
-
-                    <div className="action-buttons">
-                      <button
-                        onClick={() => void handleAnalyze()}
-                        disabled={isProcessing}
-                        className="btn btn-primary"
-                      >
-                        {isProcessing
-                          ? 'Processing...'
-                          : filePaths.length === 1
-                            ? 'Analyse Document'
-                            : `Analyse ${filePaths.length} Documents`}
-                      </button>
-
-                      <button
-                        onClick={handleReset}
-                        disabled={isProcessing}
-                        className="btn btn-secondary"
-                      >
-                        Reset
-                      </button>
-                    </div>
-                  </>
-                )}
-              </section>
-
+              {isProcessing && progress ? (
+                <ProcessingProgress
+                  progress={progress}
+                  batchIndex={batchIndex}
+                  batchTotal={batchTotal}
+                  currentFileName={getFileName(filePaths[batchIndex] ?? '')}
+                  onCancel={handleCancel}
+                />
+              ) : (
+                <section className="upload-section">
+                  <FileUpload />
+                  {filePaths.length > 0 && (
+                    <>
+                      <ProcessingOptions />
+                      <div className="action-buttons">
+                        <button
+                          onClick={() => void handleAnalyze()}
+                          disabled={isProcessing}
+                          className="btn btn-primary"
+                        >
+                          {isProcessing
+                            ? 'Processing...'
+                            : filePaths.length === 1
+                              ? 'Analyse Document'
+                              : `Analyse ${filePaths.length} Documents`}
+                        </button>
+                        <button
+                          onClick={handleReset}
+                          disabled={isProcessing}
+                          className="btn btn-secondary"
+                        >
+                          Reset
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </section>
+              )}
               {error && (
                 <div className="error-message">
                   <span>&#9888; {error}</span>
@@ -225,16 +231,6 @@ export function App() {
           )}
         </div>
       </main>
-
-      {isProcessing && progress && (
-        <ProcessingProgress
-          progress={progress}
-          batchIndex={batchIndex}
-          batchTotal={batchTotal}
-          currentFileName={getFileName(filePaths[batchIndex] ?? '')}
-          onCancel={handleCancel}
-        />
-      )}
 
       <UpdateNotification />
     </div>
