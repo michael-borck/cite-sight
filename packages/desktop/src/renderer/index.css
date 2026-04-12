@@ -1,35 +1,168 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* ============================================================
+   DESIGN TOKENS — "Academic Observatory" palette
+   ============================================================ */
+:root {
+  /* Color: Deep Library variant */
+  --ink:        #1a2332;
+  --ink-soft:   #3d4f5f;
+  --ink-muted:  #6b7c8a;
+  --ink-faint:  #94a3b1;
+
+  --paper:      #faf8f5;
+  --paper-warm: #f4f1ec;
+  --paper-cool: #f0eff2;
+  --white:      #ffffff;
+
+  --accent:     #2a9d8f;
+  --accent-dim: #238578;
+  --accent-bg:  #e8f6f4;
+
+  --amber:      #e9c46a;
+  --amber-bg:   #fdf8eb;
+  --amber-dark: #c4952a;
+
+  --rose:       #d4726a;
+  --rose-bg:    #fdf0ee;
+  --rose-dark:  #b5524a;
+
+  --verified:   #2a9d8f;
+  --verified-bg:#e8f6f4;
+  --likely:     #5b8a3c;
+  --likely-bg:  #eef5e8;
+  --suspicious: #c4952a;
+  --suspicious-bg: #fdf8eb;
+  --notfound:   #d4726a;
+  --notfound-bg:#fdf0ee;
+  --neutral:    #6b7c8a;
+  --neutral-bg: #f0eff2;
+
+  /* Typography */
+  --font-display: 'Source Serif 4', 'Georgia', serif;
+  --font-body:    'IBM Plex Sans', 'Helvetica Neue', sans-serif;
+  --font-mono:    'IBM Plex Mono', 'Menlo', monospace;
+
+  /* Spacing scale (4px base) */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px;  --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px;  --sp-10: 40px;
+  --sp-12: 48px; --sp-16: 64px;
+
+  /* Radii */
+  --r-sm: 4px;  --r-md: 6px;  --r-lg: 10px;  --r-xl: 14px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(26,35,50,0.06);
+  --shadow-md: 0 2px 8px rgba(26,35,50,0.08);
+  --shadow-lg: 0 8px 24px rgba(26,35,50,0.10);
+  --shadow-focus: 0 0 0 3px rgba(42,157,143,0.25);
 }
 
-:root {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-  color: #333;
-  background-color: #ffffff;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html {
+  font-size: 15px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-body { margin: 0; min-width: 320px; min-height: 100vh; }
+body {
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--paper);
+  line-height: 1.6;
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
 #root { min-height: 100vh; }
-a { font-weight: 500; color: #646cff; text-decoration: inherit; }
-a:hover { color: #535bf2; }
-h1 { font-size: 2.5em; line-height: 1.2; }
-h2 { font-size: 2em; line-height: 1.3; }
-h3 { font-size: 1.5em; line-height: 1.4; }
-h4 { font-size: 1.2em; line-height: 1.4; }
-button { font-family: inherit; cursor: pointer; transition: all 0.25s; }
-button:focus, button:focus-visible { outline: 2px solid #646cff; outline-offset: 2px; }
-input[type="checkbox"] { cursor: pointer; }
-select { font-family: inherit; }
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: #f1f1f1; }
-::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #555; }
+
+h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 600; line-height: 1.25; }
+h1 { font-size: 2rem; letter-spacing: -0.02em; }
+h2 { font-size: 1.5rem; letter-spacing: -0.01em; }
+h3 { font-size: 1.15rem; }
+h4 { font-size: 1rem; }
+
+code, .mono { font-family: var(--font-mono); font-size: 0.87em; }
+
+a { font-weight: 500; color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-dim); }
+
+button { font-family: var(--font-body); cursor: pointer; border: none; }
+button:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
+
+input[type="checkbox"] { cursor: pointer; accent-color: var(--accent); }
+select { font-family: var(--font-body); }
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--ink-faint); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-muted); }
+
+/* ============================================================
+   SHARED BUTTON SYSTEM
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-5);
+  font-size: 0.87rem;
+  font-weight: 600;
+  border-radius: var(--r-md);
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--white);
+}
+.btn-primary:hover {
+  background: var(--accent-dim);
+  box-shadow: 0 4px 12px rgba(42,157,143,0.3);
+}
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.btn-secondary {
+  background: var(--white);
+  color: var(--ink-soft);
+  border: 1px solid rgba(26,35,50,0.15);
+}
+.btn-secondary:hover {
+  background: var(--paper);
+  border-color: rgba(26,35,50,0.25);
+}
+
+.btn-danger {
+  background: var(--rose);
+  color: var(--white);
+}
+.btn-danger:hover {
+  background: var(--rose-dark);
+}
+
+/* ============================================================
+   ANIMATION UTILITIES
+   ============================================================ */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-in {
+  animation: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.delay-1 { animation-delay: 0.05s; }
+.delay-2 { animation-delay: 0.1s; }
+.delay-3 { animation-delay: 0.15s; }
+.delay-4 { animation-delay: 0.2s; }
+.delay-5 { animation-delay: 0.25s; }
+.delay-6 { animation-delay: 0.3s; }
