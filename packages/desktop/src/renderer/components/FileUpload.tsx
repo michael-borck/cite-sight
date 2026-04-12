@@ -50,12 +50,8 @@ export function FileUpload() {
     }
   };
 
-  const getFileIcon = (filePath: string): string => {
-    const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
-    if (ext === 'pdf') return '[PDF]';
-    if (ext === 'docx') return '[DOC]';
-    if (ext === 'md') return '[MD]';
-    return '[TXT]';
+  const getFileExtension = (filePath: string): string => {
+    return filePath.split('.').pop()?.toLowerCase() ?? 'txt';
   };
 
   const getFileName = (filePath: string): string => {
@@ -71,35 +67,21 @@ export function FileUpload() {
         <input {...getInputProps()} />
 
         <div className="dropzone-content">
-          <div className="upload-icon">[UP]</div>
+          <div className="dropzone-icon">&#128196;</div>
           {isDragActive ? (
-            <p>Drop the files here...</p>
+            <p className="dropzone-text">Drop the files here...</p>
           ) : (
             <>
-              <p>Drag &amp; drop documents here, or</p>
+              <p className="dropzone-text">Drag &amp; drop documents here, or</p>
               <div className="browse-buttons">
-                <button
-                  type="button"
-                  className="browse-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void handleBrowseFiles();
-                  }}
-                >
+                <button type="button" className="btn btn-primary" onClick={(e) => { e.stopPropagation(); void handleBrowseFiles(); }}>
                   Browse Files
                 </button>
-                <button
-                  type="button"
-                  className="browse-btn browse-folder-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void handleBrowseFolder();
-                  }}
-                >
+                <button type="button" className="btn btn-secondary" onClick={(e) => { e.stopPropagation(); void handleBrowseFolder(); }}>
                   Browse Folder
                 </button>
               </div>
-              <p className="file-types">Supported: PDF, DOCX, TXT, MD (max 50MB each)</p>
+              <p className="dropzone-hint">PDF &middot; DOCX &middot; TXT &middot; MD &mdash; max 50 MB</p>
             </>
           )}
         </div>
@@ -122,7 +104,7 @@ export function FileUpload() {
         <div className="file-list">
           <div className="file-list-header">
             <h3>Selected Files ({filePaths.length})</h3>
-            <button onClick={clearFiles} className="clear-btn">
+            <button onClick={clearFiles} className="btn btn-secondary">
               Clear All
             </button>
           </div>
@@ -131,7 +113,7 @@ export function FileUpload() {
             {filePaths.map((fp) => (
               <div key={fp} className="file-item">
                 <div className="file-info">
-                  <span className="file-icon">{getFileIcon(fp)}</span>
+                  <span className={`file-type-badge ${getFileExtension(fp)}`}>{getFileExtension(fp)}</span>
                   <div className="file-details">
                     <span className="file-name">{getFileName(fp)}</span>
                     <span className="file-size">{fp}</span>
@@ -139,7 +121,7 @@ export function FileUpload() {
                 </div>
                 <button
                   onClick={() => removeFile(fp)}
-                  className="remove-btn"
+                  className="file-remove"
                   aria-label={`Remove ${getFileName(fp)}`}
                 >
                   &#10005;
