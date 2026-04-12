@@ -12,10 +12,10 @@ export function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <div className="header-content">
-          <div className="header-title-group">
-            <h1 onClick={() => setPage('landing')} style={{ cursor: 'pointer' }}>CiteSight</h1>
-            <span className="header-version">v{__APP_VERSION__}</span>
+        <div className="header-inner">
+          <div className="header-brand">
+            <h1 onClick={() => setPage('landing')} style={{ cursor: 'pointer' }}>CiteSight<span className="dot"></span></h1>
+            <span className="version">v{__APP_VERSION__}</span>
           </div>
           <nav className="header-nav">
             <button onClick={() => setPage('landing')} className={`nav-link ${page === 'landing' ? 'active' : ''}`}>Home</button>
