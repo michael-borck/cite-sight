@@ -57,31 +57,37 @@ const FEATURES = [
     title: 'Reference Verification',
     description: 'Cross-checks against Crossref, Semantic Scholar, and OpenAlex to confirm referenced sources actually exist.',
     icon: '✓',
+    iconClass: 'feature-icon--teal',
   },
   {
     title: 'Citation Format Checking',
     description: 'Validates APA, MLA, and Chicago formatting rules and flags deviations from the detected citation style.',
     icon: '⊞',
+    iconClass: 'feature-icon--amber',
   },
   {
     title: 'URL Verification',
     description: 'Checks that referenced URLs are live and accessible, reporting dead links and redirects.',
     icon: '⌖',
+    iconClass: 'feature-icon--rose',
   },
   {
     title: 'Cross-Reference Matching',
     description: 'Ensures in-text citations have corresponding bibliography entries and vice versa.',
     icon: '⇄',
+    iconClass: 'feature-icon--teal',
   },
   {
     title: 'Readability Analysis',
     description: 'Computes Flesch-Kincaid, Coleman-Liau, Automated Readability Index, and more.',
     icon: '≡',
+    iconClass: 'feature-icon--amber',
   },
   {
     title: 'Writing Patterns',
     description: 'Highlights citation issues, incomplete sections, and notable writing style patterns for review.',
     icon: '⚑',
+    iconClass: 'feature-icon--rose',
   },
 ];
 
@@ -97,15 +103,15 @@ export function LandingPage({ onNavigate }: Props) {
       {/* Hero */}
       <section className="hero">
         <div className="hero-inner">
-          <h2 className="hero-heading">Verify Academic Citations in Seconds</h2>
+          <h2 className="hero-heading">Verify Academic <em>Citations</em> in Seconds</h2>
           <p className="hero-sub">
             Check references exist, validate formatting, and catch suspicious citations — before submission.
           </p>
           <div className="hero-ctas">
-            <button className="cta-primary" onClick={() => onNavigate('tool')}>
+            <button className="btn btn-primary" onClick={() => onNavigate('tool')}>
               Check Citations Online
             </button>
-            <a className="cta-secondary" href={downloadUrl}>
+            <a className="btn btn-secondary" href={downloadUrl}>
               {label}
             </a>
           </div>
@@ -148,7 +154,7 @@ export function LandingPage({ onNavigate }: Props) {
         <div className="features-grid">
           {FEATURES.map((f) => (
             <div key={f.title} className="feature-card">
-              <div className="feature-icon">{f.icon}</div>
+              <div className={`feature-icon ${f.iconClass}`}>{f.icon}</div>
               <h3 className="feature-title">{f.title}</h3>
               <p className="feature-desc">{f.description}</p>
             </div>
