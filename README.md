@@ -225,6 +225,6 @@ Pushing a `v*` tag triggers:
 - **CLI**: Commander.js, chalk
 - **APIs**: Crossref, Semantic Scholar, OpenAlex (all free tier)
 
-## License
+## Licence
 
 See [LICENSE](LICENSE).
