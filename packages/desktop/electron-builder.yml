@@ -9,8 +9,11 @@ files:
 publish:
   provider: github
 # electron-builder's own notarize wrapper has been buggy across 24.x/26.x.
-# We disable it (notarize: false) and call @electron/notarize directly from afterSign.
+# We disable it (notarize: false) and run our own hooks:
+#   afterSign            — notarises + staples the .app bundle
+#   afterAllArtifactBuild — signs + notarises + staples each .dmg container
 afterSign: ./scripts/notarize.cjs
+afterAllArtifactBuild: ./scripts/notarize-dmg.cjs
 mac:
   target:
     - target: dmg
