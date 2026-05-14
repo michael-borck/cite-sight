@@ -40,6 +40,26 @@ jobs:
       - name: Build desktop
         run: npm run build:desktop
 
+      # Persistent keychain so codesign can still find the Developer ID
+      # identity AFTER electron-builder finishes (the keychain it imports
+      # CSC_LINK into is torn down once its own signing step completes).
+      - name: Set up signing keychain (macOS)
+        if: matrix.os == 'macos-latest'
+        env:
+          CSC_LINK_B64: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+        run: |
+          set -e
+          echo "$CSC_LINK_B64" | base64 --decode > /tmp/cert.p12
+          security create-keychain -p actions build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p actions build.keychain
+          security set-keychain-settings -lut 21600 build.keychain
+          security import /tmp/cert.p12 -k build.keychain -P "$CSC_KEY_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k actions build.keychain
+          rm /tmp/cert.p12
+          security find-identity -v -p codesigning
+
       - name: Package Electron app
         working-directory: packages/desktop
         env:
@@ -51,7 +71,60 @@ jobs:
           NOTARIZE_APPLE_ID: ${{ secrets.APPLE_ID }}
           NOTARIZE_APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           NOTARIZE_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: npx electron-builder --${{ matrix.platform }} --publish always
+        shell: bash
+        # macOS publishes after we've signed + notarised the DMG container
+        # (next step). Other platforms publish straight from electron-builder.
+        run: |
+          if [ "${{ matrix.os }}" = "macos-latest" ]; then
+            npx electron-builder --${{ matrix.platform }} --publish=never
+          else
+            npx electron-builder --${{ matrix.platform }} --publish=always
+          fi
+
+      - name: Sign + notarise + staple DMGs (macOS)
+        if: matrix.os == 'macos-latest'
+        working-directory: packages/desktop
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PWD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -e
+          IDENTITY=$(security find-identity -v -p codesigning \
+            | sed -n 's/.*"\(Developer ID Application:[^"]*\)".*/\1/p' | head -1)
+          if [ -z "$IDENTITY" ]; then
+            echo "Error: no Developer ID Application identity in keychain"; exit 1
+          fi
+          echo "Identity: $IDENTITY"
+          for dmg in release/*.dmg; do
+            echo "=== $dmg ==="
+            codesign --sign "$IDENTITY" --timestamp "$dmg"
+            xcrun notarytool submit "$dmg" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_PWD" \
+              --team-id "$APPLE_TEAM_ID" \
+              --wait
+            xcrun stapler staple "$dmg"
+          done
+
+      - name: Upload macOS artifacts to release
+        if: matrix.os == 'macos-latest'
+        working-directory: packages/desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          TAG="${GITHUB_REF#refs/tags/}"
+          # Linux/Windows jobs may run faster and create the draft release first.
+          # If it doesn't exist yet, create it (still draft until publish-release).
+          gh release view "$TAG" >/dev/null 2>&1 \
+            || gh release create "$TAG" --draft --title "$TAG" --notes ""
+          gh release upload "$TAG" --clobber \
+            release/*.dmg \
+            release/*.dmg.blockmap \
+            release/*-mac.zip \
+            release/*-mac.zip.blockmap \
+            release/latest-mac.yml
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
