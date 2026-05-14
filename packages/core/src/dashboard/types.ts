@@ -1,6 +1,14 @@
 // packages/core/src/dashboard/types.ts
 
-/** Categories surfaced in the "Things to check" priority list (Phase 1: 3 of 4). */
+import type { AcademicWork } from '../types.js';
+
+/**
+ * Categories surfaced in the "Things to check" priority list (Phase 1: 3 of 4).
+ *
+ * Naming note: this enum is the user-facing label, deliberately shorter than the
+ * internal `VerificationStatus`. In particular, `'suspect'` here maps to the
+ * internal status `'suspicious'`. The mapping happens in `priorityList.ts`.
+ */
 export type PriorityCategory = 'not_found' | 'suspect' | 'orphan';
 
 /** A single row in the "Things to check" priority list. */
@@ -15,13 +23,13 @@ export interface PriorityItem {
   sourceText: string;
   /** Optional human-readable reason (e.g. "Crossref returned no match"). */
   reason?: string;
-  /** Optional matched-work metadata, for the suspect category. */
-  matched?: {
-    title?: string;
-    year?: number;
-    doi?: string;
-    source?: string;
-  };
+  /**
+   * Metadata of the work a verification API returned, when the parser's
+   * reference looked suspicious enough to surface but a match existed.
+   * Subset of `AcademicWork` — sharing the type preserves the narrow `source`
+   * union and avoids duplicating the shape.
+   */
+  matched?: Pick<AcademicWork, 'title' | 'year' | 'doi' | 'source'>;
 }
 
 /** Hero verdict state — drives the pill colour and label. */
