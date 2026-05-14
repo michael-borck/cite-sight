@@ -77,6 +77,82 @@ describe('reference extraction from markdown', () => {
     expect(authors.some(a => a.includes('kasneci'))).toBe(true);
   });
 
+  it('finds a bullet-style bibliography even without a "References" heading', async () => {
+    // Real-world case: an alphabetical reference list with `## A`, `## B`...
+    // sub-headings and no overarching "References" heading. Without the
+    // pattern-based fallback, the section detector returns null and zero refs
+    // are found.
+    const alphabeticalBib = `---
+title: "Collated References"
+---
+
+This is the combined reference list from all articles.
+
+## A
+
+- Acemoglu, D., & Restrepo, P. (2019). Automation. *Journal, 33*(2), 3–30.
+
+- Aoun, J. E. (2017). *Robot-proof.* MIT Press.
+
+## B
+
+- Bloom, B. S. (1956). *Taxonomy of educational objectives.* McKay.
+
+- Burns, M. (n.d.). *EdTech Essentials.*
+
+## H
+
+- Heaven, W. (2023, April 6). ChatGPT is going to change education. *MIT Tech Review.*
+`;
+    const { references } = extractReferences(alphabeticalBib);
+    expect(references.length).toBe(5);
+    const authors = references.map((r) => r.authors[0] ?? '');
+    expect(authors).toEqual(expect.arrayContaining([
+      expect.stringContaining('Acemoglu'),
+      expect.stringContaining('Aoun'),
+      expect.stringContaining('Bloom'),
+      expect.stringContaining('Burns'),
+      expect.stringContaining('Heaven'),
+    ]));
+  });
+
+  it('does NOT treat "## References by Document" mapping tables as the bibliography', async () => {
+    // The phrase "References by Document" followed by a markdown table used
+    // to trip the inline-keyword fallback because the next char ("b" of "by")
+    // matched [A-Z] under the /i flag. The lookahead now requires the next
+    // token to look like an author surname (Capital + letters + comma).
+    const docWithMappingTable = `# My paper
+
+Some narrative text with no actual citations or bibliography.
+
+## References by Document
+
+| Document | References |
+|----------|------------|
+| **intro** | Wang et al. (2024); Shneiderman (2022) |
+| **methods** | Mollick & Mollick (2023); OECD (2025) |
+`;
+    const { references } = extractReferences(docWithMappingTable);
+    // Without the fix, this returned 2 garbage refs scraped from table HTML.
+    expect(references).toHaveLength(0);
+  });
+
+  it('captures multi-word organisation surnames in in-text citations', async () => {
+    // "Russell Group (2023)" should be captured as a single author rather
+    // than truncated to "Group", so cross-reference matching with a bib
+    // entry whose author is "Russell Group" works correctly.
+    const text = `
+In recent guidance, Russell Group (2023) argued for clearer policy.
+Mollick & Mollick (2023) describe practical strategies.
+`;
+    const { inTextCitations } = extractReferences(text);
+    const allAuthors = inTextCitations.flatMap((c) => c.authors);
+    // Russell Group is kept whole rather than collapsing to "Group".
+    expect(allAuthors).toContain('Russell Group');
+    // Multi-author ampersand-separated case still works.
+    expect(allAuthors.filter((a) => a === 'Mollick')).toHaveLength(2);
+  });
+
   it('does not include post-references content (e.g. checklists) as references', async () => {
     // The sample-paper.md has no post-references content, but the original
     // grant document has "## Applicant Checklist" after References.

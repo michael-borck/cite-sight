@@ -208,9 +208,12 @@ function findReferenceSection(text: string): string | null {
   // Fallback for PDF extraction: the heading may appear inline within a long
   // text block rather than on its own line. Search for common heading patterns
   // followed by a reference-like entry (e.g. "References Borck, M. (2026)...").
+  // The lookahead ensures the next token looks like an author surname (capital
+  // letter, more letters, comma) so headings like "## References by Document"
+  // do NOT trip the fallback.
   if (startIdx < 0) {
     const inlineRe =
-      /(?:^|\s)(References|Bibliography|Works\s+Cited|Literature\s+Cited)\s+([A-Z])/i;
+      /(?:^|\s)(References|Bibliography|Works\s+Cited|Literature\s+Cited)\s+([A-Z])(?=[a-zA-Z\-']+,)/i;
     for (let i = 0; i < lines.length; i++) {
       const m = lines[i].match(inlineRe);
       if (m && m.index !== undefined) {
@@ -220,6 +223,22 @@ function findReferenceSection(text: string): string | null {
         return remainder;
       }
     }
+
+    // Third fallback: no explicit "References" heading anywhere, but the
+    // document may still be a reference list (e.g. structured under
+    // alphabetical sub-headings like "## A", "## B", ...). Gather every
+    // bullet/numbered line that looks like an APA-style reference: bullet,
+    // capital-letter author/org, eventually followed by a year-like token in
+    // parens. Accepts strict "(YYYY)", "(YYYY, Month Day)", and "(n.d.)" for
+    // undated sources. Three or more matches is enough signal that the doc
+    // is a bibliography.
+    const refBulletRe =
+      /^\s*(?:[-*•]|\d+[.)])\s+[A-Z].*\((?:(?:19|20)\d{2}|[Nn]\.\s*[Dd]\.)/;
+    const bulletMatches = lines.filter((l) => refBulletRe.test(l));
+    if (bulletMatches.length >= 3) {
+      return bulletMatches.join('\n');
+    }
+
     return null;
   }
 
@@ -357,9 +376,12 @@ function extractInTextCitations(text: string): InTextCitation[] {
     });
   }
 
-  // --- APA narrative: Smith (2020) ---
+  // --- APA narrative: Smith (2020), Russell Group (2023), Mollick & Mollick (2023) ---
+  // The middle quantifier is `*` (not `?`) and an extra alternative `\s+[A-Z]…`
+  // is included so multi-word author/org surnames such as "Russell Group" or
+  // "Artificial Intelligence Act" aren't truncated to their last word.
   const apaNarrativeRe =
-    /\b([A-Z][a-zA-Z\-']+(?:\s+(?:&|and)\s+[A-Z][a-zA-Z\-']+|\s+et\s+al\.)?)\s+\(((?:19|20)\d{2})\)/g;
+    /\b([A-Z][a-zA-Z\-']+(?:\s+[A-Z][a-zA-Z\-']+|\s+(?:&|and)\s+[A-Z][a-zA-Z\-']+|\s+et\s+al\.)*)\s+\(((?:19|20)\d{2})\)/g;
 
   for (const m of text.matchAll(apaNarrativeRe)) {
     const authors = m[1]
