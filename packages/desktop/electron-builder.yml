@@ -8,13 +8,16 @@ files:
   - package.json
 publish:
   provider: github
+# electron-builder's own notarize wrapper has been buggy across 24.x/26.x.
+# We disable it (notarize: false) and call @electron/notarize directly from afterSign.
+afterSign: ./scripts/notarize.js
 mac:
   target:
     - dmg
     - zip
   category: public.app-category.education
-  identity: null  # skip code signing (set CSC_LINK env var to enable)
-  notarize: false  # flip to true once signing is configured
+  hardenedRuntime: true
+  notarize: false
 win:
   target: nsis
 linux:
