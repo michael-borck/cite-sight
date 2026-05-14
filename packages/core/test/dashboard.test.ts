@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { computeVerdict } from '../src/dashboard/verdict.js';
+import { gatherPriorityItems } from '../src/dashboard/priorityList.js';
 import type { ReferenceAnalysisResult } from '../src/types.js';
 
 function makeRefs(overrides: Partial<ReferenceAnalysisResult> = {}): ReferenceAnalysisResult {
@@ -122,5 +123,116 @@ describe('computeVerdict', () => {
     );
     expect(result.toCheckCount).toBe(1);
     expect(result.breakdown.notFound).toBe(1);
+  });
+});
+
+describe('gatherPriorityItems', () => {
+  it('returns an empty list when nothing is flagged', () => {
+    const items = gatherPriorityItems(
+      makeRefs({
+        verifications: [
+          { reference: {} as any, status: 'verified', formatIssues: [], confidenceScore: 1, flags: [] },
+        ],
+      }),
+      new Set(),
+    );
+    expect(items).toHaveLength(0);
+  });
+
+  it('emits not_found items from suspicious-or-not-found verifications', () => {
+    const items = gatherPriorityItems(
+      makeRefs({
+        verifications: [
+          {
+            reference: { raw: 'Smith, J. (2024). The lost paper.', authors: ['Smith, J.'], title: 'The lost paper', year: 2024, detectedStyle: 'apa' } as any,
+            status: 'not_found',
+            formatIssues: [],
+            confidenceScore: 0.4,
+            flags: [],
+          },
+        ],
+      }),
+      new Set(),
+    );
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({
+      itemKey: 'ref:0',
+      category: 'not_found',
+      headline: 'Smith, J. (2024). The lost paper.',
+      sourceText: 'Smith, J. (2024). The lost paper.',
+    });
+  });
+
+  it('emits suspect items with matched-work metadata', () => {
+    const items = gatherPriorityItems(
+      makeRefs({
+        verifications: [
+          {
+            reference: { raw: 'Mollick & Mollick (2023). SSRN preprint.', authors: ['Mollick', 'Mollick'], title: 'SSRN preprint', year: 2023, detectedStyle: 'apa' } as any,
+            status: 'suspicious',
+            formatIssues: [],
+            confidenceScore: 0.6,
+            flags: [],
+            matchedWork: { title: 'A different title', year: 2023, doi: '10.x/y', source: 'crossref' as any },
+          },
+        ],
+      }),
+      new Set(),
+    );
+    expect(items).toHaveLength(1);
+    expect(items[0].category).toBe('suspect');
+    expect(items[0].matched?.title).toBe('A different title');
+  });
+
+  it('emits orphan items from unmatched in-text citations', () => {
+    const items = gatherPriorityItems(
+      makeRefs({
+        crossReference: {
+          unmatchedBibliography: [],
+          unmatchedInText: [
+            { raw: '(Borck, 2026)', authors: ['Borck'], year: 2026, position: 100 },
+          ],
+        },
+      }),
+      new Set(),
+    );
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({
+      itemKey: 'intext:0',
+      category: 'orphan',
+      headline: '(Borck, 2026)',
+      sourceText: '(Borck, 2026)',
+    });
+  });
+
+  it('skips items whose itemKey is in the dismissed set', () => {
+    const items = gatherPriorityItems(
+      makeRefs({
+        verifications: [
+          { reference: { raw: 'A' } as any, status: 'not_found', formatIssues: [], confidenceScore: 0.3, flags: [] },
+          { reference: { raw: 'B' } as any, status: 'not_found', formatIssues: [], confidenceScore: 0.3, flags: [] },
+        ],
+      }),
+      new Set(['ref:0']),
+    );
+    expect(items).toHaveLength(1);
+    expect(items[0].itemKey).toBe('ref:1');
+  });
+
+  it('orders items: not_found, then suspect, then orphan', () => {
+    const items = gatherPriorityItems(
+      makeRefs({
+        verifications: [
+          { reference: { raw: 'Suspect ref' } as any, status: 'suspicious', formatIssues: [], confidenceScore: 0.5, flags: [] },
+          { reference: { raw: 'Not found ref' } as any, status: 'not_found', formatIssues: [], confidenceScore: 0.3, flags: [] },
+        ],
+        crossReference: {
+          unmatchedBibliography: [],
+          unmatchedInText: [{ raw: '(Borck, 2026)', authors: ['Borck'], year: 2026, position: 100 }],
+        },
+      }),
+      new Set(),
+    );
+    expect(items.map((i) => i.category)).toEqual(['not_found', 'suspect', 'orphan']);
   });
 });
