@@ -10,7 +10,7 @@ publish:
   provider: github
 # electron-builder's own notarize wrapper has been buggy across 24.x/26.x.
 # We disable it (notarize: false) and call @electron/notarize directly from afterSign.
-afterSign: ./scripts/notarize.js
+afterSign: ./scripts/notarize.cjs
 mac:
   target:
     - dmg
