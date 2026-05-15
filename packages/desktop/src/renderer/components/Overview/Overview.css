@@ -1,0 +1,87 @@
+.hero-card {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+  margin-bottom: 0.8rem;
+}
+
+.hero-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.7rem;
+  gap: 1rem;
+}
+
+.hero-filename {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #222;
+}
+
+.hero-meta {
+  font-size: 0.78rem;
+  color: #888;
+  margin-top: 0.15rem;
+}
+
+.verdict-pill {
+  display: inline-block;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.verdict-all_clear {
+  background: #e8f5ec;
+  color: #127a3a;
+}
+
+.verdict-caution {
+  background: #fff4e8;
+  color: #a45a00;
+}
+
+.verdict-issues {
+  background: #fde8e8;
+  color: #a00;
+}
+
+.proportion-bar {
+  height: 26px;
+  background: #f4f4f4;
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.proportion-segment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 0.3s ease;
+}
+
+.seg-verified {
+  background: #127a3a;
+}
+
+.seg-tocheck {
+  background: #a00;
+}
+
+.seg-unverifiable {
+  background: #888;
+}
+
+.hero-breakdown {
+  font-size: 0.78rem;
+  color: #666;
+  margin-top: 0.4rem;
+}
