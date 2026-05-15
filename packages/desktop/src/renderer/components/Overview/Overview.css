@@ -226,3 +226,52 @@
 .priority-action-fabricated:hover {
   background: #fbcccc;
 }
+
+/* === things-to-check hero === */
+
+.hero-section-title {
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 0.6rem;
+  color: #222;
+}
+
+.filter-chips {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+}
+
+.filter-chip {
+  border: 1px solid transparent;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.filter-chip.off {
+  opacity: 0.35;
+  text-decoration: line-through;
+}
+
+.chip-not_found { background: #fbb; color: #700; }
+.chip-suspect   { background: #fed8a4; color: #7a4500; }
+.chip-orphan    { background: #cfe2ff; color: #054; }
+
+.priority-empty {
+  padding: 1rem;
+  text-align: center;
+  color: #666;
+  background: #fafafa;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.priority-list {
+  display: flex;
+  flex-direction: column;
+}
