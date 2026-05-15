@@ -17,3 +17,6 @@ export { isPrivateUrl } from './references/ssrf.js';
 
 // Re-export all types
 export type * from './types.js';
+
+// Dashboard module — pure functions + types for the new Overview UI
+export * from './dashboard/index.js';
