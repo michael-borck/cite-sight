@@ -391,3 +391,14 @@
   color: var(--accent); font-size: 0.85rem;
   font-family: var(--font-mono);
 }
+
+.sidebar-divider {
+  margin: 0.6rem 0.5rem 0.3rem 0.5rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid #ddd;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #888;
+  font-weight: 600;
+}

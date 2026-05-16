@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import type {
   AnalysisResult,
   ReferenceVerification,
@@ -6,6 +6,7 @@ import type {
   WritingPattern,
   PatternCategory,
 } from '@michaelborck/cite-sight-core';
+import { OverviewPanel } from './Overview/index.js';
 import './ResultsDashboard.css';
 
 interface Props {
@@ -55,48 +56,6 @@ function bar(value: number, max = 100): number {
 }
 
 // ─── sub-panels ───────────────────────────────────────────────────────────────
-
-function OverviewPanel({ results }: Props) {
-  const { readability, writingPatterns, processingTime } = results;
-  const totalPatterns = writingPatterns.patterns.length;
-
-  return (
-    <div className="panel-card">
-      <div className="panel-header">
-        <h3>Analysis Overview</h3>
-      </div>
-      <div className="panel-body">
-        <div className="overview-metrics">
-          <div className="overview-metric-row">
-            <span className="oml">Readability (Flesch)</span>
-            <div className="ombar-wrap">
-              <div className="ombar" style={{ width: `${bar(readability.fleschReadingEase)}%`, background: 'var(--verified)' }} />
-            </div>
-            <span className="omv">{readability.fleschReadingEase.toFixed(1)}</span>
-          </div>
-          <div className="overview-metric-row">
-            <span className="oml">F-K Grade Level</span>
-            <div className="ombar-wrap">
-              <div className="ombar" style={{ width: `${bar(readability.fleschKincaidGrade, 20)}%`, background: 'var(--accent)' }} />
-            </div>
-            <span className="omv">{readability.fleschKincaidGrade.toFixed(1)}</span>
-          </div>
-          <div className="overview-metric-row">
-            <span className="oml">Writing Patterns</span>
-            <div className="ombar-wrap">
-              <div className="ombar" style={{ width: `${bar(totalPatterns, 20)}%`, background: 'var(--accent)' }} />
-            </div>
-            <span className="omv">{totalPatterns} found</span>
-          </div>
-        </div>
-
-        <div className="processing-info">
-          Analysed {results.fileName} in {(processingTime / 1000).toFixed(2)}s
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function ScreenshotThumbnail({ path }: { path: string }) {
   const [src, setSrc] = useState<string | null>(null);
@@ -509,12 +468,12 @@ function WritingPatternsPanel({ results }: Props) {
 // ─── sidebar sections ─────────────────────────────────────────────────────────
 
 const SECTIONS = [
-  { id: 'overview',    label: 'Overview',    icon: '\u25C6' },
-  { id: 'references',  label: 'References',  icon: '\uD83D\uDCDA' },
-  { id: 'crossrefs',   label: 'Cross-refs',  icon: '\u21C4' },
-  { id: 'quality',     label: 'Quality',     icon: '\u270E' },
-  { id: 'words',       label: 'Words',       icon: '\uD83D\uDD22' },
-  { id: 'patterns',    label: 'Patterns',    icon: '\uD83D\uDD0D' },
+  { id: 'overview',    label: 'Overview',    icon: '\u25C6', group: 'primary' as const },
+  { id: 'references',  label: 'References',  icon: '\uD83D\uDCDA', group: 'primary' as const },
+  { id: 'crossrefs',   label: 'Cross-refs',  icon: '\u21C4', group: 'primary' as const },
+  { id: 'quality',     label: 'Quality',     icon: '\u270E', group: 'bonus' as const },
+  { id: 'words',       label: 'Words',       icon: '\uD83D\uDD22', group: 'bonus' as const },
+  { id: 'patterns',    label: 'Patterns',    icon: '\uD83D\uDD0D', group: 'bonus' as const },
 ];
 
 // ─── main component ───────────────────────────────────────────────────────────
@@ -542,19 +501,23 @@ export function ResultsDashboard({ results }: Props) {
       <aside className="results-sidebar">
         <div className="sidebar-filename">{results.fileName}</div>
         <nav className="sidebar-nav">
-          {SECTIONS.map(s => {
+          {SECTIONS.map((s, idx) => {
+            const prev = SECTIONS[idx - 1];
+            const showDivider = prev && prev.group === 'primary' && s.group === 'bonus';
             const badge = getBadge(s.id);
             return (
-              <button
-                key={s.id}
-                className={`sidebar-link ${activeSection === s.id ? 'active' : ''}`}
-                onClick={() => setActiveSection(s.id)}
-              >
-                <span><span className="icon">{s.icon}</span> {s.label}</span>
-                {badge.count !== null && (
-                  <span className={`sidebar-badge ${badge.warn ? 'warn' : ''}`}>{badge.count}</span>
-                )}
-              </button>
+              <Fragment key={s.id}>
+                {showDivider && <div className="sidebar-divider">Bonus signals</div>}
+                <button
+                  className={`sidebar-link ${activeSection === s.id ? 'active' : ''}`}
+                  onClick={() => setActiveSection(s.id)}
+                >
+                  <span><span className="icon">{s.icon}</span> {s.label}</span>
+                  {badge.count !== null && (
+                    <span className={`sidebar-badge ${badge.warn ? 'warn' : ''}`}>{badge.count}</span>
+                  )}
+                </button>
+              </Fragment>
             );
           })}
         </nav>
