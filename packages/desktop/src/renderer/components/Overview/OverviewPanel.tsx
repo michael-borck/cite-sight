@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { AnalysisResult } from '@michaelborck/cite-sight-core';
-import { computeVerdict, gatherPriorityItems } from '@michaelborck/cite-sight-core';
+import { computeVerdict, gatherPriorityItems } from '@michaelborck/cite-sight-core/dashboard';
 import { VerdictHero } from './VerdictHero.js';
 import { ThingsToCheckHero } from './ThingsToCheckHero.js';
 import { UndoToast } from './UndoToast.js';

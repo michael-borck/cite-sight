@@ -27,6 +27,11 @@
       "import": "./dist/index.js",
       "require": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./dashboard": {
+      "import": "./dist/dashboard/index.js",
+      "require": "./dist/dashboard/index.js",
+      "types": "./dist/dashboard/index.d.ts"
     }
   },
   "files": [
