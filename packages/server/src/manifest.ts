@@ -1,18 +1,5 @@
-// Capability manifest for the lens analyser family. Served at GET /manifest.
-// Mirrors /manifest.json at the cite-sight repo root (the canonical copy the
-// family's table generator reads) — keep the two in sync.
-//
-// cite-sight is the family's TypeScript member: citation analysis is an explicit
-// content interpretation of a document (like conversation-analyser), so
-// auto_routable is false — auto-analyser never routes to it automatically.
-export const MANIFEST = {
-  name: 'cite-sight',
-  version: '0.3.6',
-  role: 'analyser',
-  accepts: ['citations', 'references', 'document'],
-  extensions: [] as string[],
-  auto_routable: false,
-  produces: 'CiteSightReport',
-  language: 'typescript',
-  pypi: false,
-} as const;
+// MANIFEST now lives in cite-sight-core (shared by the server and the CLI), so the
+// family metadata has one source. Re-exported here so existing imports
+// (`./manifest.js`) keep working. Canonical doc copy: /manifest.json at the repo
+// root, which the family's table generator reads.
+export { MANIFEST } from '@michaelborck/cite-sight-core';

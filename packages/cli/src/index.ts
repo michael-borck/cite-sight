@@ -3,7 +3,7 @@
 import { program } from 'commander';
 import chalk from 'chalk';
 import { resolve } from 'path';
-import { analyzePipeline } from '@michaelborck/cite-sight-core';
+import { analyzePipeline, MANIFEST } from '@michaelborck/cite-sight-core';
 import type { AnalysisResult, ProcessingOptions, ProgressCallback } from '@michaelborck/cite-sight-core';
 
 // -------------------------------------------------------
@@ -309,6 +309,14 @@ program
     verbose: boolean;
   }) => {
     await runAnalysis(file, opts);
+  });
+
+// Family contract: cite-sight manifest
+program
+  .command('manifest')
+  .description('Print the capability manifest as JSON (lens analyser family)')
+  .action(() => {
+    console.log(JSON.stringify(MANIFEST, null, 2));
   });
 
 program.parseAsync(process.argv).catch((err: unknown) => {
