@@ -1,0 +1,11 @@
+{
+  "name": "cite-sight",
+  "version": "0.3.6",
+  "role": "analyser",
+  "accepts": ["citations", "references", "document"],
+  "extensions": [],
+  "auto_routable": false,
+  "produces": "CiteSightReport",
+  "language": "typescript",
+  "pypi": false
+}

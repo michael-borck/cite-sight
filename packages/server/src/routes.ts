@@ -7,6 +7,7 @@ import { analyzePipeline } from '@michaelborck/cite-sight-core';
 import type { ProcessingOptions } from '@michaelborck/cite-sight-core';
 import { isQueueAvailable, addJob, getJob } from './queue.js';
 import { fileCleanup } from './middleware.js';
+import { MANIFEST } from './manifest.js';
 
 // ---------------------------------------------------------------------------
 // Multer configuration
@@ -159,4 +160,54 @@ router.get('/api/health', (_req, res) => {
     version: '1.0.0',
     redis: isQueueAvailable(),
   });
+});
+
+// ---------------------------------------------------------------------------
+// lens analyser family contract
+// ---------------------------------------------------------------------------
+// Synchronous, flat-result endpoints matching the family contract (POST /analyse,
+// GET /health, GET /manifest), alongside the /api/* routes the cite-sight
+// frontends use. These let auto-analyser and other family tools call cite-sight
+// like any other analyser. /analyse always runs synchronously (no job queue) and
+// returns the report directly (no envelope), per the family convention.
+
+router.post('/analyse', fileCleanup, upload.single('file'), async (req, res, next) => {
+  if (!req.file) {
+    res.status(400).json({ error: 'No file uploaded. Use field name "file".' });
+    return;
+  }
+
+  const ext = path.extname(req.file.originalname).toLowerCase();
+  const filePath = req.file.path + ext;
+  await rename(req.file.path, filePath);
+
+  const body = req.body as Record<string, string | undefined>;
+  const citationStyle = (['auto', 'apa', 'mla', 'chicago'].includes(body['citationStyle'] ?? '')
+    ? body['citationStyle']
+    : 'auto') as ProcessingOptions['citationStyle'];
+
+  const options: ProcessingOptions = {
+    citationStyle,
+    checkUrls: body['checkUrls'] !== 'false',
+    checkDoi: body['checkDoi'] !== 'false',
+    checkInText: body['checkInText'] !== 'false',
+    screenshotUrls: false,
+  };
+
+  try {
+    const result = await analyzePipeline(filePath, options);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  } finally {
+    await unlink(filePath).catch(() => undefined);
+  }
+});
+
+router.get('/health', (_req, res) => {
+  res.json({ status: 'ok', version: MANIFEST.version });
+});
+
+router.get('/manifest', (_req, res) => {
+  res.json(MANIFEST);
 });
