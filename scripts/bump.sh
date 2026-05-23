@@ -79,13 +79,23 @@ echo "Updating CLI @michaelborck/cite-sight-core dependency to ^$VERSION..."
 cd "$ROOT_DIR/packages/cli"
 npm pkg set "dependencies.@michaelborck/cite-sight-core=^$VERSION"
 
+# --- keep the lens family manifest version in sync --------------------------
+# The capability manifest lives in two places that npm version does not touch:
+# the TS source (core/src/manifest.ts) served at /manifest and via the CLI, and
+# the language-neutral manifest.json the family table generator reads.
+
+echo "Updating manifest version (core/src/manifest.ts, manifest.json)..."
+sed -i.bak -E "s/(version: ')[0-9]+\.[0-9]+\.[0-9]+(')/\1$VERSION\2/" "$ROOT_DIR/packages/core/src/manifest.ts"
+sed -i.bak -E "s/(\"version\": \")[0-9]+\.[0-9]+\.[0-9]+(\")/\1$VERSION\2/" "$ROOT_DIR/manifest.json"
+rm -f "$ROOT_DIR/packages/core/src/manifest.ts.bak" "$ROOT_DIR/manifest.json.bak"
+
 # --- show diff & commit -----------------------------------------------------
 
 cd "$ROOT_DIR"
 
 echo ""
 echo "=== Changes ==="
-git diff -- '*.json'
+git diff -- '*.json' packages/core/src/manifest.ts
 echo ""
 
 read -rp "Commit and tag v$VERSION? [y/N] " confirm
@@ -94,7 +104,7 @@ if [[ "$confirm" != [yY] ]]; then
   exit 0
 fi
 
-git add -A '*.json'
+git add -A '*.json' packages/core/src/manifest.ts
 git commit -m "chore: bump all package versions to $VERSION"
 git tag -a "v$VERSION" -m "v$VERSION"
 
