@@ -82,12 +82,14 @@ export async function searchOpenAlex(
       },
     });
 
-    if (!res.ok) return [];
+    // Surface lookup failures (vs genuine empty results) so the verifier can
+    // flag a reference as unverifiable rather than confidently "not found".
+    if (!res.ok) throw new Error(`OpenAlex search failed: HTTP ${res.status}`);
 
     const data = await res.json() as { results?: OAWork[] };
     const works = data?.results ?? [];
     return works.map(workToAcademicWork);
-  } catch {
-    return [];
+  } catch (err) {
+    throw err instanceof Error ? err : new Error(`OpenAlex search failed: ${String(err)}`);
   }
 }

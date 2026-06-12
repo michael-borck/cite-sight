@@ -93,15 +93,17 @@ export async function searchCrossref(
       headers: { 'User-Agent': 'CiteSight/1.0 (mailto:' + (mailto ?? 'unknown') + ')' },
     });
 
-    if (!res.ok) return [];
+    // A non-OK status is a lookup failure, not "no such work" — surface it so
+    // callers can distinguish an API outage from a genuine empty result.
+    if (!res.ok) throw new Error(`Crossref search failed: HTTP ${res.status}`);
 
     const data = await res.json() as {
       message?: { items?: CrossrefItem[] };
     };
     const items = data?.message?.items ?? [];
     return items.map(itemToAcademicWork);
-  } catch {
-    return [];
+  } catch (err) {
+    throw err instanceof Error ? err : new Error(`Crossref search failed: ${String(err)}`);
   }
 }
 

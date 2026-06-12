@@ -77,12 +77,14 @@ export async function searchSemanticScholar(
       },
     });
 
-    if (!res.ok) return [];
+    // Surface lookup failures (vs genuine empty results) so the verifier can
+    // flag a reference as unverifiable rather than confidently "not found".
+    if (!res.ok) throw new Error(`Semantic Scholar search failed: HTTP ${res.status}`);
 
     const data = await res.json() as { data?: S2Paper[] };
     const papers = data?.data ?? [];
     return papers.map(paperToAcademicWork);
-  } catch {
-    return [];
+  } catch (err) {
+    throw err instanceof Error ? err : new Error(`Semantic Scholar search failed: ${String(err)}`);
   }
 }
