@@ -16,20 +16,40 @@ import { MANIFEST } from './manifest.js';
 const ACCEPTED_EXTENSIONS = new Set(['.pdf', '.docx', '.txt', '.md', '.json']);
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 
+// The MIME types a browser sends for each accepted extension. Used as a
+// defense-in-depth cross-check against the extension — a mismatch (e.g. an
+// executable renamed to .pdf) is rejected up front. (The downstream parsers
+// also reject content that isn't really a PDF/DOCX, so this is one layer of
+// several, not the sole guard.)
+const EXTENSION_MIME: Record<string, Set<string>> = {
+  '.pdf': new Set(['application/pdf', 'application/octet-stream']),
+  '.docx': new Set([
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/octet-stream',
+    'application/zip',
+  ]),
+  '.txt': new Set(['text/plain', 'application/octet-stream']),
+  '.md': new Set(['text/markdown', 'text/plain', 'text/x-markdown', 'application/octet-stream']),
+  '.json': new Set(['application/json', 'text/plain', 'application/octet-stream']),
+};
+
 const upload = multer({
   dest: tmpdir(),
-  limits: { fileSize: MAX_FILE_SIZE_BYTES },
+  limits: { fileSize: MAX_FILE_SIZE_BYTES, files: 1 },
   fileFilter(_req, file, cb) {
     const ext = path.extname(file.originalname).toLowerCase();
-    if (ACCEPTED_EXTENSIONS.has(ext)) {
-      cb(null, true);
-    } else {
-      cb(
-        Object.assign(new Error(`Unsupported file type: ${ext}`), {
-          status: 415,
-        }),
-      );
+    if (!ACCEPTED_EXTENSIONS.has(ext)) {
+      cb(Object.assign(new Error('Unsupported file type'), { status: 415 }));
+      return;
     }
+    // Reject an obvious extension/MIME mismatch. An empty/missing mimetype is
+    // allowed through (some clients omit it); the parser is the backstop.
+    const allowed = EXTENSION_MIME[ext];
+    if (file.mimetype && allowed && !allowed.has(file.mimetype.toLowerCase())) {
+      cb(Object.assign(new Error('File content does not match its extension'), { status: 415 }));
+      return;
+    }
+    cb(null, true);
   },
 });
 

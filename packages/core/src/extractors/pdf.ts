@@ -1,5 +1,6 @@
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import type { ExtractedDocument } from '../types.js';
+import { assertInputSize, clampText, MAX_PDF_PAGES, MAX_TEXT_CHARS } from './limits.js';
 
 // Point workerSrc at the bundled worker file so pdfjs-dist doesn't throw
 // "No GlobalWorkerOptions.workerSrc specified". In Node the worker won't
@@ -19,6 +20,8 @@ export async function extractPdf(
   buffer: Buffer,
   fileName: string,
 ): Promise<ExtractedDocument> {
+  assertInputSize(buffer.byteLength, fileName);
+
   // pdfjs-dist expects a Uint8Array (or similar TypedArray), not a Buffer.
   // Buffer extends Uint8Array in Node.js, but we use Uint8Array explicitly to
   // keep the typing clean and avoid any future incompatibilities.
@@ -32,8 +35,11 @@ export async function extractPdf(
   });
 
   const pdf = await loadingTask.promise;
-  const pageCount = pdf.numPages;
+  // Bound the page walk: a crafted PDF can declare a vast page count to exhaust
+  // CPU/memory in this loop.
+  const pageCount = Math.min(pdf.numPages, MAX_PDF_PAGES);
   const pageTexts: string[] = [];
+  let charCount = 0;
 
   for (let pageNumber = 1; pageNumber <= pageCount; pageNumber++) {
     const page = await pdf.getPage(pageNumber);
@@ -49,12 +55,16 @@ export async function extractPdf(
       .trim();
 
     pageTexts.push(pageText);
+    // Stop early once we have more text than analysis will keep — avoids
+    // building a multi-GB string from a text-bomb PDF.
+    charCount += pageText.length + 1;
+    if (charCount > MAX_TEXT_CHARS) break;
   }
 
   return {
-    text: pageTexts.join('\n'),
+    text: clampText(pageTexts.join('\n')),
     fileName,
     fileType: 'pdf',
-    pageCount,
+    pageCount: pdf.numPages,
   };
 }

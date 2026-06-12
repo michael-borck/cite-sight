@@ -221,6 +221,11 @@ export async function verifyWebSource(ref: ParsedReference): Promise<AcademicWor
     return null;
   }
 
+  // The URL is attacker-controlled (from the uploaded document). Block private/
+  // internal addresses and non-http(s) schemes before any source-specific
+  // handler embeds or fetches it. verifyWebPage repeats this defensively.
+  if (isPrivateUrl(ref.url)) return null;
+
   const sourceType = detectSourceType(ref.url);
 
   switch (sourceType) {

@@ -1,4 +1,5 @@
 import { BrowserWindow } from 'electron';
+import { isPrivateUrl } from '@michaelborck/cite-sight-core';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -6,6 +7,13 @@ import { tmpdir } from 'node:os';
 const SCREENSHOT_TIMEOUT_MS = 15_000;
 
 export async function takeScreenshot(url: string): Promise<string> {
+  // The URL comes from an untrusted uploaded document. Loading it in a real
+  // browser window is an SSRF sink — block private/internal addresses and
+  // non-http(s) schemes (file://, etc.) before it ever reaches loadURL.
+  if (isPrivateUrl(url)) {
+    throw new Error(`Refusing to screenshot a private or non-web URL: ${url}`);
+  }
+
   let win: BrowserWindow | null = null;
 
   try {
@@ -16,6 +24,7 @@ export async function takeScreenshot(url: string): Promise<string> {
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
+        sandbox: true,
         javascript: true,
       },
     });

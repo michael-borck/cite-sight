@@ -1,11 +1,31 @@
 import { ipcMain, dialog, BrowserWindow, app } from 'electron';
 import { analyzePipeline } from '@michaelborck/cite-sight-core';
 import { takeScreenshot } from './screenshot.js';
-import { readdirSync, readFileSync, existsSync } from 'node:fs';
-import { join, extname } from 'node:path';
+import { readdirSync, readFileSync, existsSync, realpathSync } from 'node:fs';
+import { join, extname, basename, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
 import type { ProcessingOptions, AnalysisResult } from '@michaelborck/cite-sight-core';
 
 const SUPPORTED_EXTENSIONS = new Set(['.pdf', '.docx', '.txt', '.md']);
+
+// Screenshots are the only files the renderer may read back, and they live in
+// the OS temp dir with this prefix (see screenshot.ts). Anything else is a
+// path-traversal attempt (e.g. ~/.ssh/id_rsa) and is refused.
+const SCREENSHOT_PREFIX = 'cite-sight-screenshot-';
+
+function isAllowedScreenshotPath(filePath: string): boolean {
+  try {
+    const tmpReal = realpathSync(tmpdir());
+    const fileReal = realpathSync(resolve(filePath));
+    return (
+      (fileReal === tmpReal || fileReal.startsWith(tmpReal + '/')) &&
+      basename(fileReal).startsWith(SCREENSHOT_PREFIX) &&
+      extname(fileReal).toLowerCase() === '.png'
+    );
+  } catch {
+    return false;
+  }
+}
 
 /** Recursively collect supported files from a directory. */
 function collectFiles(dir: string): string[] {
@@ -93,8 +113,11 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     return takeScreenshot(url);
   });
 
-  // Read a screenshot file and return as data URL for renderer use
+  // Read a screenshot file and return as data URL for renderer use. The path
+  // is constrained to cite-sight's own screenshots in the temp dir so a
+  // compromised renderer can't read arbitrary files off disk.
   ipcMain.handle('cite-sight:read-screenshot', (_event, filePath: string) => {
+    if (typeof filePath !== 'string' || !isAllowedScreenshotPath(filePath)) return null;
     if (!existsSync(filePath)) return null;
     const data = readFileSync(filePath);
     return `data:image/png;base64,${data.toString('base64')}`;

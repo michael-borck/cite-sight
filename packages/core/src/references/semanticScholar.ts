@@ -1,5 +1,8 @@
 import type { AcademicWork } from '../types.js';
 
+/** Hard timeout for a single external API request. */
+const API_TIMEOUT_MS = 10_000;
+
 // ============================================================
 // Response shape (Semantic Scholar Graph API)
 // ============================================================
@@ -75,6 +78,7 @@ export async function searchSemanticScholar(
       headers: {
         'User-Agent': 'CiteSight/1.0',
       },
+      signal: AbortSignal.timeout(API_TIMEOUT_MS),
     });
 
     // Surface lookup failures (vs genuine empty results) so the verifier can

@@ -1,4 +1,5 @@
 import type { ExtractedDocument } from '../types.js';
+import { assertInputSize, clampText } from './limits.js';
 
 /** File extensions that this extractor handles. */
 export const TEXT_EXTENSIONS = new Set(['.txt', '.md', '.json']);
@@ -14,8 +15,9 @@ export function extractText(
   fileName: string,
   fileType: string,
 ): ExtractedDocument {
+  assertInputSize(buffer.byteLength, fileName);
   return {
-    text: buffer.toString('utf-8'),
+    text: clampText(buffer.toString('utf-8')),
     fileName,
     fileType,
     // Plain-text formats have no inherent page structure.

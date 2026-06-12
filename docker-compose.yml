@@ -5,7 +5,10 @@ services:
       - "3000:3000"
     environment:
       - PORT=3000
-      - CORS_ORIGIN=*
+      # The bundled web UI is served same-origin, so no CORS grant is needed.
+      # To expose the API to a separately-hosted frontend, set CORS_ORIGIN to
+      # that origin (or "*" to allow any — not recommended for public deploys).
+      # - CORS_ORIGIN=https://your-frontend.example
       - REDIS_URL=redis://redis:6379
     restart: unless-stopped
     labels:

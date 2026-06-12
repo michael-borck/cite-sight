@@ -1,5 +1,8 @@
 import type { AcademicWork } from '../types.js';
 
+/** Hard timeout for a single external API request. */
+const API_TIMEOUT_MS = 10_000;
+
 // ============================================================
 // Rate limiting
 // ============================================================
@@ -91,6 +94,7 @@ export async function searchCrossref(
     const url = `https://api.crossref.org/works?${params.toString()}`;
     const res = await fetch(url, {
       headers: { 'User-Agent': 'CiteSight/1.0 (mailto:' + (mailto ?? 'unknown') + ')' },
+      signal: AbortSignal.timeout(API_TIMEOUT_MS),
     });
 
     // A non-OK status is a lookup failure, not "no such work" — surface it so
@@ -126,6 +130,7 @@ export async function lookupDoi(
 
     const res = await fetch(url, {
       headers: { 'User-Agent': 'CiteSight/1.0 (mailto:' + (mailto ?? 'unknown') + ')' },
+      signal: AbortSignal.timeout(API_TIMEOUT_MS),
     });
 
     if (res.status === 404) return null;

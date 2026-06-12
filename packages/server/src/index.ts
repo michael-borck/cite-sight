@@ -14,7 +14,10 @@ const __dirname = dirname(__filename);
 // ---------------------------------------------------------------------------
 
 const PORT = parseInt(process.env['PORT'] ?? '3001', 10);
-const CORS_ORIGIN = process.env['CORS_ORIGIN'] ?? '*';
+// Default to same-origin only: the bundled SPA is served from this server, so
+// it needs no cross-origin grant. A public/cross-origin API must opt in by
+// setting CORS_ORIGIN explicitly (e.g. a specific origin, or "*" to allow any).
+const CORS_ORIGIN = process.env['CORS_ORIGIN'];
 
 // ---------------------------------------------------------------------------
 // App setup
@@ -22,18 +25,30 @@ const CORS_ORIGIN = process.env['CORS_ORIGIN'] ?? '*';
 
 const app = express();
 
+// Baseline security headers (cheap, no dependency). Avoids MIME-sniffing,
+// framing/clickjacking, and referrer leakage.
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  next();
+});
+
 // Parse JSON and URL-encoded bodies (multer handles multipart)
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// CORS
-app.use(
-  cors({
-    origin: CORS_ORIGIN,
-    methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type'],
-  }),
-);
+// CORS — only enabled when an origin is explicitly configured. Same-origin
+// requests (the bundled SPA) don't need it; cross-origin callers opt in.
+if (CORS_ORIGIN) {
+  app.use(
+    cors({
+      origin: CORS_ORIGIN,
+      methods: ['GET', 'POST'],
+      allowedHeaders: ['Content-Type'],
+    }),
+  );
+}
 
 // Request logging
 app.use(requestLogger);
@@ -61,7 +76,7 @@ app.use(errorHandler);
 
 const server = app.listen(PORT, () => {
   console.log(`[cite-sight-server] Listening on port ${PORT}`);
-  console.log(`[cite-sight-server] CORS origin: ${CORS_ORIGIN}`);
+  console.log(`[cite-sight-server] CORS: ${CORS_ORIGIN ? `enabled for ${CORS_ORIGIN}` : 'same-origin only (set CORS_ORIGIN to allow cross-origin)'}`);
   console.log(`[cite-sight-server] Redis/BullMQ: ${process.env['REDIS_URL'] ? 'enabled' : 'disabled (synchronous mode)'}`);
 });
 
