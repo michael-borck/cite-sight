@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { tmpdir } from 'os';
-import { rename, unlink } from 'fs/promises';
+import { rename, unlink, open } from 'fs/promises';
 import path from 'path';
 import { analyzePipeline } from '@michaelborck/cite-sight-core';
 import type { ProcessingOptions } from '@michaelborck/cite-sight-core';
@@ -54,6 +54,46 @@ const upload = multer({
 });
 
 // ---------------------------------------------------------------------------
+// Magic-byte validation
+//
+// The extension + declared MIME can both be spoofed (rename malware.exe to
+// document.pdf). After the file is on disk we sniff its leading bytes and
+// confirm they match the claimed type, so a disguised binary is rejected
+// before any parser touches it.
+// ---------------------------------------------------------------------------
+
+const PDF_MAGIC = Buffer.from('%PDF-', 'latin1'); // 25 50 44 46 2D
+const ZIP_MAGIC = Buffer.from([0x50, 0x4b]);      // "PK" — DOCX is a zip container
+
+/** Throw a 415 if the file's first bytes don't match its extension. */
+async function assertContentMatchesExtension(filePath: string, ext: string): Promise<void> {
+  const fh = await open(filePath, 'r');
+  let head: Buffer;
+  try {
+    const buf = Buffer.alloc(16);
+    const { bytesRead } = await fh.read(buf, 0, 16, 0);
+    head = buf.subarray(0, bytesRead);
+  } finally {
+    await fh.close();
+  }
+
+  const reject = (): never => {
+    throw Object.assign(new Error('File content does not match its extension'), { status: 415 });
+  };
+
+  if (ext === '.pdf') {
+    if (!head.subarray(0, PDF_MAGIC.length).equals(PDF_MAGIC)) reject();
+  } else if (ext === '.docx') {
+    if (!head.subarray(0, ZIP_MAGIC.length).equals(ZIP_MAGIC)) reject();
+  } else {
+    // .txt / .md / .json are text formats with no signature. Reject anything
+    // that looks binary (a NUL byte in the head is a strong binary tell — it
+    // catches an executable/PDF/zip renamed to a text extension).
+    if (head.includes(0x00)) reject();
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Concurrent upload limit
 // ---------------------------------------------------------------------------
 
@@ -95,6 +135,14 @@ router.post(
     const ext = path.extname(req.file.originalname).toLowerCase();
     const filePath = req.file.path + ext;
     await rename(req.file.path, filePath);
+
+    try {
+      await assertContentMatchesExtension(filePath, ext);
+    } catch (err) {
+      activeUploads--;
+      next(err);
+      return;
+    }
 
     // Parse options from request body (all optional, with safe defaults)
     const body = req.body as Record<string, string | undefined>;
@@ -200,6 +248,13 @@ router.post('/analyse', fileCleanup, upload.single('file'), async (req, res, nex
   const ext = path.extname(req.file.originalname).toLowerCase();
   const filePath = req.file.path + ext;
   await rename(req.file.path, filePath);
+
+  try {
+    await assertContentMatchesExtension(filePath, ext);
+  } catch (err) {
+    next(err);
+    return;
+  }
 
   const body = req.body as Record<string, string | undefined>;
   const citationStyle = (['auto', 'apa', 'mla', 'chicago'].includes(body['citationStyle'] ?? '')
