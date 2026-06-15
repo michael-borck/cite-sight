@@ -20,6 +20,7 @@ function statusLabel(s: VerificationStatus): string {
     case 'likely_valid': return 'Likely Valid';
     case 'suspicious': return 'Suspicious';
     case 'not_found': return 'Not Found';
+    case 'unverified': return 'Unverified';
     case 'format_only': return 'Format Only';
   }
 }
@@ -30,6 +31,7 @@ function statusClass(s: VerificationStatus): string {
     case 'likely_valid': return 'status-likely-valid';
     case 'suspicious': return 'status-suspicious';
     case 'not_found': return 'status-not-found';
+    case 'unverified': return 'status-format-only';
     case 'format_only': return 'status-format-only';
   }
 }

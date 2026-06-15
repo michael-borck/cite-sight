@@ -293,9 +293,21 @@ async function verifySingleReference(
       const webResult = await verifyWebSource(ref);
       if (webResult) {
         const sim = ref.title ? titleSimilarity(ref.title, webResult.title) : 0;
-        if (sim >= TITLE_FLOOR || !ref.title) {
+        // Word-overlap alone misses the common book case: a library stores only
+        // the *main* title ("Hooked") while the citation carries title+subtitle
+        // ("Hooked: How to build habit-forming products"), so Jaccard is low
+        // even though one title is wholly contained in the other. Accept such a
+        // containment match only when the author also corroborates — that pair
+        // is decisive where a bare 1–2 word containment would not be.
+        const { containment, smallerSize } = titleContainment(ref.title, webResult.title);
+        const authorOk = authorCorroboration(ref.authors, webResult.authors) === 'match';
+        const containmentMatch = authorOk && smallerSize >= 1 && containment >= 0.8;
+        if (sim >= TITLE_FLOOR || containmentMatch || !ref.title) {
           matched = webResult;
-          similarity = sim;
+          // A containment+author match is as trustworthy as a moderate word
+          // overlap for a structured source; floor the similarity so the verdict
+          // below treats it as a solid (not borderline) match.
+          similarity = containmentMatch ? Math.max(sim, 0.6) : sim;
           isWebSource = true;
         }
       }
@@ -331,12 +343,18 @@ async function verifySingleReference(
     status = assessment.status;
     confidenceScore = assessment.confidence;
     flags.push(...assessment.flags);
+  } else if (apiErrored) {
+    // Nothing matched, but a lookup failed (rate-limit / timeout / network).
+    // This is NOT a confident "not found" — the reference may well exist; we
+    // simply could not check. Report it as its own verdict so a transient
+    // outage is never mistaken for a missing or fabricated reference.
+    status = 'unverified';
+    confidenceScore = 0;
+    flags.push('verification_unavailable');
   } else {
-    // Nothing matched. Distinguish a genuine miss from a lookup that failed:
-    // a network/API error must not masquerade as a confident "not found".
+    // Nothing matched and every lookup answered cleanly — a genuine miss.
     status = 'not_found';
     confidenceScore = 0;
-    if (apiErrored) flags.push('verification_unavailable');
   }
 
   if (urlCheck && (urlCheck.status === 'dead' || urlCheck.status === 'timeout' || urlCheck.status === 'error')) {

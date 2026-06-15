@@ -97,7 +97,8 @@ export interface UrlCheckResult {
 export type VerificationStatus =
   | 'verified'        // Found in academic database, metadata matches
   | 'likely_valid'    // Found but metadata partially matches
-  | 'not_found'       // Could not find in any database
+  | 'not_found'       // Searched cleanly but found in no database
+  | 'unverified'      // Lookup failed (rate-limit/timeout) — existence unchecked
   | 'suspicious'      // Found but metadata doesn't match
   | 'format_only';    // Only format was checked (no API lookup)
 
@@ -126,6 +127,7 @@ export interface ReferenceAnalysisResult {
   verifiedCount: number;
   suspiciousCount: number;
   notFoundCount: number;
+  unverifiedCount: number;
   brokenUrlCount: number;
 }
 

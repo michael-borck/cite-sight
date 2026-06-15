@@ -111,10 +111,24 @@ async function verifyBookByIsbn(isbn: string): Promise<AcademicWork | null> {
   };
 }
 
+/** Reduce an author string ("Eyal, N." | "Nir Eyal") to a bare surname. */
+function authorSurname(author?: string): string {
+  if (!author) return '';
+  const cleaned = author.replace(/[^A-Za-z,'\-\s]/g, '').trim();
+  if (!cleaned) return '';
+  if (cleaned.includes(',')) return cleaned.split(',')[0].trim();
+  const tokens = cleaned.split(/\s+/).filter(Boolean);
+  return tokens[tokens.length - 1] ?? '';
+}
+
 async function verifyBookBySearch(title: string, author?: string): Promise<AcademicWork | null> {
-  const q = [title, author].filter(Boolean).join(' ');
+  // Open Library's free-text q is poisoned by APA-style "Last, F." author
+  // strings — the comma + trailing initials drive matches to zero. Query the
+  // title together with the author's bare *surname* only.
+  const surname = authorSurname(author);
+  const q = [title, surname].filter(Boolean).join(' ');
   const res = await safeFetch(
-    `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=3`,
+    `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=5`,
   );
   if (!res || !res.ok) return null;
 
@@ -128,8 +142,19 @@ async function verifyBookBySearch(title: string, author?: string): Promise<Acade
   };
 
   if (!data.docs?.length) return null;
-  const doc = data.docs[0];
-  if (!doc.title) return null;
+
+  // Prefer a result whose author surname matches the citation; otherwise fall
+  // back to the first titled result. (Open Library stores only the *main* title
+  // — "Hooked" for "Hooked: How to build…" — so the caller corroborates the
+  // match by author + title containment rather than exact title equality.)
+  const sn = surname.toLowerCase();
+  const byAuthor = sn
+    ? data.docs.find((d) =>
+        (d.author_name ?? []).some((a) => a.toLowerCase().split(/\s+/).pop() === sn),
+      )
+    : undefined;
+  const doc = byAuthor ?? data.docs.find((d) => d.title);
+  if (!doc?.title) return null;
 
   return {
     title: doc.title,

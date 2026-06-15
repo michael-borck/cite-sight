@@ -441,13 +441,28 @@ function extractInTextCitations(text: string): InTextCitation[] {
 // Public API
 // ============================================================
 
+/**
+ * Reject fragments the section splitter swept in that are not actually
+ * references — most commonly a trailing footer / draft note that sits right
+ * after the bibliography (e.g. "Draft: the two-study write-up…"). A genuine
+ * reference carries at least one hard bibliographic anchor: a publication year,
+ * a DOI, or an http(s) URL. Prose notes have none of these.
+ */
+function looksLikeReference(ref: ParsedReference): boolean {
+  if (ref.year || ref.doi) return true;
+  if (ref.url && /^https?:\/\//i.test(ref.url)) return true;
+  // Parser may have missed a year it can't attribute — accept a bare 4-digit
+  // year anywhere in the raw as a last resort before discarding.
+  return /\b(?:1[89]|20)\d{2}\b/.test(ref.raw);
+}
+
 export function extractReferences(text: string): {
   references: ParsedReference[];
   inTextCitations: InTextCitation[];
 } {
   const section = findReferenceSection(text);
   const rawRefs = section ? splitIntoReferences(section) : [];
-  const references = rawRefs.map(parseReference);
+  const references = rawRefs.map(parseReference).filter(looksLikeReference);
   const inTextCitations = extractInTextCitations(text);
 
   return { references, inTextCitations };

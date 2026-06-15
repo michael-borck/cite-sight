@@ -59,36 +59,51 @@ function paperToAcademicWork(paper: S2Paper): AcademicWork {
 const FIELDS =
   'title,authors,year,externalIds,journal,citationCount';
 
+/** Back-off delays before each retry. Semantic Scholar's keyless tier returns
+ *  HTTP 429 aggressively under burst load; a short wait usually clears it. */
+const RETRY_DELAYS_MS = [700, 1800];
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * Search Semantic Scholar for papers matching the given query.
- * Returns up to 5 results, or an empty array on failure.
+ * Retries transient failures (429 rate-limit, 5xx, timeout) with back-off.
+ * Throws on persistent failure so the verifier can flag the reference as
+ * unverifiable rather than confidently "not found".
  */
 export async function searchSemanticScholar(
   query: string,
 ): Promise<AcademicWork[]> {
-  try {
-    const params = new URLSearchParams({
-      query,
-      limit: '5',
-      fields: FIELDS,
-    });
+  const params = new URLSearchParams({ query, limit: '5', fields: FIELDS });
+  const url = `https://api.semanticscholar.org/graph/v1/paper/search?${params.toString()}`;
 
-    const url = `https://api.semanticscholar.org/graph/v1/paper/search?${params.toString()}`;
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': 'CiteSight/1.0',
-      },
-      signal: AbortSignal.timeout(API_TIMEOUT_MS),
-    });
+  let lastErr: Error = new Error('Semantic Scholar search failed');
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+    if (attempt > 0) await delay(RETRY_DELAYS_MS[attempt - 1]);
 
-    // Surface lookup failures (vs genuine empty results) so the verifier can
-    // flag a reference as unverifiable rather than confidently "not found".
-    if (!res.ok) throw new Error(`Semantic Scholar search failed: HTTP ${res.status}`);
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        headers: { 'User-Agent': 'CiteSight/1.0' },
+        signal: AbortSignal.timeout(API_TIMEOUT_MS),
+      });
+    } catch (err) {
+      // Network error or timeout — retryable.
+      lastErr = err instanceof Error ? err : new Error(`Semantic Scholar search failed: ${String(err)}`);
+      continue;
+    }
 
-    const data = await res.json() as { data?: S2Paper[] };
-    const papers = data?.data ?? [];
-    return papers.map(paperToAcademicWork);
-  } catch (err) {
-    throw err instanceof Error ? err : new Error(`Semantic Scholar search failed: ${String(err)}`);
+    if (res.ok) {
+      const data = await res.json() as { data?: S2Paper[] };
+      return (data?.data ?? []).map(paperToAcademicWork);
+    }
+
+    lastErr = new Error(`Semantic Scholar search failed: HTTP ${res.status}`);
+    // 429 and 5xx are transient — retry; anything else fails immediately.
+    if (res.status !== 429 && res.status < 500) break;
   }
+
+  throw lastErr;
 }

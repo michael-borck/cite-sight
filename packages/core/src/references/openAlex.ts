@@ -1,7 +1,16 @@
 import type { AcademicWork } from '../types.js';
 
-/** Hard timeout for a single external API request. */
-const API_TIMEOUT_MS = 10_000;
+/** Hard timeout for a single external API request. OpenAlex can be slow under
+ *  load, so this is generous; a too-short timeout makes valid works look
+ *  unverifiable. */
+const API_TIMEOUT_MS = 15_000;
+
+/** Back-off delays before each retry on a transient failure. */
+const RETRY_DELAYS_MS = [700, 1800];
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 // ============================================================
 // Response shape (OpenAlex REST API)
@@ -71,29 +80,39 @@ export async function searchOpenAlex(
   query: string,
   mailto?: string,
 ): Promise<AcademicWork[]> {
-  try {
-    const params = new URLSearchParams({
-      search: query,
-      per_page: '5',
-    });
-    if (mailto) params.set('mailto', mailto);
+  const params = new URLSearchParams({ search: query, per_page: '5' });
+  if (mailto) params.set('mailto', mailto);
+  const url = `https://api.openalex.org/works?${params.toString()}`;
 
-    const url = `https://api.openalex.org/works?${params.toString()}`;
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': 'CiteSight/1.0' + (mailto ? ` (mailto:${mailto})` : ''),
-      },
-      signal: AbortSignal.timeout(API_TIMEOUT_MS),
-    });
+  let lastErr: Error = new Error('OpenAlex search failed');
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+    if (attempt > 0) await delay(RETRY_DELAYS_MS[attempt - 1]);
+
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        headers: {
+          'User-Agent': 'CiteSight/1.0' + (mailto ? ` (mailto:${mailto})` : ''),
+        },
+        signal: AbortSignal.timeout(API_TIMEOUT_MS),
+      });
+    } catch (err) {
+      // Network error or timeout — retryable.
+      lastErr = err instanceof Error ? err : new Error(`OpenAlex search failed: ${String(err)}`);
+      continue;
+    }
+
+    if (res.ok) {
+      const data = await res.json() as { results?: OAWork[] };
+      return (data?.results ?? []).map(workToAcademicWork);
+    }
 
     // Surface lookup failures (vs genuine empty results) so the verifier can
     // flag a reference as unverifiable rather than confidently "not found".
-    if (!res.ok) throw new Error(`OpenAlex search failed: HTTP ${res.status}`);
-
-    const data = await res.json() as { results?: OAWork[] };
-    const works = data?.results ?? [];
-    return works.map(workToAcademicWork);
-  } catch (err) {
-    throw err instanceof Error ? err : new Error(`OpenAlex search failed: ${String(err)}`);
+    lastErr = new Error(`OpenAlex search failed: HTTP ${res.status}`);
+    // 429 and 5xx are transient — retry; anything else fails immediately.
+    if (res.status !== 429 && res.status < 500) break;
   }
+
+  throw lastErr;
 }

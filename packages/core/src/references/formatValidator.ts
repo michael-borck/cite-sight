@@ -68,8 +68,16 @@ function validateApa(ref: ParsedReference): FormatIssue[] {
     });
   }
 
+  // Journal-specific rules apply only to actual journal articles. A volume or
+  // issue number is the reliable periodical marker; books and book chapters
+  // have neither (the parser often captures their publisher or container title
+  // into `journal`, e.g. "Penguin UK" or "In Psychology and the real world…").
+  // Without this gate those rules fire spurious "needs DOI" / "Title Case"
+  // warnings on every book in the bibliography.
+  const looksLikeJournalArticle = Boolean(ref.volume || ref.issue);
+
   // 3. Journal title should be in Title Case (proxy: at least half words capitalised)
-  if (ref.journal && !isTitleCase(ref.journal)) {
+  if (ref.journal && looksLikeJournalArticle && !isTitleCase(ref.journal)) {
     issues.push({
       field: 'journal',
       message: 'APA journal names should be in Title Case',
@@ -78,7 +86,7 @@ function validateApa(ref: ParsedReference): FormatIssue[] {
   }
 
   // 4. DOI should be present for journal articles
-  if (ref.journal && !ref.doi && !ref.url) {
+  if (ref.journal && looksLikeJournalArticle && !ref.doi && !ref.url) {
     issues.push({
       field: 'doi',
       message: 'APA journal articles should include a DOI or URL',

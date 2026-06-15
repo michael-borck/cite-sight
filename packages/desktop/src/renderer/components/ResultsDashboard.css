@@ -234,6 +234,8 @@
 .status-suspicious::before { background: var(--suspicious); }
 .status-not-found    { background: var(--notfound-bg); color: var(--notfound); }
 .status-not-found::before { background: var(--notfound); }
+.status-unverified   { background: var(--neutral-bg); color: var(--neutral); }
+.status-unverified::before { background: var(--neutral); }
 .status-format-only  { background: var(--neutral-bg); color: var(--neutral); }
 .status-format-only::before { background: var(--neutral); }
 

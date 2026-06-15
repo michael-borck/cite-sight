@@ -115,6 +115,7 @@ export async function analyzePipeline(
     verifiedCount: verifications.filter(v => v.status === 'verified' || v.status === 'likely_valid').length,
     suspiciousCount: verifications.filter(v => v.status === 'suspicious').length,
     notFoundCount: verifications.filter(v => v.status === 'not_found').length,
+    unverifiedCount: verifications.filter(v => v.status === 'unverified').length,
     brokenUrlCount: verifications.filter(v => v.urlCheck?.status === 'dead').length,
   };
 

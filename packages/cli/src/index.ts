@@ -28,6 +28,7 @@ function statusBadge(status: string): string {
     case 'likely_valid': return chalk.green('~ likely valid');
     case 'suspicious':   return chalk.red('✖ suspicious');
     case 'not_found':    return chalk.yellow('? not found');
+    case 'unverified':   return chalk.gray('⚠ unverified (lookup failed)');
     case 'format_only':  return chalk.cyan('f format only');
     default:             return chalk.gray(status);
   }
@@ -66,6 +67,9 @@ function printReport(result: AnalysisResult, verbose: boolean): void {
     console.log(`  Verified:          ${chalk.green(String(references.verifiedCount))}`);
     console.log(`  Suspicious:        ${references.suspiciousCount > 0 ? chalk.red(String(references.suspiciousCount)) : chalk.green('0')}`);
     console.log(`  Not found:         ${references.notFoundCount > 0 ? chalk.yellow(String(references.notFoundCount)) : chalk.green('0')}`);
+    if (references.unverifiedCount > 0) {
+      console.log(`  Unverified:        ${chalk.gray(String(references.unverifiedCount))} (lookup failed — not a miss)`);
+    }
     console.log(`  Broken URLs:       ${references.brokenUrlCount > 0 ? chalk.red(String(references.brokenUrlCount)) : chalk.green('0')}`);
     console.log(`  Citation style:    ${references.detectedStyle}`);
 
