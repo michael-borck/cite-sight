@@ -110,13 +110,43 @@ function extractAuthors(raw: string, _style: CitationStyle): string[] {
   return parts.filter((p) => /[A-Za-z]/.test(p));
 }
 
+/**
+ * Return the substring up to the first sentence break (". " followed by a
+ * capital / italic marker) that occurs *outside* parentheses. APA references
+ * end the title at the period before the journal/publisher, but an editor or
+ * translator note — "(M. Cole, V. John-Steiner, … Eds.)" — embeds "X. Y"
+ * patterns that a naive ". <Capital>" search mistakes for that break, truncating
+ * the title to "…processes (M". Tracking paren depth avoids this.
+ */
+function titleUpToSentenceBreak(s: string): string {
+  let depth = 0;
+  for (let i = 0; i < s.length - 1; i++) {
+    const c = s[i];
+    if (c === '(' || c === '[') depth++;
+    else if (c === ')' || c === ']') depth = Math.max(0, depth - 1);
+    else if (c === '.' && depth === 0 && /^\s+[A-Z*_"]/.test(s.slice(i + 1))) {
+      return s.slice(0, i);
+    }
+  }
+  return s;
+}
+
+/** Strip a trailing editor/translator parenthetical and tidy end punctuation. */
+function cleanTitle(t: string): string {
+  return t
+    .replace(/\s*\([^)]*\b(?:Eds?|Trans|Edited|Translated|Comp|Compiled)\b\.?[^)]*\)\s*$/i, '')
+    .replace(/[\s.,;:]+$/, '')
+    .trim();
+}
+
 function extractTitle(raw: string, style: CitationStyle): string {
   const stripped = raw.replace(/^[\d]+[.)]\s*/, '');
 
   if (style === 'apa') {
-    // APA: after "(Year). " comes the title, ending at ". " before journal
-    const m = stripped.match(/\(\d{4}\)\.\s+(.+?)(?:\.\s+[A-Z*_]|$)/);
-    if (m) return m[1].trim();
+    // After "(Year). " comes the title, ending at the first sentence break that
+    // is not inside an editor/translator parenthetical.
+    const m = stripped.match(/\(\d{4}\)\.\s+([\s\S]+)$/);
+    if (m) return cleanTitle(titleUpToSentenceBreak(m[1]));
   }
 
   if (style === 'mla' || style === 'chicago') {
@@ -125,13 +155,11 @@ function extractTitle(raw: string, style: CitationStyle): string {
     if (m) return m[1].trim();
   }
 
-  // Fallback: try to grab text between the year and the journal-ish segment
+  // Fallback: grab text between the year and the journal-ish segment.
   const yearM = stripped.match(/\b(19|20)\d{2}\b/);
   if (yearM && yearM.index !== undefined) {
     const afterYear = stripped.slice(yearM.index + 4).replace(/^[).:\s]+/, '');
-    const titleEnd = afterYear.search(/\.\s+[A-Z*_]/);
-    if (titleEnd > 0) return afterYear.slice(0, titleEnd).trim();
-    return afterYear.split(/\.\s*/)[0].trim();
+    return cleanTitle(titleUpToSentenceBreak(afterYear));
   }
 
   return '';
@@ -361,6 +389,25 @@ function splitContinuousText(block: string): string[] {
  * MLA:               (Smith 45), (Smith 45-50)
  * Chicago footnote:  [1], ¹, ²  (superscript via Unicode)
  */
+/**
+ * Capitalised words that precede a number inside parentheses but are document
+ * furniture or dates, not author surnames — so "(Table 1)" / "(May 2024)" are
+ * not mistaken for MLA in-text citations.
+ */
+const MLA_NON_CITATION_WORDS = new Set([
+  // structural references
+  'table', 'figure', 'fig', 'study', 'section', 'appendix', 'chapter',
+  'equation', 'eq', 'part', 'step', 'phase', 'model', 'panel', 'item', 'note',
+  'row', 'column', 'col', 'vol', 'no', 'box', 'experiment', 'condition',
+  'question', 'footnote', 'line', 'para', 'paragraph', 'version', 'level',
+  'round', 'wave', 'cohort', 'day', 'week', 'page', 'p', 'pp',
+  // month names (full + common abbreviations) → "(May 2024)" etc.
+  'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august',
+  'september', 'october', 'november', 'december',
+  'jan', 'feb', 'mar', 'apr', 'jun', 'jul', 'aug', 'sep', 'sept', 'oct',
+  'nov', 'dec',
+]);
+
 function extractInTextCitations(text: string): InTextCitation[] {
   const results: InTextCitation[] = [];
 
@@ -406,8 +453,15 @@ function extractInTextCitations(text: string): InTextCitation[] {
   }
 
   // --- MLA: (Smith 45) or (Smith 45-50) ---
+  // This "(Capitalised word + number)" shape also matches document furniture
+  // like "(Table 1)", "(Study 2)", "(Figure 3)" and month-year refs "(May
+  // 2024)" — none of which are citations. Skip structural words, month names,
+  // and 4-digit year locators (a real MLA locator is a page, not a year).
   const mlaRe = /\(([A-Z][a-zA-Z\-']+)\s+(\d+(?:-\d+)?)\)/g;
   for (const m of text.matchAll(mlaRe)) {
+    const word = m[1].toLowerCase();
+    if (MLA_NON_CITATION_WORDS.has(word)) continue;
+    if (/^(?:19|20)\d{2}$/.test(m[2])) continue;
     results.push({
       raw: m[0],
       authors: [m[1]],
