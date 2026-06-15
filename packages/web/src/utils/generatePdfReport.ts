@@ -119,15 +119,11 @@ function drawOverview(doc: jsPDF, result: AnalysisResult, y: number, margin: num
   setColour(doc, BLACK);
 
   const ref = result.references;
-  const read = result.readability;
 
   const rows = [
-    ['Words', String(read.wordCount), 'Sentences', String(read.sentenceCount)],
     ['Total References', String(ref.totalReferences), 'Verified', String(ref.verifiedCount)],
     ['Suspicious', String(ref.suspiciousCount), 'Not Found', String(ref.notFoundCount)],
     ['Broken URLs', String(ref.brokenUrlCount), 'Citation Style', ref.detectedStyle.toUpperCase()],
-    ['Flesch Reading Ease', read.fleschReadingEase.toFixed(1), 'Flesch-Kincaid Grade', read.fleschKincaidGrade.toFixed(1)],
-    ['Coleman-Liau Index', read.colemanLiauIndex.toFixed(1), 'ARI', read.automatedReadabilityIndex.toFixed(1)],
   ];
 
   const colW = contentW / 4;
@@ -305,39 +301,6 @@ function drawCrossReferences(doc: jsPDF, result: AnalysisResult, y: number, marg
   return y + 2;
 }
 
-function drawWritingQuality(doc: jsPDF, result: AnalysisResult, y: number, margin: number, contentW: number): number {
-  y = drawSectionTitle(doc, 'Writing Quality', y, margin);
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  setColour(doc, BLACK);
-
-  const wq = result.writingQuality;
-  const rows = [
-    ['Passive Voice', `${wq.passiveVoicePercentage.toFixed(1)}%`],
-    ['Academic Tone', `${(wq.academicToneScore * 100).toFixed(0)}%`],
-    ['Sentence Variety', `${(wq.sentenceVarietyScore * 100).toFixed(0)}%`],
-    ['Hedging Phrases', String(wq.hedgingPhraseCount)],
-    ['Transition Words', String(wq.transitionWordCount)],
-    ['Avg Sentence Length', `${wq.avgSentenceLength.toFixed(1)} words`],
-  ];
-
-  for (let i = 0; i < rows.length; i++) {
-    y = ensureSpace(doc, y, 7, margin);
-    if (i % 2 === 0) {
-      setFillColour(doc, [245, 245, 250]);
-      doc.rect(margin, y - 4.5, contentW, 7, 'F');
-    }
-    doc.setFont('helvetica', 'bold');
-    setColour(doc, GREY);
-    doc.text(rows[i][0], margin + 2, y);
-    doc.setFont('helvetica', 'normal');
-    setColour(doc, BLACK);
-    doc.text(rows[i][1], margin + 60, y);
-    y += 7;
-  }
-  return y + 4;
-}
-
 function drawWritingPatterns(doc: jsPDF, result: AnalysisResult, y: number, margin: number, contentW: number): number {
   const patterns = result.writingPatterns.patterns;
   if (patterns.length === 0) return y;
@@ -391,7 +354,6 @@ export async function downloadPdfReport(result: AnalysisResult): Promise<void> {
   y = drawOverview(doc, result, y, margin, contentW);
   y = drawReferencesTable(doc, result.references.verifications, y, margin, contentW);
   y = drawCrossReferences(doc, result, y, margin, contentW);
-  y = drawWritingQuality(doc, result, y, margin, contentW);
   y = drawWritingPatterns(doc, result, y, margin, contentW);
   drawFooter(doc);
 

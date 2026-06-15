@@ -46,10 +46,6 @@ function categoryLabel(c: PatternCategory): string {
   }
 }
 
-function pct(value: number, decimals = 1): string {
-  return `${value.toFixed(decimals)}%`;
-}
-
 function bar(value: number, max = 100): number {
   return Math.min(100, Math.max(0, (value / max) * 100));
 }
@@ -57,7 +53,7 @@ function bar(value: number, max = 100): number {
 // ─── sub-panels ───────────────────────────────────────────────────────────────
 
 function OverviewPanel({ results }: Props) {
-  const { readability, writingPatterns, processingTime } = results;
+  const { references, writingPatterns, processingTime } = results;
   const totalPatterns = writingPatterns.patterns.length;
 
   return (
@@ -68,21 +64,21 @@ function OverviewPanel({ results }: Props) {
       <div className="panel-body">
         <div className="overview-metrics">
           <div className="overview-metric-row">
-            <span className="oml">Readability (Flesch)</span>
+            <span className="oml">References Verified</span>
             <div className="ombar-wrap">
-              <div className="ombar" style={{ width: `${bar(readability.fleschReadingEase)}%`, background: 'var(--verified)' }} />
+              <div className="ombar" style={{ width: `${bar(references.verifiedCount, references.totalReferences || 1)}%`, background: 'var(--verified)' }} />
             </div>
-            <span className="omv">{readability.fleschReadingEase.toFixed(1)}</span>
+            <span className="omv">{references.verifiedCount}/{references.totalReferences}</span>
           </div>
           <div className="overview-metric-row">
-            <span className="oml">F-K Grade Level</span>
+            <span className="oml">Citation Style</span>
             <div className="ombar-wrap">
-              <div className="ombar" style={{ width: `${bar(readability.fleschKincaidGrade, 20)}%`, background: 'var(--accent)' }} />
+              <div className="ombar" style={{ width: '100%', background: 'var(--accent)' }} />
             </div>
-            <span className="omv">{readability.fleschKincaidGrade.toFixed(1)}</span>
+            <span className="omv">{references.detectedStyle}</span>
           </div>
           <div className="overview-metric-row">
-            <span className="oml">Writing Patterns</span>
+            <span className="oml">Citation Issues</span>
             <div className="ombar-wrap">
               <div className="ombar" style={{ width: `${bar(totalPatterns, 20)}%`, background: 'var(--accent)' }} />
             </div>
@@ -277,156 +273,6 @@ function CrossReferencesPanel({ results }: Props) {
   );
 }
 
-function QualityPanel({ results }: Props) {
-  const wq = results.writingQuality;
-
-  const metrics = [
-    {
-      label: 'Passive Voice',
-      value: pct(wq.passiveVoicePercentage),
-      barWidth: bar(wq.passiveVoicePercentage),
-      level: wq.passiveVoicePercentage > 20 ? 'warning' : 'good',
-    },
-    {
-      label: 'Academic Tone',
-      value: `${wq.academicToneScore.toFixed(1)}/10`,
-      barWidth: bar(wq.academicToneScore, 10),
-      level: wq.academicToneScore >= 7 ? 'good' : 'warning',
-    },
-    {
-      label: 'Sentence Variety',
-      value: `${wq.sentenceVarietyScore.toFixed(1)}/10`,
-      barWidth: bar(wq.sentenceVarietyScore, 10),
-      level: 'good',
-    },
-    {
-      label: 'Complex Sentences',
-      value: pct(wq.complexSentenceRatio * 100),
-      barWidth: bar(wq.complexSentenceRatio * 100),
-      level: 'good',
-    },
-  ];
-
-  return (
-    <div className="panel-card">
-      <div className="panel-header">
-        <h3>Writing Quality</h3>
-      </div>
-      <div className="panel-body">
-        <div className="metrics-grid">
-          {metrics.map((m) => (
-            <div key={m.label} className="metric-item">
-              <div className="metric-label-row">
-                <span>{m.label}</span>
-                <span className="metric-val">{m.value}</span>
-              </div>
-              <div className="metric-bar">
-                <div className={`metric-bar-fill ${m.level}`} style={{ width: `${m.barWidth}%` }} />
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="quality-details">
-          <h4>Details</h4>
-          <ul>
-            <li>Avg sentence length: {wq.avgSentenceLength.toFixed(1)} words</li>
-            <li>Transition words: {wq.transitionWordCount}</li>
-            <li>Hedging phrases: {wq.hedgingPhraseCount}</li>
-          </ul>
-
-          {wq.hedgingPhrases.length > 0 && (
-            <>
-              <h4>Top Hedging Phrases</h4>
-              <div className="word-items">
-                {wq.hedgingPhrases.slice(0, 10).map((h) => (
-                  <span key={h.phrase} className="word-tag word-tag-orange">
-                    {h.phrase} ({h.count})
-                  </span>
-                ))}
-              </div>
-            </>
-          )}
-
-          {wq.passiveVoiceSentences.length > 0 && (
-            <>
-              <h4>Sample Passive Voice Sentences</h4>
-              <ul className="passive-list">
-                {wq.passiveVoiceSentences.slice(0, 5).map((s, i) => (
-                  <li key={i} className="passive-item">{s}</li>
-                ))}
-              </ul>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function WordsPanel({ results }: Props) {
-  const wa = results.wordAnalysis;
-
-  return (
-    <div className="panel-card">
-      <div className="panel-header">
-        <h3>Word Analysis</h3>
-      </div>
-      <div className="panel-body">
-        <div className="word-stats-grid">
-          <div className="stat-card stat-blue">
-            <div className="stat-value">{wa.totalWords.toLocaleString()}</div>
-            <div className="stat-label">Total Words</div>
-          </div>
-          <div className="stat-card stat-teal">
-            <div className="stat-value">{wa.uniqueWords.toLocaleString()}</div>
-            <div className="stat-label">Unique Words</div>
-          </div>
-          <div className="stat-card stat-purple">
-            <div className="stat-value">{(wa.vocabularyRichness * 100).toFixed(1)}%</div>
-            <div className="stat-label">Vocabulary Richness</div>
-          </div>
-        </div>
-
-        <div className="word-lists">
-          <div className="word-section">
-            <h4>Most Frequent Words</h4>
-            <div className="word-items">
-              {wa.topWords.slice(0, 20).map((w) => (
-                <span key={w.word} className="word-tag">
-                  {w.word} ({w.count})
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="word-section">
-            <h4>Top Bigrams</h4>
-            <div className="word-items">
-              {wa.bigrams.slice(0, 15).map((b) => (
-                <span key={b.phrase} className="word-tag word-tag-green">
-                  {b.phrase} ({b.count})
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="word-section">
-            <h4>Top Trigrams</h4>
-            <div className="word-items">
-              {wa.trigrams.slice(0, 10).map((t) => (
-                <span key={t.phrase} className="word-tag word-tag-purple">
-                  {t.phrase} ({t.count})
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function WritingPatternsPanel({ results }: Props) {
   const { writingPatterns } = results;
   const { categoryCounts } = writingPatterns;
@@ -491,8 +337,6 @@ const SECTIONS = [
   { id: 'overview',    label: 'Overview',    icon: '\u25C6' },
   { id: 'references',  label: 'References',  icon: '\uD83D\uDCDA' },
   { id: 'crossrefs',   label: 'Cross-refs',  icon: '\u21C4' },
-  { id: 'quality',     label: 'Quality',     icon: '\u270E' },
-  { id: 'words',       label: 'Words',       icon: '\uD83D\uDD22' },
   { id: 'patterns',    label: 'Patterns',    icon: '\uD83D\uDD0D' },
 ];
 
@@ -543,10 +387,6 @@ export function ResultsDashboard({ results }: Props) {
         {/* Summary strip — always visible */}
         <div className="summary-strip">
           <div className="summary-stat teal">
-            <span className="value">{results.readability.wordCount.toLocaleString()}</span>
-            <span className="label">Words</span>
-          </div>
-          <div className="summary-stat teal">
             <span className="value">{refs.totalReferences}</span>
             <span className="label">References</span>
           </div>
@@ -571,8 +411,6 @@ export function ResultsDashboard({ results }: Props) {
         {activeSection === 'overview'    && <OverviewPanel results={results} />}
         {activeSection === 'references'  && <ReferencesPanel results={results} />}
         {activeSection === 'crossrefs'   && <CrossReferencesPanel results={results} />}
-        {activeSection === 'quality'     && <QualityPanel results={results} />}
-        {activeSection === 'words'       && <WordsPanel results={results} />}
         {activeSection === 'patterns'    && <WritingPatternsPanel results={results} />}
       </main>
     </div>

@@ -56,7 +56,6 @@ export function OverviewPanel({ results }: Props) {
     <div className="overview-panel">
       <VerdictHero
         fileName={results.fileName}
-        wordCount={results.readability.wordCount}
         processingTimeMs={results.processingTime}
         verdict={verdict}
       />

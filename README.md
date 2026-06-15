@@ -14,11 +14,14 @@ A desktop app, CLI tool, and web service that loads a student assignment, extrac
 - **Citation Format Validation** — Checks APA, MLA, and Chicago formatting rules
 - **Cross-Reference Checking** — Matches in-text citations to bibliography entries, flags orphans
 - **URL Verification** — HTTP checks on referenced URLs, with screenshots as evidence (desktop)
-- **DOI Resolution** — Validates DOIs via Crossref
-- **Readability Analysis** — Flesch Reading Ease, Flesch-Kincaid Grade, Coleman-Liau, ARI
-- **Writing Quality** — Passive voice, hedging phrases, transitions, academic tone scoring
-- **Writing Patterns** — Citation issues, completeness checks, and style observations for reviewer consideration
+- **DOI Resolution** — Validates DOIs via Crossref (bot-blocked/paywalled publisher pages are reported as *blocked*, not dead)
+- **Citation Patterns** — Future-dated citations, suspicious year clusters, mixed citation styles, and placeholder/template citation text
 - **File Support** — PDF, DOCX, TXT, Markdown, JSON
+
+CiteSight focuses on **citation integrity**. Prose-level signals — readability,
+writing quality, and AI-writing tells (emojis, em-dashes, adverb ratio) — live
+in the sibling [`document-analyser`](https://github.com/michael-borck/lens-analysers)
+tool; run both for a full picture.
 
 ## Install
 

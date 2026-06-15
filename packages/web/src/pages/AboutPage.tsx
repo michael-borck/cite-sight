@@ -53,50 +53,6 @@ export function AboutPage() {
         </section>
 
         <section className="about-section">
-          <h2>Understanding Readability Scores</h2>
-          <div className="score-list">
-            <div className="score-item">
-              <dt>Flesch Reading Ease (0–100, higher = easier)</dt>
-              <dd>Scores of 60–70 are considered standard for academic writing. Higher scores indicate simpler prose.</dd>
-            </div>
-            <div className="score-item">
-              <dt>Flesch-Kincaid Grade Level</dt>
-              <dd>Estimates the US school grade level required to understand the text. Academic writing typically scores 12–16.</dd>
-            </div>
-            <div className="score-item">
-              <dt>Coleman-Liau Index</dt>
-              <dd>Similar to Flesch-Kincaid but uses character counts instead of syllable counts, making it more consistent across languages.</dd>
-            </div>
-            <div className="score-item">
-              <dt>Automated Readability Index</dt>
-              <dd>A character-based grade level estimate that closely correlates with the other indices for English text.</dd>
-            </div>
-          </div>
-        </section>
-
-        <section className="about-section">
-          <h2>Writing Quality Metrics</h2>
-          <div className="score-list">
-            <div className="score-item">
-              <dt>Passive Voice</dt>
-              <dd>Percentage of sentences using passive constructions. High passive voice (&gt;20%) can reduce clarity in academic writing.</dd>
-            </div>
-            <div className="score-item">
-              <dt>Academic Tone</dt>
-              <dd>A 0–10 score that penalises informal language and rewards academic vocabulary and register.</dd>
-            </div>
-            <div className="score-item">
-              <dt>Hedging Phrases</dt>
-              <dd>Words and phrases such as "might", "perhaps", and "it seems" that weaken assertions. Some hedging is appropriate in academic writing, but excessive hedging can undermine credibility.</dd>
-            </div>
-            <div className="score-item">
-              <dt>Sentence Variety</dt>
-              <dd>A 0–10 measure of variation in sentence length. High variety generally improves readability and engagement.</dd>
-            </div>
-          </div>
-        </section>
-
-        <section className="about-section">
           <h2>Writing Patterns</h2>
           <p>CiteSight scans for notable writing patterns grouped into three categories:</p>
           <ul className="writing-patterns-list">

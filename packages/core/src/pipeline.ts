@@ -1,7 +1,4 @@
 import { extract } from './extractors/index.js';
-import { analyzeReadability } from './analyzers/readability.js';
-import { analyzeWritingQuality } from './analyzers/writingQuality.js';
-import { analyzeWords } from './analyzers/wordAnalysis.js';
 import { analyzeWritingPatterns } from './analyzers/writingPatterns.js';
 import { extractReferences } from './references/extractor.js';
 import { verifyReferences } from './references/verifier.js';
@@ -78,20 +75,8 @@ export async function analyzePipeline(
     throw new Error('No text could be extracted from the document.');
   }
 
-  // Stage 2: Readability
-  onProgress?.({ stage: 'analyzing_readability', progress: 15, message: 'Analyzing readability...' });
-  const readability = analyzeReadability(doc.text);
-
-  // Stage 3: Writing quality
-  onProgress?.({ stage: 'analyzing_writing', progress: 25, message: 'Analyzing writing quality...' });
-  const writingQuality = analyzeWritingQuality(doc.text);
-
-  // Stage 4: Word analysis
-  onProgress?.({ stage: 'analyzing_words', progress: 35, message: 'Analyzing word patterns...' });
-  const wordAnalysis = analyzeWords(doc.text);
-
-  // Stage 5: Writing patterns
-  onProgress?.({ stage: 'analyzing_writing_patterns', progress: 45, message: 'Analyzing writing patterns...' });
+  // Stage 2: Citation-related document patterns
+  onProgress?.({ stage: 'analyzing_writing_patterns', progress: 30, message: 'Checking citation patterns...' });
   const writingPatterns = analyzeWritingPatterns(doc.text);
 
   // Stage 6: Extract references
@@ -138,9 +123,6 @@ export async function analyzePipeline(
   return {
     fileName: doc.fileName,
     extractedText: doc.text,
-    readability,
-    writingQuality,
-    wordAnalysis,
     writingPatterns,
     references: referenceResult,
     processingTime: Date.now() - startTime,

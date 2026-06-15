@@ -282,58 +282,6 @@
 .no-issues { color: var(--verified); padding: var(--sp-3) 0; font-size: 0.87rem; }
 .no-data { color: var(--ink-faint); font-style: italic; padding: var(--sp-5) 0; }
 
-/* ---- Quality metrics ---- */
-.metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-5); }
-.metric-item { display: flex; flex-direction: column; gap: var(--sp-2); }
-.metric-label-row { display: flex; justify-content: space-between; align-items: baseline; }
-.metric-label-row span:first-child { font-size: 0.85rem; font-weight: 500; color: var(--ink-soft); }
-.metric-label-row .metric-val { font-family: var(--font-mono); font-size: 0.85rem; font-weight: 500; color: var(--ink); }
-.metric-bar { height: 8px; background: rgba(26,35,50,0.06); border-radius: 4px; overflow: hidden; }
-.metric-bar-fill { height: 100%; border-radius: 4px; transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
-.metric-bar-fill.good    { background: var(--verified); }
-.metric-bar-fill.warning { background: var(--amber); }
-.metric-bar-fill.poor    { background: var(--rose); }
-
-.quality-details { margin-top: var(--sp-5); }
-.quality-details h4 { margin: var(--sp-4) 0 var(--sp-2); font-size: 0.87rem; color: var(--ink-soft); }
-.quality-details ul { list-style: none; padding: 0; }
-.quality-details li { padding: var(--sp-2) 0; border-bottom: 1px solid rgba(26,35,50,0.04); color: var(--ink-soft); font-size: 0.85rem; }
-.passive-list { list-style: none; padding: 0; margin-top: var(--sp-2); }
-.passive-item {
-  padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-2);
-  background: var(--amber-bg); border-left: 3px solid var(--amber);
-  border-radius: var(--r-sm); font-size: 0.85rem; color: var(--ink-soft); line-height: 1.5;
-}
-
-/* ---- Word tags ---- */
-.word-stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-4); margin-bottom: var(--sp-5); }
-.word-lists { margin-top: var(--sp-3); }
-.word-section { margin-bottom: var(--sp-5); }
-.word-section h4 { margin: 0 0 var(--sp-2); font-size: 0.87rem; color: var(--ink-soft); }
-.word-items { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-2); }
-.word-tag {
-  display: inline-block; padding: 4px 10px;
-  background: var(--accent-bg); color: var(--accent);
-  border-radius: 14px; font-size: 0.8rem; border: 1px solid rgba(42,157,143,0.2);
-}
-.word-tag-green  { background: var(--likely-bg); color: var(--likely); border-color: rgba(91,138,60,0.2); }
-.word-tag-purple { background: #f3e5f5; color: #6a1b9a; border-color: rgba(106,27,154,0.2); }
-.word-tag-orange { background: var(--amber-bg); color: var(--amber-dark); border-color: rgba(196,149,42,0.2); }
-
-/* Stat cards (used in words panel) */
-.stat-card {
-  background: var(--paper);
-  border-radius: var(--r-md);
-  padding: var(--sp-4);
-  text-align: center;
-  border-left: 3px solid var(--ink-faint);
-}
-.stat-card.stat-blue   { border-left-color: var(--accent); }
-.stat-card.stat-teal   { border-left-color: var(--accent); }
-.stat-card.stat-purple { border-left-color: var(--rose); }
-.stat-value { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: var(--ink); margin-bottom: 2px; }
-.stat-label { font-size: 0.73rem; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.5px; }
-
 /* ---- Writing Patterns ---- */
 .category-counts {
   display: flex; gap: var(--sp-4); margin-bottom: var(--sp-5);

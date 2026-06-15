@@ -3,7 +3,6 @@ import type { Verdict } from '@michaelborck/cite-sight-core';
 interface Props {
   fileName: string;
   pages?: number;
-  wordCount: number;
   processingTimeMs: number;
   verdict: Verdict;
 }
@@ -19,7 +18,7 @@ function pillSuffix(v: Verdict): string {
   return ` — ${v.toCheckCount} to check`;
 }
 
-export function VerdictHero({ fileName, pages, wordCount, processingTimeMs, verdict }: Props) {
+export function VerdictHero({ fileName, pages, processingTimeMs, verdict }: Props) {
   const total = verdict.verifiedCount + verdict.toCheckCount + verdict.unverifiableCount;
   const verifiedPct = total === 0 ? 0 : (verdict.verifiedCount / total) * 100;
   const toCheckPct = total === 0 ? 0 : (verdict.toCheckCount / total) * 100;
@@ -38,7 +37,7 @@ export function VerdictHero({ fileName, pages, wordCount, processingTimeMs, verd
           <div className="hero-filename">{fileName}</div>
           <div className="hero-meta">
             {pages != null && <>{pages} pages · </>}
-            {wordCount.toLocaleString()} words · analysed in {(processingTimeMs / 1000).toFixed(1)}s
+            analysed in {(processingTimeMs / 1000).toFixed(1)}s
           </div>
         </div>
         <div className={`verdict-pill verdict-${verdict.state}`}>

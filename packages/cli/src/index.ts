@@ -50,21 +50,13 @@ function printSectionHeader(title: string): void {
 }
 
 function printReport(result: AnalysisResult, verbose: boolean): void {
-  const { readability, writingQuality, references, writingPatterns, processingTime } = result;
+  const { references, writingPatterns, processingTime } = result;
 
   // Header
   console.log('');
   console.log(chalk.bold.cyan('CiteSight Analysis Report'));
   console.log(chalk.gray(`File: ${result.fileName}`));
   console.log(chalk.gray(`Processed in ${formatDuration(processingTime)}`));
-
-  // Document stats
-  printSectionHeader('Document Statistics');
-  console.log(`  Words:           ${readability.wordCount.toLocaleString()}`);
-  console.log(`  Sentences:       ${readability.sentenceCount.toLocaleString()}`);
-  console.log(`  Paragraphs:      ${readability.paragraphCount.toLocaleString()}`);
-  console.log(`  Readability:     Flesch-Kincaid Grade ${readability.fleschKincaidGrade.toFixed(1)}`);
-  console.log(`  Reading Ease:    ${readability.fleschReadingEase.toFixed(1)} / 100`);
 
   // Reference verification summary
   printSectionHeader('Reference Verification');
@@ -162,19 +154,6 @@ function printReport(result: AnalysisResult, verbose: boolean): void {
           console.log(`    ${chalk.gray('·')} ${chalk.gray(flag)}`);
         }
       }
-    }
-  }
-
-  // Writing quality summary
-  printSectionHeader('Writing Quality');
-  console.log(`  Passive voice:     ${writingQuality.passiveVoicePercentage.toFixed(1)}%`);
-  console.log(`  Academic tone:     ${(writingQuality.academicToneScore * 100).toFixed(0)} / 100`);
-  console.log(`  Sentence variety:  ${(writingQuality.sentenceVarietyScore * 100).toFixed(0)} / 100`);
-  console.log(`  Hedging phrases:   ${writingQuality.hedgingPhraseCount}`);
-
-  if (verbose && writingQuality.hedgingPhrases.length > 0) {
-    for (const hp of writingQuality.hedgingPhrases.slice(0, 5)) {
-      console.log(`    ${chalk.gray('·')} "${hp.phrase}" (${hp.count}x)`);
     }
   }
 

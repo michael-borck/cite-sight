@@ -22,56 +22,6 @@ export interface ExtractedDocument {
   pageCount?: number;
 }
 
-// --- Readability & Document Analysis ---
-
-export interface ReadabilityResult {
-  wordCount: number;
-  sentenceCount: number;
-  paragraphCount: number;
-  syllableCount: number;
-  avgWordsPerSentence: number;
-  avgSyllablesPerWord: number;
-  fleschReadingEase: number;
-  fleschKincaidGrade: number;
-  colemanLiauIndex: number;
-  automatedReadabilityIndex: number;
-}
-
-// --- Writing Quality ---
-
-export interface WritingQualityResult {
-  passiveVoicePercentage: number;
-  passiveVoiceSentences: string[];
-  hedgingPhraseCount: number;
-  hedgingPhrases: Array<{ phrase: string; count: number }>;
-  transitionWordCount: number;
-  academicToneScore: number;
-  sentenceVarietyScore: number;
-  avgSentenceLength: number;
-  complexSentenceRatio: number;
-}
-
-// --- Word Analysis ---
-
-export interface WordFrequency {
-  word: string;
-  count: number;
-}
-
-export interface PhraseFrequency {
-  phrase: string;
-  count: number;
-}
-
-export interface WordAnalysisResult {
-  uniqueWords: number;
-  totalWords: number;
-  vocabularyRichness: number; // type-token ratio
-  topWords: WordFrequency[];
-  bigrams: PhraseFrequency[];
-  trigrams: PhraseFrequency[];
-}
-
 // --- Writing Patterns ---
 
 export type PatternCategory = 'citation_issues' | 'completeness' | 'style_observations';
@@ -184,9 +134,6 @@ export interface ReferenceAnalysisResult {
 export interface AnalysisResult {
   fileName: string;
   extractedText: string;
-  readability: ReadabilityResult;
-  writingQuality: WritingQualityResult;
-  wordAnalysis: WordAnalysisResult;
   writingPatterns: WritingPatternsResult;
   references: ReferenceAnalysisResult;
   processingTime: number;
@@ -196,9 +143,6 @@ export interface AnalysisResult {
 
 export type AnalysisStage =
   | 'extracting'
-  | 'analyzing_readability'
-  | 'analyzing_writing'
-  | 'analyzing_words'
   | 'analyzing_writing_patterns'
   | 'extracting_references'
   | 'verifying_references'

@@ -78,16 +78,10 @@ const FEATURES = [
     iconClass: 'feature-icon--teal',
   },
   {
-    title: 'Readability Analysis',
-    description: 'Computes Flesch-Kincaid, Coleman-Liau, Automated Readability Index, and more.',
-    icon: '≡',
-    iconClass: 'feature-icon--amber',
-  },
-  {
-    title: 'Writing Patterns',
-    description: 'Highlights citation issues, incomplete sections, and notable writing style patterns for review.',
+    title: 'Citation Issue Detection',
+    description: 'Flags future-dated references, unusual year clusters, mixed citation styles, and placeholder text.',
     icon: '⚑',
-    iconClass: 'feature-icon--rose',
+    iconClass: 'feature-icon--amber',
   },
 ];
 
@@ -142,7 +136,7 @@ export function LandingPage({ onNavigate }: Props) {
             <div className="step-number">3</div>
             <div className="step-content">
               <h3>Detailed Report</h3>
-              <p>Review a comprehensive report with verification status, format issues, readability scores, and writing pattern observations for each citation.</p>
+              <p>Review a comprehensive report with verification status, format issues, and citation issue observations for each reference.</p>
             </div>
           </div>
         </div>
@@ -177,8 +171,7 @@ export function LandingPage({ onNavigate }: Props) {
               <li><span className="check-icon">✓</span> Citation format checking</li>
               <li><span className="check-icon">✓</span> URL checking</li>
               <li><span className="check-icon">✓</span> Cross-reference matching</li>
-              <li><span className="check-icon">✓</span> Readability analysis</li>
-              <li><span className="check-icon">✓</span> Writing patterns</li>
+              <li><span className="check-icon">✓</span> Citation issue detection</li>
               <li><span className="check-icon">✓</span> PDF &amp; CSV reports</li>
             </ul>
           </div>
