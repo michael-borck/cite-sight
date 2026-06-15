@@ -30,6 +30,7 @@ function urlStatusBadge(status: string): string {
   switch (status) {
     case 'live':     return chalk.green('live');
     case 'dead':     return chalk.red('dead');
+    case 'blocked':  return chalk.yellow('blocked (access restricted)');
     case 'redirect': return chalk.yellow('redirect');
     case 'timeout':  return chalk.yellow('timeout');
     default:         return chalk.gray(status);

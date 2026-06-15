@@ -133,7 +133,7 @@ export interface AcademicWork {
   citationCount?: number;
 }
 
-export type UrlStatus = 'live' | 'dead' | 'redirect' | 'timeout' | 'error' | 'no_url';
+export type UrlStatus = 'live' | 'dead' | 'blocked' | 'redirect' | 'timeout' | 'error' | 'no_url';
 
 export interface UrlCheckResult {
   url: string;

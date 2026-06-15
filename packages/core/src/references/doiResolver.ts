@@ -33,7 +33,10 @@ export async function resolveDoi(
       signal: AbortSignal.timeout(10_000),
     });
 
-    if (res.ok || res.status === 200) {
+    // A 404/410 from doi.org means the DOI is not registered. Any other
+    // outcome (including a redirect to a publisher that then 403s/paywalls an
+    // automated client) means doi.org *did* resolve the DOI to a real target.
+    if (res.status !== 404 && res.status !== 410) {
       // We only have a URL — return a minimal AcademicWork so callers know
       // the DOI resolves to something.
       return {

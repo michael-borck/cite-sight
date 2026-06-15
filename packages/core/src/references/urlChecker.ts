@@ -54,8 +54,17 @@ export async function checkUrl(url: string): Promise<UrlCheckResult> {
       // In practice with redirect:'follow' we won't normally see 3xx — but handle
       // it defensively.
       status = 'redirect';
-    } else {
+    } else if (statusCode === 404 || statusCode === 410) {
+      // Only "Not Found" / "Gone" mean the resource is genuinely dead.
       status = 'dead';
+    } else {
+      // 401/403/429/451 and other 4xx/5xx: the server declined to serve an
+      // automated client (paywall, anti-bot, rate-limit, auth) or hit a
+      // transient error. The resource is reachable but unverifiable — NOT dead.
+      // Academic publishers (ACM, Elsevier, IEEE, Springer) routinely return
+      // 403 to non-browser clients, so treating these as dead produces false
+      // positives on perfectly valid DOIs/links.
+      status = 'blocked';
     }
 
     return {

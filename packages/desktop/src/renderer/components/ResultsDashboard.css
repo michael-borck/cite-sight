@@ -241,6 +241,7 @@
 .url-status { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 0.73rem; font-weight: 500; }
 .url-live     { background: var(--verified-bg); color: var(--verified); }
 .url-dead     { background: var(--notfound-bg); color: var(--notfound); }
+.url-blocked  { background: #fff8e1; color: #8d6e00; }
 .url-redirect { background: #e3f2fd; color: #1565c0; }
 .url-timeout  { background: var(--amber-bg); color: var(--amber-dark); }
 .url-error    { background: var(--rose-bg); color: var(--rose-dark); }
