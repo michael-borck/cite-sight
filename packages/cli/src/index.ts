@@ -140,16 +140,18 @@ function printReport(result: AnalysisResult, verbose: boolean): void {
     console.log(`  ${chalk.green('No issues detected.')}`);
   }
 
-  // Verbose: individual reference statuses
-  if (verbose && references.verifications.length > 0) {
-    printSectionHeader('Reference Details');
+  // Per-reference verdicts — shown by default so the summary counts above are
+  // traceable to specific references (which are verified / suspicious / not
+  // found). Per-flag detail is added under --verbose.
+  if (references.verifications.length > 0) {
+    printSectionHeader('References');
     for (const v of references.verifications) {
       const title = v.reference.title
         ? v.reference.title.slice(0, 60) + (v.reference.title.length > 60 ? '…' : '')
         : v.reference.raw.slice(0, 60) + '…';
       const year = v.reference.year ? ` (${v.reference.year})` : '';
       console.log(`  ${statusBadge(v.status)} — ${title}${year}`);
-      if (v.flags.length > 0 && verbose) {
+      if (verbose && v.flags.length > 0) {
         for (const flag of v.flags) {
           console.log(`    ${chalk.gray('·')} ${chalk.gray(flag)}`);
         }
