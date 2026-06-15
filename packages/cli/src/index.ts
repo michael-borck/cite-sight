@@ -5,6 +5,13 @@ import chalk from 'chalk';
 import { resolve } from 'path';
 import { analyzePipeline, MANIFEST } from '@michaelborck/cite-sight-core';
 import type { AnalysisResult, ProcessingOptions, ProgressCallback } from '@michaelborck/cite-sight-core';
+import { readFileSync } from 'node:fs';
+
+// Read the real version from this package's package.json (relative to the
+// built dist/index.js → ../package.json), instead of hardcoding it.
+const pkgVersion: string = JSON.parse(
+  readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+).version;
 
 // -------------------------------------------------------
 // Helpers
@@ -261,7 +268,7 @@ async function runAnalysis(filePath: string, opts: {
 program
   .name('cite-sight')
   .description('Academic integrity and citation checker')
-  .version('1.0.0');
+  .version(pkgVersion);
 
 // Top-level default command: cite-sight <file>
 program
