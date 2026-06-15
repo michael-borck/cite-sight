@@ -174,12 +174,20 @@ function extractJournalDetails(
   if (italicM) {
     result.journal = italicM[1].trim();
   } else if (style === 'apa') {
-    // After title sentence (ends with ". "), before volume
-    const titleEnd = raw.lastIndexOf('). ');
-    if (titleEnd >= 0) {
-      const afterTitle = raw.slice(titleEnd + 3);
+    // Structure after "(Year). ": "<title>. <journal>, <vol>(<issue>), <pages>."
+    // Anchor at the END of the title — the first ". " before a capital/italic,
+    // matching extractTitle — not at the year, so the journal field doesn't
+    // swallow the (sentence-case) title and trip the Title-Case check.
+    const yearEnd = raw.lastIndexOf('). ');
+    if (yearEnd >= 0) {
+      const body = raw.slice(yearEnd + 3);
+      const titleSep = body.search(/\.\s+(?=[A-Z*_])/);
+      const afterTitle = (titleSep >= 0 ? body.slice(titleSep + 1) : body).replace(/^\s+/, '');
       const journalEnd = afterTitle.search(/,\s*\d/);
-      if (journalEnd > 0) result.journal = afterTitle.slice(0, journalEnd).trim();
+      result.journal =
+        journalEnd > 0
+          ? afterTitle.slice(0, journalEnd).trim()
+          : afterTitle.split(/\.\s/)[0].trim();
     }
   }
 
