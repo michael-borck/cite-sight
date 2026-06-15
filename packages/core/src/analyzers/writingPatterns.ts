@@ -24,11 +24,20 @@ function splitSentences(text: string): string[] {
 // ---------------------------------------------------------------------------
 
 /**
- * Extracts 4-digit years that look like publication years (1700–current+1).
+ * Extracts 4-digit years that look like CITATION years — i.e. years that
+ * appear inside parentheses, the hallmark of an in-text citation
+ * "(Author, 2021)" / "(2021)" or a reference-list year. Bare years in prose,
+ * tables, or date ranges ("Jan–Mar 2027", "Semester 2 2026", "27 March 2026")
+ * are dates, not citations, and must not be treated as references.
  */
 function extractCitationYears(text: string): number[] {
-  const matches = text.match(/\b(1[7-9]\d{2}|20\d{2})\b/g) ?? [];
-  return matches.map(Number);
+  const years: number[] = [];
+  const parenGroups = text.match(/\([^)]*\)/g) ?? [];
+  for (const group of parenGroups) {
+    const inner = group.match(/\b(1[7-9]\d{2}|20\d{2})\b/g);
+    if (inner) years.push(...inner.map(Number));
+  }
+  return years;
 }
 
 function checkCitationAnomalies(text: string): WritingPattern[] {
@@ -54,9 +63,11 @@ function checkCitationAnomalies(text: string): WritingPattern[] {
   for (const y of years) yearCounts.set(y, (yearCounts.get(y) ?? 0) + 1);
 
   yearCounts.forEach((count, year) => {
-    // Flag years that are far from the expected recent range and appear clustered
-    const isUnusual = year < 1900 || year > CURRENT_YEAR - 1;
-    if (count >= 3 && isUnusual && year <= CURRENT_YEAR) {
+    // A cluster is only suspicious when the repeated year is implausible — far
+    // in the future or pre-1900. A burst of current/recent-year citations is
+    // normal (recent papers cite recent work) and must not be flagged.
+    const isUnusual = year < 1900 || year > CURRENT_YEAR;
+    if (count >= 3 && isUnusual) {
       patterns.push({
         type: 'citation_year_cluster',
         description: `Year ${year} appears ${count} times — unusual cluster`,
@@ -81,11 +92,33 @@ const MLA_INTEXT_RE = /\([A-Z][a-z]+(?:\s+et\s+al\.)?\s+\d+\)/g;
 // Numeric citation: [1], [2,3], [1-4]
 const NUMERIC_CITE_RE = /\[\d+(?:[,\-]\d+)*\]/g;
 
+// Words that make "(Word 3)" look like an MLA "(Author Page)" cite but are
+// really document cross-references: "(Table 1)", "(Figure 2)", "(Step 3)"…
+const STRUCTURAL_WORDS = new Set([
+  'table', 'figure', 'fig', 'section', 'sec', 'appendix', 'chapter', 'chap',
+  'equation', 'eq', 'step', 'part', 'phase', 'item', 'note', 'box', 'panel',
+  'volume', 'vol', 'version', 'row', 'column', 'col', 'slide', 'day', 'week',
+  'level', 'page', 'line', 'footnote', 'question', 'grade', 'group', 'model',
+  'study', 'studies', 'experiment', 'phase', 'stage', 'round',
+  // month names (so "(May 2024)" date ranges are not read as "(Author Page)")
+  'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'sept',
+  'oct', 'nov', 'dec', 'january', 'february', 'march', 'april', 'june',
+  'july', 'august', 'september', 'october', 'november', 'december',
+]);
+
 function checkMixedCitationStyles(text: string): WritingPattern[] {
   const patterns: WritingPattern[] = [];
 
   const apaMatches = text.match(APA_INTEXT_RE) ?? [];
-  const mlaMatches = text.match(MLA_INTEXT_RE) ?? [];
+  const mlaMatches = (text.match(MLA_INTEXT_RE) ?? []).filter((m) => {
+    const word = m.slice(1).match(/[A-Za-z]+/)?.[0]?.toLowerCase() ?? '';
+    const num = Number(m.match(/\d+/)?.[0] ?? '0');
+    // Real MLA in-text cites are "(Author Page)" — a page number, never a
+    // 4-digit year. Exclude year-like numbers ("(May 2024)") and document
+    // cross-references ("(Table 1)", "(Study 2)").
+    const looksLikeYear = num >= 1700 && num <= 2099;
+    return !STRUCTURAL_WORDS.has(word) && !looksLikeYear;
+  });
   const numericMatches = text.match(NUMERIC_CITE_RE) ?? [];
 
   const stylesDetected: string[] = [];
