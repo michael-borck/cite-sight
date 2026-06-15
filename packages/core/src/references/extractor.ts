@@ -408,8 +408,16 @@ const MLA_NON_CITATION_WORDS = new Set([
   'nov', 'dec',
 ]);
 
-function extractInTextCitations(text: string): InTextCitation[] {
+function extractInTextCitations(text: string, style: CitationStyle = 'unknown'): InTextCitation[] {
   const results: InTextCitation[] = [];
+
+  // The author-year patterns are self-validating (they require a comma+year or
+  // a word immediately followed by "(YYYY)"), so they always run. The MLA
+  // "(Author page)" and Chicago "[1]" shapes are far looser and collide with
+  // ordinary prose — "(Table 1)", "[3]" — so they run only when the document is
+  // actually in that style (or its style is unknown), not on an APA paper.
+  const runMla = style === 'mla' || style === 'unknown';
+  const runChicago = style === 'chicago' || style === 'unknown';
 
   // --- APA parenthetical ---
   const apaParenRe =
@@ -457,29 +465,33 @@ function extractInTextCitations(text: string): InTextCitation[] {
   // like "(Table 1)", "(Study 2)", "(Figure 3)" and month-year refs "(May
   // 2024)" — none of which are citations. Skip structural words, month names,
   // and 4-digit year locators (a real MLA locator is a page, not a year).
-  const mlaRe = /\(([A-Z][a-zA-Z\-']+)\s+(\d+(?:-\d+)?)\)/g;
-  for (const m of text.matchAll(mlaRe)) {
-    const word = m[1].toLowerCase();
-    if (MLA_NON_CITATION_WORDS.has(word)) continue;
-    if (/^(?:19|20)\d{2}$/.test(m[2])) continue;
-    results.push({
-      raw: m[0],
-      authors: [m[1]],
-      year: null,
-      pageNumbers: m[2],
-      position: m.index ?? 0,
-    });
+  if (runMla) {
+    const mlaRe = /\(([A-Z][a-zA-Z\-']+)\s+(\d+(?:-\d+)?)\)/g;
+    for (const m of text.matchAll(mlaRe)) {
+      const word = m[1].toLowerCase();
+      if (MLA_NON_CITATION_WORDS.has(word)) continue;
+      if (/^(?:19|20)\d{2}$/.test(m[2])) continue;
+      results.push({
+        raw: m[0],
+        authors: [m[1]],
+        year: null,
+        pageNumbers: m[2],
+        position: m.index ?? 0,
+      });
+    }
   }
 
   // --- Chicago footnote markers: [1] or Unicode superscripts ¹²³ ---
-  const chicagoRe = /\[(\d+)\]|([¹²³⁴⁵⁶⁷⁸⁹⁰]+)/g;
-  for (const m of text.matchAll(chicagoRe)) {
-    results.push({
-      raw: m[0],
-      authors: [],
-      year: null,
-      position: m.index ?? 0,
-    });
+  if (runChicago) {
+    const chicagoRe = /\[(\d+)\]|([¹²³⁴⁵⁶⁷⁸⁹⁰]+)/g;
+    for (const m of text.matchAll(chicagoRe)) {
+      results.push({
+        raw: m[0],
+        authors: [],
+        year: null,
+        position: m.index ?? 0,
+      });
+    }
   }
 
   // Deduplicate by position (APA narrative can double-match parenthetical)
@@ -510,6 +522,21 @@ function looksLikeReference(ref: ParsedReference): boolean {
   return /\b(?:1[89]|20)\d{2}\b/.test(ref.raw);
 }
 
+/** Most common detected style across the parsed bibliography ('unknown' if none). */
+function majorityStyle(refs: ParsedReference[]): CitationStyle {
+  const counts: Record<CitationStyle, number> = { apa: 0, mla: 0, chicago: 0, unknown: 0 };
+  for (const r of refs) counts[r.detectedStyle]++;
+  let best: CitationStyle = 'unknown';
+  let bestN = 0;
+  for (const s of ['apa', 'mla', 'chicago'] as const) {
+    if (counts[s] > bestN) {
+      best = s;
+      bestN = counts[s];
+    }
+  }
+  return best;
+}
+
 export function extractReferences(text: string): {
   references: ParsedReference[];
   inTextCitations: InTextCitation[];
@@ -517,7 +544,10 @@ export function extractReferences(text: string): {
   const section = findReferenceSection(text);
   const rawRefs = section ? splitIntoReferences(section) : [];
   const references = rawRefs.map(parseReference).filter(looksLikeReference);
-  const inTextCitations = extractInTextCitations(text);
+  // The bibliography's own style decides which in-text citation shapes are
+  // plausible — so an APA paper isn't scanned for MLA "(Author page)" or
+  // Chicago "[n]" markers that collide with ordinary prose.
+  const inTextCitations = extractInTextCitations(text, majorityStyle(references));
 
   return { references, inTextCitations };
 }
