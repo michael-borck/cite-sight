@@ -43,6 +43,25 @@ export function titleSimilarity(a: string, b: string): number {
   return intersection.size / union.size;
 }
 
+/**
+ * Directional title containment: how much of the *shorter* title's word set is
+ * present in the *longer* one, plus the size of that smaller set (so callers can
+ * require a minimum length before trusting it). High containment with a low
+ * Jaccard is the signature of a main-title / full-title-with-subtitle pair
+ * (e.g. registry "To Trust or to Think" vs cited "To trust or to think:
+ * Cognitive forcing functions ..."), not a genuine mismatch.
+ */
+export function titleContainment(a: string, b: string): { containment: number; smallerSize: number } {
+  if (!a || !b) return { containment: 0, smallerSize: 0 };
+  const setA = new Set(normalizeTitle(a).split(' ').filter(Boolean));
+  const setB = new Set(normalizeTitle(b).split(' ').filter(Boolean));
+  if (setA.size === 0 || setB.size === 0) return { containment: 0, smallerSize: 0 };
+  const [small, large] = setA.size <= setB.size ? [setA, setB] : [setB, setA];
+  let inter = 0;
+  for (const w of small) if (large.has(w)) inter++;
+  return { containment: inter / small.size, smallerSize: small.size };
+}
+
 // ============================================================
 // Author / year corroboration
 //
@@ -116,12 +135,22 @@ function assessAcademicMatch(
       flags.push('doi_unconfirmed');
       return { status: 'likely_valid', confidence: 0.65, flags };
     }
-    if (titleSim >= 0.7) {
-      // DOI resolves to a work whose title matches the claim — strong evidence.
-      return { status: 'verified', confidence: author === 'mismatch' ? 0.85 : 0.97, flags };
+    // The DOI is authoritative — it already resolved to this specific work.
+    // Accept a strong word-overlap match OR a containment match, where one
+    // title is (almost) wholly contained in the other. The latter is the
+    // common case where a registry stores only the main title and the citation
+    // adds a subtitle (or vice versa); a low Jaccard there is not a mismatch.
+    const { containment, smallerSize } = titleContainment(ref.title, work.title);
+    const subsetMatch =
+      (smallerSize >= 4 && containment >= 0.8) || // longer titles: near-full overlap
+      (smallerSize >= 2 && containment >= 0.999); // short titles: require full containment
+    if (titleSim >= 0.7 || subsetMatch) {
+      // Exact-ish title match is strongest; a subset match is slightly weaker.
+      const base = titleSim >= 0.7 ? 0.97 : 0.9;
+      return { status: 'verified', confidence: author === 'mismatch' ? Math.min(base, 0.85) : base, flags };
     }
-    // DOI resolves to a DIFFERENT-titled work: a real DOI grafted onto a
-    // mismatched (often fabricated) citation.
+    // DOI resolves to a genuinely DIFFERENT-titled work: a real DOI grafted
+    // onto a mismatched (often fabricated) citation.
     flags.push('doi_title_mismatch');
     return { status: 'suspicious', confidence: 0.35, flags };
   }
