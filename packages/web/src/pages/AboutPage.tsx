@@ -32,9 +32,11 @@ export function AboutPage() {
             <li>In-text citations are matched against bibliography entries.</li>
           </ol>
           <p>
-            Each reference receives a confidence score and one of four statuses:
+            Each reference receives a confidence score and one of these statuses:
             <strong> Verified</strong>, <strong> Likely Valid</strong>,
-            <strong> Suspicious</strong>, or <strong> Not Found</strong>.
+            <strong> Needs Review</strong> (found, but the details don't match),
+            <strong> Not Found</strong>, or <strong> Unverified</strong> (a lookup
+            failed, so it could not be checked).
             Academic sources verified via DOI can reach full confidence, while non-academic web
             sources are capped at a lower confidence to reflect the less structured verification.
           </p>

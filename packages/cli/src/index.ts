@@ -26,7 +26,7 @@ function statusBadge(status: string): string {
   switch (status) {
     case 'verified':     return chalk.green('✔ verified');
     case 'likely_valid': return chalk.green('~ likely valid');
-    case 'suspicious':   return chalk.red('✖ suspicious');
+    case 'suspicious':   return chalk.yellow('⚠ needs review');
     case 'not_found':    return chalk.yellow('? not found');
     case 'unverified':   return chalk.gray('⚠ unverified (lookup failed)');
     case 'format_only':  return chalk.cyan('f format only');
@@ -92,7 +92,7 @@ function printReport(result: AnalysisResult, minimal: boolean): void {
   console.log(`  Total references:  ${total}`);
   if (total > 0) {
     console.log(`  Verified:          ${chalk.green(String(references.verifiedCount))}`);
-    console.log(`  Suspicious:        ${references.suspiciousCount > 0 ? chalk.red(String(references.suspiciousCount)) : chalk.green('0')}`);
+    console.log(`  Needs review:      ${references.suspiciousCount > 0 ? chalk.yellow(String(references.suspiciousCount)) : chalk.green('0')}`);
     console.log(`  Not found:         ${references.notFoundCount > 0 ? chalk.yellow(String(references.notFoundCount)) : chalk.green('0')}`);
     if (references.unverifiedCount > 0) {
       console.log(`  Unverified:        ${chalk.gray(String(references.unverifiedCount))} (lookup failed — not a miss)`);
@@ -126,9 +126,9 @@ function printReport(result: AnalysisResult, minimal: boolean): void {
       const title = v.reference.title || v.reference.raw.slice(0, 60);
       const explanations = explainVerification(v).filter((e) => e.flag !== 'broken_url');
       issues.push({
-        label: 'Suspicious reference',
+        label: 'Reference needs review',
         detail: `"${title}"`,
-        severity: 'error',
+        severity: 'warn',
         lines: explanations.map((e) => (e.detail ? `${e.label} — ${e.detail}` : e.label)),
       });
     }

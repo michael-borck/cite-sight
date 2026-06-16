@@ -18,7 +18,7 @@ function statusLabel(s: VerificationStatus): string {
   switch (s) {
     case 'verified': return 'Verified';
     case 'likely_valid': return 'Likely Valid';
-    case 'suspicious': return 'Suspicious';
+    case 'suspicious': return 'Needs review';
     case 'not_found': return 'Not Found';
     case 'unverified': return 'Unverified';
     case 'format_only': return 'Format Only';
@@ -149,7 +149,7 @@ function ReferencesPanel({ results }: Props) {
             <span className="count">{references.verifications.filter(v => v.status === 'likely_valid').length}</span> Likely Valid
           </div>
           <div className="status-chip suspicious">
-            <span className="count">{references.suspiciousCount}</span> Suspicious
+            <span className="count">{references.suspiciousCount}</span> Needs review
           </div>
           <div className="status-chip notfound">
             <span className="count">{references.notFoundCount}</span> Not Found
@@ -305,7 +305,7 @@ export function ResultsDashboard({ results }: Props) {
           </div>
           <div className="summary-stat amber">
             <span className="value">{refs.suspiciousCount}</span>
-            <span className="label">Suspicious</span>
+            <span className="label">Needs review</span>
           </div>
           <div className="summary-stat rose">
             <span className="value">{refs.notFoundCount}</span>

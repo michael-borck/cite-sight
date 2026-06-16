@@ -25,7 +25,7 @@ const STATUS_COLOURS: Record<VerificationStatus, readonly [number, number, numbe
 const STATUS_LABELS: Record<VerificationStatus, string> = {
   verified: 'Verified',
   likely_valid: 'Likely Valid',
-  suspicious: 'Suspicious',
+  suspicious: 'Needs review',
   not_found: 'Not Found',
   unverified: 'Unverified (lookup failed)',
   format_only: 'Format Only',
