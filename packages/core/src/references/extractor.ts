@@ -6,7 +6,9 @@ import type { ParsedReference, InTextCitation, CitationStyle } from '../types.js
 
 const DOI_RE = /10\.\d{4,9}\/[-._;()/:A-Z0-9]+/gi;
 const URL_RE = /https?:\/\/[^\s)]+/g;
-const YEAR_STRICT_RE = /\b(19|20)\d{2}\b/;
+// Allows an APA same-author/same-year disambiguation letter (2026a); parseInt
+// still yields the numeric year.
+const YEAR_STRICT_RE = /\b(19|20)\d{2}[a-z]?\b/;
 
 // Headings that indicate the start of a reference/bibliography section.
 // Allows optional markdown heading markers (e.g. "## References") and
@@ -24,7 +26,7 @@ const REF_SECTION_RE =
 function detectStyle(raw: string): CitationStyle {
   // APA: year in parentheses early in the string after author block
   // e.g. "Smith, J. (2020). Title..."
-  if (/^[A-Z][^(]+\(\d{4}\)\./.test(raw)) return 'apa';
+  if (/^[A-Z][^(]+\(\d{4}[a-z]?\)\./.test(raw)) return 'apa';
 
   // Chicago (notes-bibliography): shares the `Author. "Title."` opening with
   // MLA, so it is matched *before* MLA via its distinctive endings, which MLA
@@ -102,7 +104,7 @@ function extractAuthors(raw: string, _style: CitationStyle): string[] {
 
   // APA / MLA / Chicago: author block ends at the year "(YYYY)" or at the
   // first period that is followed by a space and a capital letter / quote.
-  const yearIdx = stripped.search(/\((19|20)\d{2}\)/);
+  const yearIdx = stripped.search(/\((19|20)\d{2}[a-z]?\)/);
   const authorBlock =
     yearIdx > 0 ? stripped.slice(0, yearIdx) : stripped.split(/\.\s+[A-Z"]/)[0];
 
@@ -153,7 +155,7 @@ function extractTitle(raw: string, style: CitationStyle): string {
   if (style === 'apa') {
     // After "(Year). " comes the title, ending at the first sentence break that
     // is not inside an editor/translator parenthetical.
-    const m = stripped.match(/\(\d{4}\)\.\s+([\s\S]+)$/);
+    const m = stripped.match(/\(\d{4}[a-z]?\)\.\s+([\s\S]+)$/);
     if (m) return cleanTitle(titleUpToSentenceBreak(m[1]));
   }
 

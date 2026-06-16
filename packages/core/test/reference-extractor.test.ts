@@ -174,6 +174,22 @@ Kovanović, V., Joksimović, S., & Gašević, D. (2016). Towards automated conte
     expect(borck?.year).toBe(2026);
   });
 
+  it('parses a reference whose year carries an APA disambiguation letter (2026a)', async () => {
+    // The "2026a" suffix used to break year/author/title extraction: the year
+    // regex needed a word boundary, and the author/title splitters looked for a
+    // bare "(YYYY)". The result was year=null, an empty title, and the year
+    // glued onto the author. All three must now parse correctly.
+    const text = `References
+
+Borck, M. (2026a). Conversation, not delegation: How to think with AI. https://example.com/a
+`;
+    const { references } = extractReferences(text);
+    const b = references.find((r) => r.raw.includes('Borck'));
+    expect(b?.year).toBe(2026);
+    expect(b?.authors[0]).toBe('Borck, M.');
+    expect(b?.title).toContain('Conversation, not delegation');
+  });
+
   it('does NOT treat a single incidental parenthetical year as a bibliography', async () => {
     // The paragraph-style fallback requires >= 3 author-led, year-bearing
     // blocks. A lone prose paragraph that happens to cite "(2023)" must not be
