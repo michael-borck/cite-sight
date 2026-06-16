@@ -183,6 +183,7 @@ router.post(
       checkDoi,
       checkInText,
       screenshotUrls: false,
+      semanticScholarApiKey: process.env.SEMANTIC_SCHOLAR_API_KEY,
     };
 
     try {
@@ -267,6 +268,7 @@ router.post('/analyse', fileCleanup, upload.single('file'), async (req, res, nex
     checkDoi: body['checkDoi'] !== 'false',
     checkInText: body['checkInText'] !== 'false',
     screenshotUrls: false,
+    semanticScholarApiKey: process.env.SEMANTIC_SCHOLAR_API_KEY,
   };
 
   try {

@@ -1,18 +1,10 @@
 import type { AcademicWork } from '../types.js';
+import { throttle } from './rateLimiter.js';
+import { getCached, setCached, cacheKey } from './lookupCache.js';
+import { LookupError, reasonFromStatus, reasonFromFetchError } from './lookupError.js';
 
 /** Hard timeout for a single external API request. */
 const API_TIMEOUT_MS = 10_000;
-
-// ============================================================
-// Rate limiting
-// ============================================================
-
-/** Wait ms milliseconds. Used to respect Crossref polite-pool rate limits. */
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-const POLITE_DELAY_MS = 350;
 
 // ============================================================
 // Response parsers
@@ -82,33 +74,39 @@ export async function searchCrossref(
   query: string,
   mailto?: string,
 ): Promise<AcademicWork[]> {
-  await delay(POLITE_DELAY_MS);
+  const key = cacheKey('crossref', query);
+  const cached = getCached<AcademicWork[]>(key);
+  if (cached !== undefined) return cached;
 
+  await throttle();
+
+  const params = new URLSearchParams({
+    'query.bibliographic': query,
+    rows: '5',
+  });
+  if (mailto) params.set('mailto', mailto);
+
+  const url = `https://api.crossref.org/works?${params.toString()}`;
+  let res: Response;
   try {
-    const params = new URLSearchParams({
-      'query.bibliographic': query,
-      rows: '5',
-    });
-    if (mailto) params.set('mailto', mailto);
-
-    const url = `https://api.crossref.org/works?${params.toString()}`;
-    const res = await fetch(url, {
+    res = await fetch(url, {
       headers: { 'User-Agent': 'CiteSight/1.0 (mailto:' + (mailto ?? 'unknown') + ')' },
       signal: AbortSignal.timeout(API_TIMEOUT_MS),
     });
-
-    // A non-OK status is a lookup failure, not "no such work" — surface it so
-    // callers can distinguish an API outage from a genuine empty result.
-    if (!res.ok) throw new Error(`Crossref search failed: HTTP ${res.status}`);
-
-    const data = await res.json() as {
-      message?: { items?: CrossrefItem[] };
-    };
-    const items = data?.message?.items ?? [];
-    return items.map(itemToAcademicWork);
   } catch (err) {
-    throw err instanceof Error ? err : new Error(`Crossref search failed: ${String(err)}`);
+    throw new LookupError('crossref', reasonFromFetchError(err));
   }
+
+  // A non-OK status is a lookup failure, not "no such work" — surface it so
+  // callers can distinguish an API outage from a genuine empty result.
+  if (!res.ok) throw new LookupError('crossref', reasonFromStatus(res.status), `Crossref HTTP ${res.status}`);
+
+  const data = await res.json() as {
+    message?: { items?: CrossrefItem[] };
+  };
+  const works = (data?.message?.items ?? []).map(itemToAcademicWork);
+  setCached(key, works);
+  return works;
 }
 
 /**
@@ -119,7 +117,11 @@ export async function lookupDoi(
   doi: string,
   mailto?: string,
 ): Promise<AcademicWork | null> {
-  await delay(POLITE_DELAY_MS);
+  const key = cacheKey('crossref-doi', doi);
+  const cached = getCached<AcademicWork | null>(key);
+  if (cached !== undefined) return cached;
+
+  await throttle();
 
   try {
     const params = new URLSearchParams();
@@ -133,14 +135,22 @@ export async function lookupDoi(
       signal: AbortSignal.timeout(API_TIMEOUT_MS),
     });
 
-    if (res.status === 404) return null;
+    // 404 is a definitive "no such DOI" — safe to cache. Other non-OK statuses
+    // (429/5xx) are transient: return null but don't cache, so the next paper
+    // citing this DOI retries rather than inheriting a stale failure.
+    if (res.status === 404) {
+      setCached<AcademicWork | null>(key, null);
+      return null;
+    }
     if (!res.ok) return null;
 
     const data = await res.json() as { message?: CrossrefItem };
     const item = data?.message;
     if (!item) return null;
 
-    return itemToAcademicWork(item);
+    const work = itemToAcademicWork(item);
+    setCached<AcademicWork | null>(key, work);
+    return work;
   } catch {
     return null;
   }

@@ -48,9 +48,19 @@ function crossrefFor(query: string): AcademicWork[] {
 vi.mock('../src/references/crossref.js', () => ({
   searchCrossref: vi.fn(async (query: string) => crossrefFor(query)),
 }));
-vi.mock('../src/references/semanticScholar.js', () => ({
-  searchSemanticScholar: vi.fn(async () => []),
-}));
+vi.mock('../src/references/semanticScholar.js', async () => {
+  const { LookupError } = await import('../src/references/lookupError.js');
+  return {
+    // A query carrying the "ratelimited" sentinel simulates Semantic Scholar's
+    // keyless pool throttling us; everything else returns no results.
+    searchSemanticScholar: vi.fn(async (query: string) => {
+      if (query.toLowerCase().includes('ratelimited')) {
+        throw new LookupError('semantic_scholar', 'rate_limited');
+      }
+      return [];
+    }),
+  };
+});
 vi.mock('../src/references/openAlex.js', () => ({
   searchOpenAlex: vi.fn(async () => []),
 }));
@@ -164,5 +174,21 @@ describe('verification verdicts — nothing matches', () => {
   it('returns not_found when no database has the work', async () => {
     const v = await run(ref({ authors: ['Zzyzx'], title: 'An entirely unindexed treatise on nothing', year: 2010 }));
     expect(v.status).toBe('not_found');
+  });
+});
+
+describe('verification verdicts — lookup unavailable', () => {
+  it('reports unverified with the rate-limit reason rather than not_found', async () => {
+    // Crossref and OpenAlex return nothing; Semantic Scholar 429s. The work may
+    // well exist — we just could not check — so it must NOT be "not found".
+    const v = await run(ref({
+      authors: ['Mensah'],
+      title: 'A ratelimited study that no service could confirm',
+      year: 2022,
+    }));
+    expect(v.status).toBe('unverified');
+    expect(v.unavailable).toEqual({ service: 'semantic_scholar', reason: 'rate_limited' });
+    expect(v.flags).toContain('verification_unavailable');
+    expect(v.flags).toContain('rate_limited:semantic_scholar');
   });
 });

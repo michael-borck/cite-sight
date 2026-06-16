@@ -96,6 +96,7 @@ export async function analyzePipeline(
     ? await verifyReferences(references, {
         mailto: options.contactEmail,
         citationStyle: detectedStyle,
+        semanticScholarApiKey: options.semanticScholarApiKey,
       })
     : [];
 

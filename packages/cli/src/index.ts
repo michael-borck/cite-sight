@@ -294,6 +294,7 @@ async function runAnalysis(filePath: string, opts: {
   doi: boolean;
   inText: boolean;
   email?: string;
+  s2Key?: string;
   json: boolean;
   verbose: boolean;
   minimal: boolean;
@@ -311,6 +312,7 @@ async function runAnalysis(filePath: string, opts: {
     checkInText: opts.inText,
     screenshotUrls: false,
     contactEmail: opts.email,
+    semanticScholarApiKey: opts.s2Key ?? process.env.SEMANTIC_SCHOLAR_API_KEY,
   };
 
   const onProgress = opts.json ? undefined : makeProgressCallback(opts.verbose);
@@ -354,6 +356,7 @@ program
   .option('--no-doi', 'Skip DOI verification')
   .option('--no-in-text', 'Skip in-text citation cross-referencing')
   .option('--email <email>', 'Contact email for API polite pool')
+  .option('--s2-key <key>', 'Semantic Scholar API key (or set SEMANTIC_SCHOLAR_API_KEY) to avoid rate-limiting')
   .option('--json', 'Output result as JSON', false)
   .option('--verbose', 'Log progress line by line', false)
   .option('--minimal', 'Condensed report: summary and verdicts only, no per-issue detail', false)
@@ -363,6 +366,7 @@ program
     doi: boolean;
     inText: boolean;
     email?: string;
+    s2Key?: string;
     json: boolean;
     verbose: boolean;
     minimal: boolean;
@@ -383,6 +387,7 @@ program
   .option('--no-doi', 'Skip DOI verification')
   .option('--no-in-text', 'Skip in-text citation cross-referencing')
   .option('--email <email>', 'Contact email for API polite pool')
+  .option('--s2-key <key>', 'Semantic Scholar API key (or set SEMANTIC_SCHOLAR_API_KEY) to avoid rate-limiting')
   .option('--json', 'Output result as JSON', false)
   .option('--verbose', 'Log progress line by line', false)
   .option('--minimal', 'Condensed report: summary and verdicts only, no per-issue detail', false)
@@ -392,6 +397,7 @@ program
     doi: boolean;
     inText: boolean;
     email?: string;
+    s2Key?: string;
     json: boolean;
     verbose: boolean;
     minimal: boolean;

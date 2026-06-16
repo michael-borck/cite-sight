@@ -10,7 +10,8 @@ export interface ProcessingOptions {
   checkDoi: boolean;
   checkInText: boolean;
   screenshotUrls: boolean;
-  contactEmail?: string; // for Crossref polite pool
+  contactEmail?: string; // for Crossref / OpenAlex polite pool
+  semanticScholarApiKey?: string; // lifts keyless rate-limiting on Semantic Scholar
 }
 
 // --- File Extraction ---
@@ -110,6 +111,12 @@ export interface ReferenceVerification {
   urlCheck?: UrlCheckResult;
   confidenceScore: number; // 0-1
   flags: string[];
+  // Set only when status is 'unverified': which service failed and why, so the
+  // report can say "rate-limited on Semantic Scholar" rather than "not found".
+  unavailable?: {
+    service: string;
+    reason: 'rate_limited' | 'timeout' | 'server_error' | 'network' | 'unknown';
+  };
 }
 
 export interface CrossReferenceResult {

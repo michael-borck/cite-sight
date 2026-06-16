@@ -13,6 +13,7 @@ import { searchSemanticScholar } from './semanticScholar.js';
 import { searchOpenAlex } from './openAlex.js';
 import { checkUrl } from './urlChecker.js';
 import { verifyWebSource } from './webSourceVerifier.js';
+import { LookupError, type LookupFailureReason } from './lookupError.js';
 
 // ============================================================
 // Title similarity (Jaccard on word sets)
@@ -209,22 +210,12 @@ function computeIntrinsicFlags(
 }
 
 // ============================================================
-// Polite delay between API calls
-// ============================================================
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-const INTER_REF_DELAY_MS = 400;
-
-// ============================================================
 // Single-reference verification
 // ============================================================
 
 async function verifySingleReference(
   ref: ParsedReference,
-  options: { mailto?: string; citationStyle: CitationStyle },
+  options: { mailto?: string; citationStyle: CitationStyle; semanticScholarApiKey?: string },
 ): Promise<ReferenceVerification> {
   const effectiveStyle: CitationStyle =
     options.citationStyle === ('auto' as CitationStyle)
@@ -239,6 +230,19 @@ async function verifySingleReference(
   let doiHadMetadata = false;
   let similarity = 0;
   let apiErrored = false; // a lookup threw — distinct from "no results"
+
+  // Capture *why* a lookup failed so the verdict can name it (e.g. "rate-limited
+  // on Semantic Scholar"). A rate-limit reason is preferred over others because
+  // it is the most actionable — it means "try again", not "this may be fake".
+  let failure: { service: string; reason: LookupFailureReason } | undefined;
+  const noteFailure = (err: unknown): void => {
+    apiErrored = true;
+    if (err instanceof LookupError) {
+      if (!failure || (err.reason === 'rate_limited' && failure.reason !== 'rate_limited')) {
+        failure = { service: err.service, reason: err.reason };
+      }
+    }
+  };
 
   const searchQuery = [ref.authors[0], ref.title].filter(Boolean).join(' ');
 
@@ -265,8 +269,8 @@ async function verifySingleReference(
         doiHadMetadata = Boolean(resolved.title);
         similarity = resolved.title ? titleSimilarity(ref.title, resolved.title) : 0;
       }
-    } catch {
-      apiErrored = true;
+    } catch (err) {
+      noteFailure(err);
     }
   }
 
@@ -274,14 +278,14 @@ async function verifySingleReference(
   if (!matched && searchQuery.length > 3) {
     for (const search of [
       () => searchCrossref(searchQuery, options.mailto),
-      () => searchSemanticScholar(searchQuery),
+      () => searchSemanticScholar(searchQuery, options.semanticScholarApiKey),
       () => searchOpenAlex(searchQuery, options.mailto),
     ]) {
       if (matched) break;
       try {
         considerResults(await search());
-      } catch {
-        apiErrored = true;
+      } catch (err) {
+        noteFailure(err);
       }
     }
   }
@@ -311,8 +315,8 @@ async function verifySingleReference(
           isWebSource = true;
         }
       }
-    } catch {
-      apiErrored = true;
+    } catch (err) {
+      noteFailure(err);
     }
   }
 
@@ -351,6 +355,11 @@ async function verifySingleReference(
     status = 'unverified';
     confidenceScore = 0;
     flags.push('verification_unavailable');
+    if (failure) {
+      // Compact token carries the reason into raw flag lists (e.g. CSV export);
+      // the structured field below drives the friendly "rate-limited on …" text.
+      flags.push(`${failure.reason}:${failure.service}`);
+    }
   } else {
     // Nothing matched and every lookup answered cleanly — a genuine miss.
     status = 'not_found';
@@ -369,6 +378,7 @@ async function verifySingleReference(
     urlCheck,
     confidenceScore,
     flags,
+    unavailable: failure,
   };
 }
 
@@ -387,17 +397,18 @@ async function verifySingleReference(
  *  5. Search OpenAlex
  *  6. URL check (if URL present)
  *
- * A small delay is inserted between references to respect API rate limits.
+ * Lookups are processed one reference at a time, and every external request is
+ * paced by the shared rate limiter, so the request rate stays polite even
+ * across a whole folder of documents. Results are cached per run, so a work
+ * cited in many papers is looked up only once.
  */
 export async function verifyReferences(
   refs: ParsedReference[],
-  options: { mailto?: string; citationStyle: CitationStyle },
+  options: { mailto?: string; citationStyle: CitationStyle; semanticScholarApiKey?: string },
 ): Promise<ReferenceVerification[]> {
   const results: ReferenceVerification[] = [];
 
   for (let i = 0; i < refs.length; i++) {
-    if (i > 0) await delay(INTER_REF_DELAY_MS);
-
     const verification = await verifySingleReference(refs[i], options);
     results.push(verification);
   }

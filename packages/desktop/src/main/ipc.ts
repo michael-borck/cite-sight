@@ -48,7 +48,13 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(
     'cite-sight:analyze',
     async (_event, filePath: string, options: ProcessingOptions) => {
-      const result: AnalysisResult = await analyzePipeline(filePath, options, (update) => {
+      // A Semantic Scholar key from the environment lifts keyless rate-limiting
+      // during large folder batches, without needing a UI field for it.
+      const mergedOptions: ProcessingOptions = {
+        ...options,
+        semanticScholarApiKey: options.semanticScholarApiKey ?? process.env.SEMANTIC_SCHOLAR_API_KEY,
+      };
+      const result: AnalysisResult = await analyzePipeline(filePath, mergedOptions, (update) => {
         if (!mainWindow.isDestroyed()) {
           mainWindow.webContents.send('cite-sight:progress', update);
         }

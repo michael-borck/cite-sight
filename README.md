@@ -163,6 +163,17 @@ cite-sight check paper.pdf --style apa --email you@example.com
 cite-sight check paper.pdf --minimal
 ```
 
+**Batch checking and rate limits.** Lookups run one reference at a time and every
+external request is paced to one per second, so checking a folder is slow but
+stays within the citation databases' polite-pool limits; results are cached per
+run, so a work cited across many papers is looked up only once. Always pass
+`--email` (it joins the Crossref/OpenAlex polite pools). Semantic Scholar's
+keyless tier can still rate-limit a large batch — supply a key with `--s2-key`
+or the `SEMANTIC_SCHOLAR_API_KEY` environment variable (the desktop app and
+server read the same variable). When a lookup is throttled, that reference is
+reported as **unverified** with the reason (e.g. "rate-limited on Semantic
+Scholar") — it is *not* a confirmed miss; re-run to retry those.
+
 ### Docker (local build)
 
 ```bash

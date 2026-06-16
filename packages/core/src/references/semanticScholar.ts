@@ -1,4 +1,7 @@
 import type { AcademicWork } from '../types.js';
+import { throttle } from './rateLimiter.js';
+import { getCached, setCached, cacheKey } from './lookupCache.js';
+import { LookupError, reasonFromStatus, reasonFromFetchError, type LookupFailureReason } from './lookupError.js';
 
 /** Hard timeout for a single external API request. */
 const API_TIMEOUT_MS = 10_000;
@@ -69,41 +72,57 @@ function delay(ms: number): Promise<void> {
 
 /**
  * Search Semantic Scholar for papers matching the given query.
+ *
  * Retries transient failures (429 rate-limit, 5xx, timeout) with back-off.
- * Throws on persistent failure so the verifier can flag the reference as
- * unverifiable rather than confidently "not found".
+ * Throws a LookupError carrying the failure reason on persistent failure, so
+ * the verifier can report "unverified — rate-limited on Semantic Scholar"
+ * rather than a confident "not found".
+ *
+ * An optional API key lifts the keyless shared-pool throttling that makes this
+ * the service most likely to 429 during batch checks; when present it is sent
+ * as the `x-api-key` header.
  */
 export async function searchSemanticScholar(
   query: string,
+  apiKey?: string,
 ): Promise<AcademicWork[]> {
+  const key = cacheKey('s2', query);
+  const cached = getCached<AcademicWork[]>(key);
+  if (cached !== undefined) return cached;
+
   const params = new URLSearchParams({ query, limit: '5', fields: FIELDS });
   const url = `https://api.semanticscholar.org/graph/v1/paper/search?${params.toString()}`;
+  const headers: Record<string, string> = { 'User-Agent': 'CiteSight/1.0' };
+  if (apiKey) headers['x-api-key'] = apiKey;
 
-  let lastErr: Error = new Error('Semantic Scholar search failed');
+  let reason: LookupFailureReason = 'unknown';
   for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
     if (attempt > 0) await delay(RETRY_DELAYS_MS[attempt - 1]);
+    await throttle();
 
     let res: Response;
     try {
       res = await fetch(url, {
-        headers: { 'User-Agent': 'CiteSight/1.0' },
+        headers,
         signal: AbortSignal.timeout(API_TIMEOUT_MS),
       });
     } catch (err) {
       // Network error or timeout — retryable.
-      lastErr = err instanceof Error ? err : new Error(`Semantic Scholar search failed: ${String(err)}`);
+      reason = reasonFromFetchError(err);
       continue;
     }
 
     if (res.ok) {
       const data = await res.json() as { data?: S2Paper[] };
-      return (data?.data ?? []).map(paperToAcademicWork);
+      const works = (data?.data ?? []).map(paperToAcademicWork);
+      setCached(key, works);
+      return works;
     }
 
-    lastErr = new Error(`Semantic Scholar search failed: HTTP ${res.status}`);
+    reason = reasonFromStatus(res.status);
     // 429 and 5xx are transient — retry; anything else fails immediately.
     if (res.status !== 429 && res.status < 500) break;
   }
 
-  throw lastErr;
+  throw new LookupError('semantic_scholar', reason);
 }

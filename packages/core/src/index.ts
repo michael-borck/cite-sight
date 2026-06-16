@@ -14,6 +14,8 @@ export { checkUrl } from './references/urlChecker.js';
 export { verifyReferences } from './references/verifier.js';
 export { explainVerification } from './references/explain.js';
 export type { FlagExplanation } from './references/explain.js';
+export { clearLookupCache } from './references/lookupCache.js';
+export { setMinRequestInterval } from './references/rateLimiter.js';
 export { isPrivateUrl } from './references/ssrf.js';
 
 // Re-export all types

@@ -24,6 +24,30 @@ function fmtAuthors(authors: string[]): string {
   return authors.length > 0 ? authors.join(', ') : 'none listed';
 }
 
+const SERVICE_NAMES: Record<string, string> = {
+  crossref: 'Crossref',
+  semantic_scholar: 'Semantic Scholar',
+  openalex: 'OpenAlex',
+  doi: 'the DOI resolver',
+};
+
+/** Turn a lookup failure (service + reason) into a readable phrase. */
+function reasonPhrase(reason: string, service: string): string {
+  const name = SERVICE_NAMES[service] ?? service;
+  switch (reason) {
+    case 'rate_limited': return `rate-limited on ${name}`;
+    case 'timeout':      return `timed out contacting ${name}`;
+    case 'server_error': return `${name} returned a server error`;
+    case 'network':      return `could not reach ${name}`;
+    default:             return `lookup failed on ${name}`;
+  }
+}
+
+// Compact reason tokens (e.g. "rate_limited:semantic_scholar") are emitted
+// alongside 'verification_unavailable' so the reason rides along in raw flag
+// lists; they are rendered via the structured field, not as standalone flags.
+const REASON_TOKEN_RE = /^(?:rate_limited|timeout|server_error|network|unknown):/;
+
 /**
  * Expand a verification's flags into human-readable explanations. Low-signal
  * flags that only matter in aggregate (`no_doi`) or are already surfaced
@@ -36,6 +60,7 @@ export function explainVerification(v: ReferenceVerification): FlagExplanation[]
   const out: FlagExplanation[] = [];
 
   for (const flag of v.flags) {
+    if (REASON_TOKEN_RE.test(flag)) continue; // surfaced via 'verification_unavailable'
     switch (flag) {
       case 'author_mismatch':
         out.push({
@@ -99,7 +124,9 @@ export function explainVerification(v: ReferenceVerification): FlagExplanation[]
         out.push({
           flag,
           label: 'Could not verify',
-          detail: 'a database lookup failed (rate-limit, timeout, or network) — this is not a confirmed miss',
+          detail: v.unavailable
+            ? `${reasonPhrase(v.unavailable.reason, v.unavailable.service)} — this is not a confirmed miss, re-run to retry`
+            : 'a database lookup failed (rate-limit, timeout, or network) — this is not a confirmed miss',
         });
         break;
 

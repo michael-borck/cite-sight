@@ -1,4 +1,7 @@
 import type { AcademicWork } from '../types.js';
+import { throttle } from './rateLimiter.js';
+import { getCached, setCached, cacheKey } from './lookupCache.js';
+import { LookupError, reasonFromStatus, reasonFromFetchError, type LookupFailureReason } from './lookupError.js';
 
 /** Hard timeout for a single external API request. OpenAlex can be slow under
  *  load, so this is generous; a too-short timeout makes valid works look
@@ -80,13 +83,18 @@ export async function searchOpenAlex(
   query: string,
   mailto?: string,
 ): Promise<AcademicWork[]> {
+  const key = cacheKey('openalex', query);
+  const cached = getCached<AcademicWork[]>(key);
+  if (cached !== undefined) return cached;
+
   const params = new URLSearchParams({ search: query, per_page: '5' });
   if (mailto) params.set('mailto', mailto);
   const url = `https://api.openalex.org/works?${params.toString()}`;
 
-  let lastErr: Error = new Error('OpenAlex search failed');
+  let reason: LookupFailureReason = 'unknown';
   for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
     if (attempt > 0) await delay(RETRY_DELAYS_MS[attempt - 1]);
+    await throttle();
 
     let res: Response;
     try {
@@ -98,21 +106,23 @@ export async function searchOpenAlex(
       });
     } catch (err) {
       // Network error or timeout — retryable.
-      lastErr = err instanceof Error ? err : new Error(`OpenAlex search failed: ${String(err)}`);
+      reason = reasonFromFetchError(err);
       continue;
     }
 
     if (res.ok) {
       const data = await res.json() as { results?: OAWork[] };
-      return (data?.results ?? []).map(workToAcademicWork);
+      const works = (data?.results ?? []).map(workToAcademicWork);
+      setCached(key, works);
+      return works;
     }
 
     // Surface lookup failures (vs genuine empty results) so the verifier can
     // flag a reference as unverifiable rather than confidently "not found".
-    lastErr = new Error(`OpenAlex search failed: HTTP ${res.status}`);
+    reason = reasonFromStatus(res.status);
     // 429 and 5xx are transient — retry; anything else fails immediately.
     if (res.status !== 429 && res.status < 500) break;
   }
 
-  throw lastErr;
+  throw new LookupError('openalex', reason);
 }
