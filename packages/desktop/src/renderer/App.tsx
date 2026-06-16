@@ -6,6 +6,7 @@ import { ResultsDashboard } from './components/ResultsDashboard';
 import { UpdateNotification } from './components/UpdateNotification';
 import { downloadPdfReport } from './utils/generatePdfReport';
 import { downloadCsvReport } from './utils/generateCsvReport';
+import { DISCLAIMER } from '@michaelborck/cite-sight-core/disclaimer';
 import { useStore } from './store';
 import './App.css';
 
@@ -123,34 +124,37 @@ export function App() {
                   onCancel={handleCancel}
                 />
               ) : (
-                <section className="upload-section">
-                  <FileUpload />
-                  {filePaths.length > 0 && (
-                    <>
-                      <ProcessingOptions />
-                      <div className="action-buttons">
-                        <button
-                          onClick={() => void handleAnalyze()}
-                          disabled={isProcessing}
-                          className="btn btn-primary"
-                        >
-                          {isProcessing
-                            ? 'Processing...'
-                            : filePaths.length === 1
-                              ? 'Analyse Document'
-                              : `Analyse ${filePaths.length} Documents`}
-                        </button>
-                        <button
-                          onClick={handleReset}
-                          disabled={isProcessing}
-                          className="btn btn-secondary"
-                        >
-                          Reset
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </section>
+                <>
+                  <section className="upload-section">
+                    <FileUpload />
+                    {filePaths.length > 0 && (
+                      <>
+                        <ProcessingOptions />
+                        <div className="action-buttons">
+                          <button
+                            onClick={() => void handleAnalyze()}
+                            disabled={isProcessing}
+                            className="btn btn-primary"
+                          >
+                            {isProcessing
+                              ? 'Processing...'
+                              : filePaths.length === 1
+                                ? 'Analyse Document'
+                                : `Analyse ${filePaths.length} Documents`}
+                          </button>
+                          <button
+                            onClick={handleReset}
+                            disabled={isProcessing}
+                            className="btn btn-secondary"
+                          >
+                            Reset
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </section>
+                  <p className="upload-disclaimer">{DISCLAIMER}</p>
+                </>
               )}
               {error && (
                 <div className="error-message">

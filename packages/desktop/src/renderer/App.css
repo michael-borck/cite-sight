@@ -71,6 +71,17 @@
   box-shadow: var(--shadow-sm);
 }
 
+/* ---- Pre-run accuracy disclaimer ---- */
+.upload-disclaimer {
+  margin: var(--sp-5) auto 0;
+  max-width: 640px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  font-style: italic;
+  color: #64748b;
+  text-align: center;
+}
+
 /* ---- Action buttons ---- */
 .action-buttons {
   display: flex;

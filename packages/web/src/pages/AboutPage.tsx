@@ -1,3 +1,4 @@
+import { DISCLAIMER } from '../disclaimer';
 import './AboutPage.css';
 
 export function AboutPage() {
@@ -13,6 +14,11 @@ export function AboutPage() {
             actually exist, validates citation formatting, and highlights anything that might need
             a second look — so you can fix issues before they become problems.
           </p>
+        </section>
+
+        <section className="about-section">
+          <h2>Accuracy &amp; Limitations</h2>
+          <p className="about-disclaimer">{DISCLAIMER}</p>
         </section>
 
         <section className="about-section">
