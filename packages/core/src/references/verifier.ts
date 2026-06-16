@@ -378,7 +378,10 @@ async function verifySingleReference(
     urlCheck,
     confidenceScore,
     flags,
-    unavailable: failure,
+    // Only report a lookup failure when it actually decided the verdict. If an
+    // earlier service was rate-limited but a later one still matched the work,
+    // the reference is verified — the failure is irrelevant and must not leak.
+    unavailable: status === 'unverified' ? failure : undefined,
   };
 }
 

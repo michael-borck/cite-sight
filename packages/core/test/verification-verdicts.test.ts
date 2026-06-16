@@ -34,6 +34,15 @@ const DB: Record<string, AcademicWork> = {
     year: 2024,
     source: 'crossref',
   },
+  // A real work that Crossref will "fail" on (simulated rate-limit) but that
+  // Semantic Scholar still returns — to prove a later success overrides an
+  // earlier failure.
+  fallback: {
+    title: 'Crossreffail but findable via fallback',
+    authors: ['Adeyemi, K.'],
+    year: 2020,
+    source: 'semantic_scholar',
+  },
 };
 
 function crossrefFor(query: string): AcademicWork[] {
@@ -45,18 +54,30 @@ function crossrefFor(query: string): AcademicWork[] {
   return [];
 }
 
-vi.mock('../src/references/crossref.js', () => ({
-  searchCrossref: vi.fn(async (query: string) => crossrefFor(query)),
-}));
+vi.mock('../src/references/crossref.js', async () => {
+  const { LookupError } = await import('../src/references/lookupError.js');
+  return {
+    // The "crossreffail" sentinel simulates Crossref being rate-limited.
+    searchCrossref: vi.fn(async (query: string) => {
+      if (query.toLowerCase().includes('crossreffail')) {
+        throw new LookupError('crossref', 'rate_limited');
+      }
+      return crossrefFor(query);
+    }),
+  };
+});
 vi.mock('../src/references/semanticScholar.js', async () => {
   const { LookupError } = await import('../src/references/lookupError.js');
   return {
-    // A query carrying the "ratelimited" sentinel simulates Semantic Scholar's
-    // keyless pool throttling us; everything else returns no results.
+    // "ratelimited" simulates Semantic Scholar's keyless pool throttling us;
+    // "crossreffail" lets S2 supply the match Crossref could not. Otherwise no
+    // results.
     searchSemanticScholar: vi.fn(async (query: string) => {
-      if (query.toLowerCase().includes('ratelimited')) {
+      const q = query.toLowerCase();
+      if (q.includes('ratelimited')) {
         throw new LookupError('semantic_scholar', 'rate_limited');
       }
+      if (q.includes('crossreffail')) return [DB.fallback];
       return [];
     }),
   };
@@ -190,5 +211,19 @@ describe('verification verdicts — lookup unavailable', () => {
     expect(v.unavailable).toEqual({ service: 'semantic_scholar', reason: 'rate_limited' });
     expect(v.flags).toContain('verification_unavailable');
     expect(v.flags).toContain('rate_limited:semantic_scholar');
+  });
+
+  it('stays verified — no unavailable leak — when one service fails but another matches', async () => {
+    // Crossref is rate-limited, but Semantic Scholar returns the work. One
+    // method succeeding means the reference is verified; the earlier failure
+    // must not surface as `unavailable`.
+    const v = await run(ref({
+      authors: ['Adeyemi'],
+      title: 'Crossreffail but findable via fallback',
+      year: 2020,
+    }));
+    expect(v.status).toBe('verified');
+    expect(v.unavailable).toBeUndefined();
+    expect(v.flags).not.toContain('verification_unavailable');
   });
 });
