@@ -148,6 +148,32 @@ Kuhn, D. (1999). A developmental model of critical thinking. Educational Researc
     expect(authors.some((a) => a.includes('Across'))).toBe(false);
   });
 
+  it('extracts in-text citations with accented surnames and APA disambiguation-letter years', async () => {
+    // Real-world bug: BibTeX guarantees every reference is cited, yet accented
+    // surnames (Buçinca, Kovanović) and same-author/same-year disambiguators
+    // (2026a/2026b) were missed by the in-text patterns, so those references
+    // were wrongly reported as having no in-text citation.
+    const text = `Cognitive forcing reduces overreliance (Buçinca et al., 2021). Conversation
+yields understanding (Borck, 2026a), unlike querying an assistant (Borck, 2026b).
+Discourse analysis has been automated by Kovanović et al. (2016).
+
+References
+
+Buçinca, Z., Malaya, M. B., & Gajos, K. Z. (2021). To trust or to think. Proceedings of the ACM, 5, 1.
+Borck, M. (2026a). Conversation, not delegation. https://example.com/a
+Borck, M. (2026b). Small models, big lessons. https://example.com/b
+Kovanović, V., Joksimović, S., & Gašević, D. (2016). Towards automated content analysis. LAK, 15.
+`;
+    const { inTextCitations } = extractReferences(text);
+    const authors = inTextCitations.flatMap((c) => c.authors.map((a) => a.toLowerCase()));
+    expect(authors.some((a) => a.includes('buçinca'))).toBe(true);
+    expect(authors.some((a) => a.includes('kovanović'))).toBe(true);
+    expect(authors.some((a) => a.includes('borck'))).toBe(true);
+    // The "2026a" disambiguation letter must not break year parsing.
+    const borck = inTextCitations.find((c) => c.authors.some((a) => a.toLowerCase().includes('borck')));
+    expect(borck?.year).toBe(2026);
+  });
+
   it('does NOT treat a single incidental parenthetical year as a bibliography', async () => {
     // The paragraph-style fallback requires >= 3 author-led, year-bearing
     // blocks. A lone prose paragraph that happens to cite "(2023)" must not be

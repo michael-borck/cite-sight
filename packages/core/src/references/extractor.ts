@@ -446,8 +446,11 @@ function extractInTextCitations(text: string, style: CitationStyle = 'unknown'):
   const runChicago = style === 'chicago' || style === 'unknown';
 
   // --- APA parenthetical ---
+  // Author names use Unicode letter classes (\p{Lu}/\p{L}, `u` flag) so accented
+  // surnames — Buçinca, Kovanović, Gašević — match, not just ASCII. Years allow a
+  // trailing APA disambiguation letter (2026a) for same-author/same-year works.
   const apaParenRe =
-    /\(([A-Z][a-zA-Z\-']+(?:\s*(?:&|and)\s*[A-Z][a-zA-Z\-']+|\s+et\s+al\.)?),\s*((?:19|20)\d{2}(?:,\s*(?:19|20)\d{2})*(?:;\s*[A-Z][^;)]+,\s*(?:19|20)\d{2})*)\)/g;
+    /\((\p{Lu}[\p{L}\-']+(?:\s*(?:&|and)\s*\p{Lu}[\p{L}\-']+|\s+et\s+al\.)?),\s*((?:19|20)\d{2}[a-z]?(?:,\s*(?:19|20)\d{2}[a-z]?)*(?:;\s*\p{Lu}[^;)]+,\s*(?:19|20)\d{2}[a-z]?)*)\)/gu;
 
   for (const m of text.matchAll(apaParenRe)) {
     const authorPart = m[1].trim();
@@ -470,7 +473,7 @@ function extractInTextCitations(text: string, style: CitationStyle = 'unknown'):
   // is included so multi-word author/org surnames such as "Russell Group" or
   // "Artificial Intelligence Act" aren't truncated to their last word.
   const apaNarrativeRe =
-    /\b([A-Z][a-zA-Z\-']+(?:\s+[A-Z][a-zA-Z\-']+|\s+(?:&|and)\s+[A-Z][a-zA-Z\-']+|\s+et\s+al\.)*)\s+\(((?:19|20)\d{2})\)/g;
+    /\b(\p{Lu}[\p{L}\-']+(?:\s+\p{Lu}[\p{L}\-']+|\s+(?:&|and)\s+\p{Lu}[\p{L}\-']+|\s+et\s+al\.)*)\s+\(((?:19|20)\d{2})[a-z]?\)/gu;
 
   for (const m of text.matchAll(apaNarrativeRe)) {
     const authors = m[1]
