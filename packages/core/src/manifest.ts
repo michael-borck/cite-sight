@@ -8,7 +8,7 @@
 // auto_routable is false — auto-analyser never routes to it automatically.
 export const MANIFEST = {
   name: 'cite-sight',
-  version: '0.5.2',
+  version: '0.6.0',
   role: 'analyser',
   accepts: ['citations', 'references', 'document'],
   extensions: [] as string[],
