@@ -158,7 +158,7 @@ function ReferencesPanel({ results }: Props) {
       <div className="panel-body">
         <div className="status-summary">
           <div className="status-chip verified">
-            <span className="count">{references.verifiedCount}</span> Verified
+            <span className="count">{references.verifications.filter(v => v.status === 'verified').length}</span> Verified
           </div>
           <div className="status-chip likely">
             <span className="count">{references.verifications.filter(v => v.status === 'likely_valid').length}</span> Likely Valid
@@ -168,6 +168,9 @@ function ReferencesPanel({ results }: Props) {
           </div>
           <div className="status-chip notfound">
             <span className="count">{references.notFoundCount}</span> Not Found
+          </div>
+          <div className="status-chip unverified">
+            <span className="count">{references.unverifiedCount}</span> Unverified
           </div>
         </div>
 
@@ -321,6 +324,10 @@ export function ResultsDashboard({ results }: Props) {
           <div className="summary-stat rose">
             <span className="value">{refs.notFoundCount}</span>
             <span className="label">Not Found</span>
+          </div>
+          <div className="summary-stat muted">
+            <span className="value">{refs.unverifiedCount}</span>
+            <span className="label">Unverified</span>
           </div>
           <div className="summary-stat muted">
             <span className="value">{crossRefCount}</span>

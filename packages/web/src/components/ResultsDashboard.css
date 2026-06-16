@@ -176,6 +176,7 @@
 .status-chip.likely    { background: var(--likely-bg); color: var(--likely); }
 .status-chip.suspicious{ background: var(--suspicious-bg); color: var(--suspicious); }
 .status-chip.notfound  { background: var(--notfound-bg); color: var(--notfound); }
+.status-chip.unverified{ background: #f1f5f9; color: #64748b; }
 
 /* ---- Reference table ---- */
 .ref-table-wrap { overflow-x: auto; }
