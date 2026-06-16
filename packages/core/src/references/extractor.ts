@@ -26,11 +26,19 @@ function detectStyle(raw: string): CitationStyle {
   // e.g. "Smith, J. (2020). Title..."
   if (/^[A-Z][^(]+\(\d{4}\)\./.test(raw)) return 'apa';
 
+  // Chicago (notes-bibliography): shares the `Author. "Title."` opening with
+  // MLA, so it is matched *before* MLA via its distinctive endings, which MLA
+  // does not use:
+  //   article — a parenthesised year immediately followed by a colon + pages,
+  //             e.g. "...103 (2023): 102274."
+  //   book    — "City: Publisher, Year." (MLA 8 drops the city, so the colon
+  //             before the publisher is the discriminator),
+  //             e.g. "London: RoutledgeFalmer, 2002."
+  if (/\((?:19|20)\d{2}\):/.test(raw)) return 'chicago';
+  if (/:\s+[A-Z][^,]+,\s*(?:19|20)\d{2}\.?\s*$/.test(raw)) return 'chicago';
+
   // MLA: "Last, First. "Title." *Journal*, vol. X..."  — no year parenthesis after author
   if (/^[A-Z][^.]+\.\s+"/.test(raw)) return 'mla';
-
-  // Chicago: "Last, First. "Title." *Journal* X, no. Y (Year): pages."
-  if (/\bno\.\s*\d/.test(raw) && /\(\d{4}\):/.test(raw)) return 'chicago';
 
   return 'unknown';
 }
@@ -275,6 +283,24 @@ function findReferenceSection(text: string): string | null {
       return bulletMatches.join('\n');
     }
 
+    // Fourth fallback: the common APA hanging-indent layout — no heading and no
+    // bullet/number, just one blank-line-separated paragraph per entry, each
+    // beginning with an author list ("Surname, I." / "Surname, Firstname") and
+    // carrying a parenthesised year. Unicode-aware so accented surnames
+    // (Buçinca, Kovanović) still anchor a match. Require three or more such
+    // blocks so a prose paragraph with an incidental "(2023)" is not mistaken
+    // for a bibliography. Returning the blocks joined by blank lines lets the
+    // downstream line splitter re-split them (and join wrapped continuations).
+    const refParaStartRe = /^\p{Lu}[\p{L}\-']+,\s+(?:\p{Lu}\.|\p{Lu}[\p{L}\-']+)/u;
+    const refParaYearRe = /\((?:19|20)\d{2}|\([Nn]\.\s*[Dd]\.\)/;
+    const refBlocks = text
+      .split(/\n\s*\n/)
+      .map((b) => b.trim())
+      .filter((b) => refParaStartRe.test(b) && refParaYearRe.test(b));
+    if (refBlocks.length >= 3) {
+      return refBlocks.join('\n\n');
+    }
+
     return null;
   }
 
@@ -512,11 +538,15 @@ function extractInTextCitations(text: string, style: CitationStyle = 'unknown'):
  * references — most commonly a trailing footer / draft note that sits right
  * after the bibliography (e.g. "Draft: the two-study write-up…"). A genuine
  * reference carries at least one hard bibliographic anchor: a publication year,
- * a DOI, or an http(s) URL. Prose notes have none of these.
+ * a DOI, an http(s) URL, or an explicit "no date" marker. Prose notes have none.
  */
 function looksLikeReference(ref: ParsedReference): boolean {
   if (ref.year || ref.doi) return true;
   if (ref.url && /^https?:\/\//i.test(ref.url)) return true;
+  // An explicit "(n.d.)" marker is itself a bibliographic anchor: it signals a
+  // deliberately undated source (common for web pages and reports), so such an
+  // entry must not be discarded just because it carries no year.
+  if (/\(\s*[Nn]\.\s*[Dd]\.\s*\)/.test(ref.raw)) return true;
   // Parser may have missed a year it can't attribute — accept a bare 4-digit
   // year anywhere in the raw as a last resort before discarding.
   return /\b(?:1[89]|20)\d{2}\b/.test(ref.raw);

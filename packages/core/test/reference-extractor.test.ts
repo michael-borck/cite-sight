@@ -116,6 +116,53 @@ This is the combined reference list from all articles.
     ]));
   });
 
+  it('finds a paragraph-style APA bibliography with no heading and no bullets', async () => {
+    // Real-world case (manuscript-draft.docx): the common APA hanging-indent
+    // layout — one blank-line-separated paragraph per entry, no "References"
+    // heading and no bullet/number prefix. The earlier headingless fallback
+    // only recognised bulleted/numbered lists, so removing the heading yielded
+    // zero references. Includes accented surnames (Buçinca) and leading prose
+    // to confirm body paragraphs are not swept into the bibliography.
+    const paragraphBib = `Across four model generations, students engaged more but offloaded judgement.
+
+The data is observational and the trend is suggestive rather than causal.
+
+Abrami, P. C., Bernard, R. M., & Borokhovski, E. (2015). Strategies for teaching students to think critically. Review of Educational Research, 85(2), 275–314.
+
+Buçinca, Z., Malaya, M. B., & Gajos, K. Z. (2021). To trust or to think: Cognitive forcing functions. Proceedings of the ACM, 5(CSCW1), 1–21.
+
+Facione, P. A. (1990). Critical thinking: A statement of expert consensus. American Philosophical Association.
+
+Kuhn, D. (1999). A developmental model of critical thinking. Educational Researcher, 28(2), 16–46.
+`;
+    const { references } = extractReferences(paragraphBib);
+    expect(references.length).toBe(4);
+    const authors = references.map((r) => r.authors[0] ?? '');
+    expect(authors).toEqual(expect.arrayContaining([
+      expect.stringContaining('Abrami'),
+      expect.stringContaining('Buçinca'),
+      expect.stringContaining('Facione'),
+      expect.stringContaining('Kuhn'),
+    ]));
+    // The two leading prose paragraphs must not be parsed as references.
+    expect(authors.some((a) => a.includes('Across'))).toBe(false);
+  });
+
+  it('does NOT treat a single incidental parenthetical year as a bibliography', async () => {
+    // The paragraph-style fallback requires >= 3 author-led, year-bearing
+    // blocks. A lone prose paragraph that happens to cite "(2023)" must not be
+    // mistaken for a reference list when there is no heading.
+    const prose = `This study builds on earlier work.
+
+Smith and Jones argued in their review (2023) that offloading is common, but the
+mechanism remained unclear and was not directly tested in their sample.
+
+We extend that work here with an observational design.
+`;
+    const { references } = extractReferences(prose);
+    expect(references.length).toBe(0);
+  });
+
   it('does NOT treat "## References by Document" mapping tables as the bibliography', async () => {
     // The phrase "References by Document" followed by a markdown table used
     // to trip the inline-keyword fallback because the next char ("b" of "by")
