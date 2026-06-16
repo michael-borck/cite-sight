@@ -3,7 +3,7 @@
 import { program } from 'commander';
 import chalk from 'chalk';
 import { resolve } from 'path';
-import { analyzePipeline, MANIFEST } from '@michaelborck/cite-sight-core';
+import { analyzePipeline, MANIFEST, explainVerification } from '@michaelborck/cite-sight-core';
 import type { AnalysisResult, ProcessingOptions, ProgressCallback } from '@michaelborck/cite-sight-core';
 import { readFileSync } from 'node:fs';
 
@@ -50,7 +50,34 @@ function printSectionHeader(title: string): void {
   console.log(chalk.bold.underline(title));
 }
 
-function printReport(result: AnalysisResult, verbose: boolean): void {
+/**
+ * Pull a short window of words around an in-text citation so a grader can see
+ * *where* in the document it sits. `position` is the citation's character offset
+ * in the extracted text; the citation itself is highlighted between brackets.
+ */
+function contextSnippet(text: string, position: number, rawLength: number, words = 6): string {
+  const before = text.slice(Math.max(0, position - 120), position);
+  const match = text.slice(position, position + rawLength);
+  const after = text.slice(position + rawLength, position + rawLength + 120);
+
+  const beforeWords = before.split(/\s+/).filter(Boolean).slice(-words).join(' ');
+  const afterWords = after.split(/\s+/).filter(Boolean).slice(0, words).join(' ');
+
+  const lead = beforeWords ? `…${beforeWords} ` : '';
+  const trail = afterWords ? ` ${afterWords}…` : '';
+  return `${lead}${chalk.bold(match)}${trail}`.replace(/\s+/g, ' ').trim();
+}
+
+interface ReportIssue {
+  label: string;
+  detail: string;
+  severity: 'error' | 'warn' | 'info';
+  // Indented sub-lines (the "cited X — found Y" detail, context snippets, etc.)
+  // shown by default and suppressed under --minimal.
+  lines?: string[];
+}
+
+function printReport(result: AnalysisResult, minimal: boolean): void {
   const { references, writingPatterns, processingTime } = result;
 
   // Header
@@ -89,16 +116,20 @@ function printReport(result: AnalysisResult, verbose: boolean): void {
     console.log(`  ${chalk.gray('No references detected.')}`);
   }
 
-  // Issues found
-  const issues: Array<{ label: string; detail: string; severity: 'error' | 'warn' | 'info' }> = [];
+  // Issues found. Each issue carries optional `lines` — the indented
+  // "cited X — record says Y" detail and in-text context — shown by default and
+  // collapsed under --minimal so the section stays a terse checklist.
+  const issues: ReportIssue[] = [];
 
   for (const v of references.verifications) {
     if (v.status === 'suspicious') {
       const title = v.reference.title || v.reference.raw.slice(0, 60);
+      const explanations = explainVerification(v).filter((e) => e.flag !== 'broken_url');
       issues.push({
         label: 'Suspicious reference',
-        detail: `"${title}" — ${v.flags.join('; ')}`,
+        detail: `"${title}"`,
         severity: 'error',
+        lines: explanations.map((e) => (e.detail ? `${e.label} — ${e.detail}` : e.label)),
       });
     }
     if (v.urlCheck && (v.urlCheck.status === 'dead' || v.urlCheck.status === 'timeout')) {
@@ -111,13 +142,45 @@ function printReport(result: AnalysisResult, verbose: boolean): void {
     if (v.formatIssues.length > 0) {
       for (const fi of v.formatIssues) {
         const title = v.reference.title || v.reference.raw.slice(0, 40);
+        // Surface the concrete expected/actual values when the validator
+        // recorded them, so "wrong format" says exactly what to change.
+        const lines: string[] = [];
+        if (fi.expected !== undefined || fi.actual !== undefined) {
+          const parts: string[] = [];
+          if (fi.actual !== undefined) parts.push(`found: ${fi.actual}`);
+          if (fi.expected !== undefined) parts.push(`expected: ${fi.expected}`);
+          lines.push(parts.join('   '));
+        }
         issues.push({
           label: 'Format issue',
           detail: `"${title}" — ${fi.message}`,
           severity: 'warn',
+          lines,
         });
       }
     }
+  }
+
+  // Unmatched in-text citations: a citation in the prose with no bibliography
+  // entry. Show the surrounding words so the grader can find it in the document.
+  for (const cite of references.crossReference.unmatchedInText) {
+    issues.push({
+      label: 'Unmatched in-text citation',
+      detail: `${cite.raw} — no matching bibliography entry`,
+      severity: 'warn',
+      lines: [`context: ${contextSnippet(result.extractedText, cite.position, cite.raw.length)}`],
+    });
+  }
+
+  // Unmatched bibliography entries: listed in references but never cited.
+  for (const ref of references.crossReference.unmatchedBibliography) {
+    const title = ref.title || ref.raw.slice(0, 60);
+    const year = ref.year ? ` (${ref.year})` : '';
+    issues.push({
+      label: 'Uncited reference',
+      detail: `"${title}"${year} — in the bibliography but never cited in the text`,
+      severity: 'warn',
+    });
   }
 
   for (const p of writingPatterns.patterns) {
@@ -128,8 +191,8 @@ function printReport(result: AnalysisResult, verbose: boolean): void {
     });
   }
 
+  printSectionHeader('Issues Found');
   if (issues.length > 0) {
-    printSectionHeader('Issues Found');
     for (const issue of issues) {
       const prefix =
         issue.severity === 'error'
@@ -138,15 +201,19 @@ function printReport(result: AnalysisResult, verbose: boolean): void {
             ? chalk.yellow('  [WARN] ')
             : chalk.cyan('  [INFO] ');
       console.log(`${prefix} ${chalk.bold(issue.label)}: ${issue.detail}`);
+      if (!minimal && issue.lines) {
+        for (const line of issue.lines) {
+          console.log(`            ${chalk.gray('·')} ${chalk.gray(line)}`);
+        }
+      }
     }
   } else {
-    printSectionHeader('Issues Found');
     console.log(`  ${chalk.green('No issues detected.')}`);
   }
 
-  // Per-reference verdicts — shown by default so the summary counts above are
-  // traceable to specific references (which are verified / suspicious / not
-  // found). Per-flag detail is added under --verbose.
+  // Per-reference verdicts — so the summary counts above are traceable to
+  // specific references. By default each flagged reference also shows a short
+  // tag list; --minimal collapses to just the verdict line.
   if (references.verifications.length > 0) {
     printSectionHeader('References');
     for (const v of references.verifications) {
@@ -154,12 +221,9 @@ function printReport(result: AnalysisResult, verbose: boolean): void {
         ? v.reference.title.slice(0, 60) + (v.reference.title.length > 60 ? '…' : '')
         : v.reference.raw.slice(0, 60) + '…';
       const year = v.reference.year ? ` (${v.reference.year})` : '';
-      console.log(`  ${statusBadge(v.status)} — ${title}${year}`);
-      if (verbose && v.flags.length > 0) {
-        for (const flag of v.flags) {
-          console.log(`    ${chalk.gray('·')} ${chalk.gray(flag)}`);
-        }
-      }
+      const tags = minimal ? [] : explainVerification(v).map((e) => e.label);
+      const tagStr = tags.length > 0 ? `  ${chalk.gray(`[${tags.join(', ')}]`)}` : '';
+      console.log(`  ${statusBadge(v.status)} — ${title}${year}${tagStr}`);
     }
   }
 
@@ -208,6 +272,7 @@ async function runAnalysis(filePath: string, opts: {
   email?: string;
   json: boolean;
   verbose: boolean;
+  minimal: boolean;
 }): Promise<void> {
   const absolutePath = resolve(filePath);
 
@@ -242,7 +307,7 @@ async function runAnalysis(filePath: string, opts: {
   if (opts.json) {
     process.stdout.write(JSON.stringify(result, null, 2) + '\n');
   } else {
-    printReport(result, opts.verbose);
+    printReport(result, opts.minimal);
   }
 }
 
@@ -264,7 +329,8 @@ program
   .option('--no-in-text', 'Skip in-text citation cross-referencing')
   .option('--email <email>', 'Contact email for API polite pool')
   .option('--json', 'Output result as JSON', false)
-  .option('--verbose', 'Verbose output', false)
+  .option('--verbose', 'Log progress line by line', false)
+  .option('--minimal', 'Condensed report: summary and verdicts only, no per-issue detail', false)
   .action(async (file: string | undefined, opts: {
     style: string;
     urls: boolean;
@@ -273,6 +339,7 @@ program
     email?: string;
     json: boolean;
     verbose: boolean;
+    minimal: boolean;
   }) => {
     if (!file) {
       program.help();
@@ -291,7 +358,8 @@ program
   .option('--no-in-text', 'Skip in-text citation cross-referencing')
   .option('--email <email>', 'Contact email for API polite pool')
   .option('--json', 'Output result as JSON', false)
-  .option('--verbose', 'Verbose output', false)
+  .option('--verbose', 'Log progress line by line', false)
+  .option('--minimal', 'Condensed report: summary and verdicts only, no per-issue detail', false)
   .action(async (file: string, opts: {
     style: string;
     urls: boolean;
@@ -300,6 +368,7 @@ program
     email?: string;
     json: boolean;
     verbose: boolean;
+    minimal: boolean;
   }) => {
     await runAnalysis(file, opts);
   });

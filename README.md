@@ -155,7 +155,12 @@ npx tsc -p packages/cli/tsconfig.json
 
 cite-sight check paper.pdf
 cite-sight check paper.pdf --json
-cite-sight check paper.pdf --style apa --email you@example.com --verbose
+cite-sight check paper.pdf --style apa --email you@example.com
+
+# Reports show the detail behind each issue by default — what was cited vs.
+# what the matched record holds, plus the surrounding text for in-text
+# citations. Use --minimal for a condensed summary-and-verdicts view.
+cite-sight check paper.pdf --minimal
 ```
 
 ### Docker (local build)

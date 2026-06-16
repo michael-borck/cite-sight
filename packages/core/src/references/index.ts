@@ -10,5 +10,7 @@ export { searchOpenAlex } from './openAlex.js';
 export { resolveDoi } from './doiResolver.js';
 export { checkUrl } from './urlChecker.js';
 export { verifyReferences, titleSimilarity } from './verifier.js';
+export { explainVerification } from './explain.js';
+export type { FlagExplanation } from './explain.js';
 export { verifyWebSource } from './webSourceVerifier.js';
 export { isPrivateUrl } from './ssrf.js';
