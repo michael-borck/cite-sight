@@ -3,8 +3,6 @@ import type {
   AnalysisResult,
   ReferenceVerification,
   VerificationStatus,
-  WritingPattern,
-  PatternCategory,
 } from '../types';
 import { DISCLAIMER } from '../disclaimer';
 import './ResultsDashboard.css';
@@ -37,18 +35,6 @@ function statusClass(s: VerificationStatus): string {
   }
 }
 
-function severityClass(s: WritingPattern['severity']): string {
-  return `severity-${s}`;
-}
-
-function categoryLabel(c: PatternCategory): string {
-  switch (c) {
-    case 'citation_issues': return 'Citation Issues';
-    case 'completeness': return 'Completeness';
-    case 'style_observations': return 'Style Observations';
-  }
-}
-
 function bar(value: number, max = 100): number {
   return Math.min(100, Math.max(0, (value / max) * 100));
 }
@@ -56,8 +42,7 @@ function bar(value: number, max = 100): number {
 // ─── sub-panels ───────────────────────────────────────────────────────────────
 
 function OverviewPanel({ results }: Props) {
-  const { references, writingPatterns, processingTime } = results;
-  const totalPatterns = writingPatterns.patterns.length;
+  const { references, processingTime } = results;
 
   return (
     <div className="panel-card">
@@ -79,13 +64,6 @@ function OverviewPanel({ results }: Props) {
               <div className="ombar" style={{ width: '100%', background: 'var(--accent)' }} />
             </div>
             <span className="omv">{references.detectedStyle}</span>
-          </div>
-          <div className="overview-metric-row">
-            <span className="oml">Citation Issues</span>
-            <div className="ombar-wrap">
-              <div className="ombar" style={{ width: `${bar(totalPatterns, 20)}%`, background: 'var(--accent)' }} />
-            </div>
-            <span className="omv">{totalPatterns} found</span>
           </div>
         </div>
 
@@ -276,71 +254,12 @@ function CrossReferencesPanel({ results }: Props) {
   );
 }
 
-function WritingPatternsPanel({ results }: Props) {
-  const { writingPatterns } = results;
-  const { categoryCounts } = writingPatterns;
-  const categories: PatternCategory[] = ['citation_issues', 'completeness', 'style_observations'];
-
-  return (
-    <div className="panel-card">
-      <div className="panel-header">
-        <h3>Writing Patterns</h3>
-      </div>
-      <div className="panel-body">
-        <div className="category-counts">
-          {categories.map((cat) => (
-            <div key={cat} className="category-count-item">
-              <div className="category-count-num">{categoryCounts[cat]}</div>
-              <div className="category-count-label">{categoryLabel(cat)}</div>
-            </div>
-          ))}
-        </div>
-
-        {writingPatterns.patterns.length > 0 ? (
-          <div className="patterns-list">
-            {categories.map((cat) => {
-              const catPatterns = writingPatterns.patterns.filter(p => p.category === cat);
-              if (catPatterns.length === 0) return null;
-              return (
-                <div key={cat} className="patterns-category-group">
-                  <h4>{categoryLabel(cat)} ({catPatterns.length})</h4>
-                  {catPatterns.map((p, i) => (
-                    <div key={i} className={`pattern-card ${severityClass(p.severity)}`}>
-                      <div>
-                        <div className="pattern-header">
-                          <span className="pattern-type">{p.type}</span>
-                          <span className={`severity-badge ${p.severity}`}>{p.severity}</span>
-                        </div>
-                        <p className="pattern-description">{p.description}</p>
-                        {p.evidence && (
-                          <div className="pattern-evidence">
-                            <strong>Evidence:</strong> {p.evidence}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="no-patterns">
-            <p>No notable writing patterns detected.</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ─── sidebar sections ─────────────────────────────────────────────────────────
 
 const SECTIONS = [
   { id: 'overview',    label: 'Overview',    icon: '\u25C6' },
   { id: 'references',  label: 'References',  icon: '\uD83D\uDCDA' },
   { id: 'crossrefs',   label: 'Cross-refs',  icon: '\u21C4' },
-  { id: 'patterns',    label: 'Patterns',    icon: '\uD83D\uDD0D' },
 ];
 
 // ─── main component ───────────────────────────────────────────────────────────
@@ -352,13 +271,11 @@ export function ResultsDashboard({ results }: Props) {
     refs.crossReference.unmatchedBibliography.length +
     refs.crossReference.unmatchedInText.length;
   const issueCount = refs.suspiciousCount + refs.notFoundCount;
-  const patternCount = results.writingPatterns.patterns.length;
 
   const getBadge = (id: string): { count: number | null; warn: boolean } => {
     switch (id) {
       case 'references': return { count: refs.totalReferences, warn: issueCount > 0 };
       case 'crossrefs':  return { count: crossRefCount > 0 ? crossRefCount : null, warn: crossRefCount > 0 };
-      case 'patterns':   return { count: patternCount > 0 ? patternCount : null, warn: patternCount > 0 };
       default:           return { count: null, warn: false };
     }
   };
@@ -414,7 +331,6 @@ export function ResultsDashboard({ results }: Props) {
         {activeSection === 'overview'    && <OverviewPanel results={results} />}
         {activeSection === 'references'  && <ReferencesPanel results={results} />}
         {activeSection === 'crossrefs'   && <CrossReferencesPanel results={results} />}
-        {activeSection === 'patterns'    && <WritingPatternsPanel results={results} />}
 
         <p className="results-disclaimer">{DISCLAIMER}</p>
       </main>

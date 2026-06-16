@@ -1,5 +1,4 @@
 import { extract } from './extractors/index.js';
-import { analyzeWritingPatterns } from './analyzers/writingPatterns.js';
 import { extractReferences } from './references/extractor.js';
 import { verifyReferences } from './references/verifier.js';
 import type {
@@ -75,10 +74,6 @@ export async function analyzePipeline(
     throw new Error('No text could be extracted from the document.');
   }
 
-  // Stage 2: Citation-related document patterns
-  onProgress?.({ stage: 'analyzing_writing_patterns', progress: 30, message: 'Checking citation patterns...' });
-  const writingPatterns = analyzeWritingPatterns(doc.text);
-
   // Stage 6: Extract references
   onProgress?.({ stage: 'extracting_references', progress: 55, message: 'Extracting references...' });
   const { references, inTextCitations } = extractReferences(doc.text);
@@ -125,7 +120,6 @@ export async function analyzePipeline(
   return {
     fileName: doc.fileName,
     extractedText: doc.text,
-    writingPatterns,
     references: referenceResult,
     processingTime: Date.now() - startTime,
   };

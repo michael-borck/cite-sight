@@ -317,33 +317,6 @@ function drawCrossReferences(doc: jsPDF, result: AnalysisResult, y: number, marg
   return y + 2;
 }
 
-function drawWritingPatterns(doc: jsPDF, result: AnalysisResult, y: number, margin: number, contentW: number): number {
-  const patterns = result.writingPatterns.patterns;
-  if (patterns.length === 0) return y;
-
-  y = drawSectionTitle(doc, 'Writing Patterns', y, margin);
-  doc.setFontSize(8);
-
-  const severityColour: Record<string, readonly [number, number, number]> = {
-    high: [211, 47, 47],
-    medium: [245, 124, 0],
-    low: [158, 158, 158],
-  };
-
-  for (const p of patterns) {
-    y = ensureSpace(doc, y, 10, margin);
-    const col = severityColour[p.severity] ?? GREY;
-    setColour(doc, col);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`[${p.severity.toUpperCase()}]`, margin, y);
-    setColour(doc, BLACK);
-    doc.setFont('helvetica', 'normal');
-    y = printWrapped(doc, p.description, margin + 22, y, contentW - 24, 4, margin);
-    y += 1;
-  }
-  return y + 2;
-}
-
 function drawFooter(doc: jsPDF) {
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
@@ -371,7 +344,6 @@ export async function downloadPdfReport(result: AnalysisResult): Promise<void> {
   y = drawOverview(doc, result, y, margin, contentW);
   y = drawReferencesTable(doc, result.references.verifications, y, margin, contentW);
   y = drawCrossReferences(doc, result, y, margin, contentW);
-  y = drawWritingPatterns(doc, result, y, margin, contentW);
   drawFooter(doc);
 
   const safeName = result.fileName.replace(/[^a-zA-Z0-9._-]/g, '_');

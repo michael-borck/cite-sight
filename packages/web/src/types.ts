@@ -14,23 +14,6 @@ export interface ProcessingOptions {
   contactEmail?: string; // for Crossref polite pool
 }
 
-// --- Writing Patterns ---
-
-export type PatternCategory = 'citation_issues' | 'completeness' | 'style_observations';
-
-export interface WritingPattern {
-  type: string;
-  description: string;
-  severity: 'high' | 'medium' | 'low';
-  category: PatternCategory;
-  evidence?: string;
-}
-
-export interface WritingPatternsResult {
-  patterns: WritingPattern[];
-  categoryCounts: Record<PatternCategory, number>;
-}
-
 // --- References ---
 
 export type CitationStyle = 'apa' | 'mla' | 'chicago' | 'unknown';
@@ -128,7 +111,6 @@ export interface ReferenceAnalysisResult {
 export interface AnalysisResult {
   fileName: string;
   extractedText: string;
-  writingPatterns: WritingPatternsResult;
   references: ReferenceAnalysisResult;
   processingTime: number;
 }
@@ -140,7 +122,6 @@ export type AnalysisStage =
   | 'analyzing_readability'
   | 'analyzing_writing'
   | 'analyzing_words'
-  | 'analyzing_writing_patterns'
   | 'extracting_references'
   | 'verifying_references'
   | 'checking_urls'

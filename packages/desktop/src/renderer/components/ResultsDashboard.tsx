@@ -3,8 +3,6 @@ import type {
   AnalysisResult,
   ReferenceVerification,
   VerificationStatus,
-  WritingPattern,
-  PatternCategory,
 } from '@michaelborck/cite-sight-core';
 import { DISCLAIMER } from '@michaelborck/cite-sight-core/disclaimer';
 import { OverviewPanel } from './Overview/index.js';
@@ -38,17 +36,6 @@ function statusClass(s: VerificationStatus): string {
   }
 }
 
-function severityClass(s: WritingPattern['severity']): string {
-  return `severity-${s}`;
-}
-
-function categoryLabel(c: PatternCategory): string {
-  switch (c) {
-    case 'citation_issues': return 'Citation Issues';
-    case 'completeness': return 'Completeness';
-    case 'style_observations': return 'Style Observations';
-  }
-}
 
 // ─── sub-panels ───────────────────────────────────────────────────────────────
 
@@ -252,71 +239,12 @@ function CrossReferencesPanel({ results }: Props) {
   );
 }
 
-function WritingPatternsPanel({ results }: Props) {
-  const { writingPatterns } = results;
-  const { categoryCounts } = writingPatterns;
-  const categories: PatternCategory[] = ['citation_issues', 'completeness', 'style_observations'];
-
-  return (
-    <div className="panel-card">
-      <div className="panel-header">
-        <h3>Writing Patterns</h3>
-      </div>
-      <div className="panel-body">
-        <div className="category-counts">
-          {categories.map((cat) => (
-            <div key={cat} className="category-count-item">
-              <div className="category-count-num">{categoryCounts[cat]}</div>
-              <div className="category-count-label">{categoryLabel(cat)}</div>
-            </div>
-          ))}
-        </div>
-
-        {writingPatterns.patterns.length > 0 ? (
-          <div className="patterns-list">
-            {categories.map((cat) => {
-              const catPatterns = writingPatterns.patterns.filter(p => p.category === cat);
-              if (catPatterns.length === 0) return null;
-              return (
-                <div key={cat} className="patterns-category-group">
-                  <h4>{categoryLabel(cat)} ({catPatterns.length})</h4>
-                  {catPatterns.map((p, i) => (
-                    <div key={i} className={`pattern-card ${severityClass(p.severity)}`}>
-                      <div>
-                        <div className="pattern-header">
-                          <span className="pattern-type">{p.type}</span>
-                          <span className={`severity-badge ${p.severity}`}>{p.severity}</span>
-                        </div>
-                        <p className="pattern-description">{p.description}</p>
-                        {p.evidence && (
-                          <div className="pattern-evidence">
-                            <strong>Evidence:</strong> {p.evidence}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="no-patterns">
-            <p>No notable writing patterns detected.</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ─── sidebar sections ─────────────────────────────────────────────────────────
 
 const SECTIONS = [
-  { id: 'overview',    label: 'Overview',    icon: '\u25C6', group: 'primary' as const },
-  { id: 'references',  label: 'References',  icon: '\uD83D\uDCDA', group: 'primary' as const },
-  { id: 'crossrefs',   label: 'Cross-refs',  icon: '\u21C4', group: 'primary' as const },
-  { id: 'patterns',    label: 'Patterns',    icon: '\uD83D\uDD0D', group: 'bonus' as const },
+  { id: 'overview',    label: 'Overview',    icon: '\u25C6' },
+  { id: 'references',  label: 'References',  icon: '\uD83D\uDCDA' },
+  { id: 'crossrefs',   label: 'Cross-refs',  icon: '\u21C4' },
 ];
 
 // ─── main component ───────────────────────────────────────────────────────────
@@ -328,13 +256,11 @@ export function ResultsDashboard({ results }: Props) {
     refs.crossReference.unmatchedBibliography.length +
     refs.crossReference.unmatchedInText.length;
   const issueCount = refs.suspiciousCount + refs.notFoundCount;
-  const patternCount = results.writingPatterns.patterns.length;
 
   const getBadge = (id: string): { count: number | null; warn: boolean } => {
     switch (id) {
       case 'references': return { count: refs.totalReferences, warn: issueCount > 0 };
       case 'crossrefs':  return { count: crossRefCount > 0 ? crossRefCount : null, warn: crossRefCount > 0 };
-      case 'patterns':   return { count: patternCount > 0 ? patternCount : null, warn: patternCount > 0 };
       default:           return { count: null, warn: false };
     }
   };
@@ -344,13 +270,10 @@ export function ResultsDashboard({ results }: Props) {
       <aside className="results-sidebar">
         <div className="sidebar-filename">{results.fileName}</div>
         <nav className="sidebar-nav">
-          {SECTIONS.map((s, idx) => {
-            const prev = SECTIONS[idx - 1];
-            const showDivider = prev && prev.group === 'primary' && s.group === 'bonus';
+          {SECTIONS.map((s) => {
             const badge = getBadge(s.id);
             return (
               <Fragment key={s.id}>
-                {showDivider && <div className="sidebar-divider">Bonus signals</div>}
                 <button
                   className={`sidebar-link ${activeSection === s.id ? 'active' : ''}`}
                   onClick={() => setActiveSection(s.id)}
@@ -394,7 +317,6 @@ export function ResultsDashboard({ results }: Props) {
         {activeSection === 'overview'    && <OverviewPanel results={results} />}
         {activeSection === 'references'  && <ReferencesPanel results={results} />}
         {activeSection === 'crossrefs'   && <CrossReferencesPanel results={results} />}
-        {activeSection === 'patterns'    && <WritingPatternsPanel results={results} />}
 
         <p className="results-disclaimer">{DISCLAIMER}</p>
       </main>

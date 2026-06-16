@@ -78,7 +78,7 @@ interface ReportIssue {
 }
 
 function printReport(result: AnalysisResult, minimal: boolean): void {
-  const { references, writingPatterns, processingTime } = result;
+  const { references, processingTime } = result;
 
   // Header
   console.log('');
@@ -183,14 +183,6 @@ function printReport(result: AnalysisResult, minimal: boolean): void {
     });
   }
 
-  for (const p of writingPatterns.patterns) {
-    issues.push({
-      label: `Pattern: ${p.type}`,
-      detail: p.description + (p.evidence ? ` (e.g. "${p.evidence.slice(0, 60)}")` : ''),
-      severity: p.severity === 'high' ? 'error' : p.severity === 'medium' ? 'warn' : 'info',
-    });
-  }
-
   printSectionHeader('Issues Found');
   if (issues.length > 0) {
     for (const issue of issues) {
@@ -225,19 +217,6 @@ function printReport(result: AnalysisResult, minimal: boolean): void {
       const tagStr = tags.length > 0 ? `  ${chalk.gray(`[${tags.join(', ')}]`)}` : '';
       console.log(`  ${statusBadge(v.status)} — ${title}${year}${tagStr}`);
     }
-  }
-
-  // Writing patterns summary
-  printSectionHeader('Writing Patterns');
-  const { categoryCounts } = writingPatterns;
-  console.log(`  Citation Issues:     ${categoryCounts.citation_issues}`);
-  console.log(`  Completeness:        ${categoryCounts.completeness}`);
-  console.log(`  Style Observations:  ${categoryCounts.style_observations}`);
-  const totalPatterns = writingPatterns.patterns.length;
-  if (totalPatterns === 0) {
-    console.log(`  ${chalk.green('No notable writing patterns detected.')}`);
-  } else {
-    console.log(`  ${chalk.cyan(`${totalPatterns} pattern(s) detected — review recommended.`)}`);
   }
 
   // Accuracy disclaimer — always shown, even under --minimal, so a report is

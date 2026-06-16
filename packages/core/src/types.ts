@@ -23,23 +23,6 @@ export interface ExtractedDocument {
   pageCount?: number;
 }
 
-// --- Writing Patterns ---
-
-export type PatternCategory = 'citation_issues' | 'completeness' | 'style_observations';
-
-export interface WritingPattern {
-  type: string;
-  description: string;
-  severity: 'high' | 'medium' | 'low';
-  category: PatternCategory;
-  evidence?: string;
-}
-
-export interface WritingPatternsResult {
-  patterns: WritingPattern[];
-  categoryCounts: Record<PatternCategory, number>;
-}
-
 // --- References ---
 
 export type CitationStyle = 'apa' | 'mla' | 'chicago' | 'unknown';
@@ -143,7 +126,6 @@ export interface ReferenceAnalysisResult {
 export interface AnalysisResult {
   fileName: string;
   extractedText: string;
-  writingPatterns: WritingPatternsResult;
   references: ReferenceAnalysisResult;
   processingTime: number;
 }
@@ -152,7 +134,6 @@ export interface AnalysisResult {
 
 export type AnalysisStage =
   | 'extracting'
-  | 'analyzing_writing_patterns'
   | 'extracting_references'
   | 'verifying_references'
   | 'checking_urls'

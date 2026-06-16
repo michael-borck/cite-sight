@@ -52,20 +52,6 @@ export function AboutPage() {
           </p>
         </section>
 
-        <section className="about-section">
-          <h2>Writing Patterns</h2>
-          <p>CiteSight scans for notable writing patterns grouped into three categories:</p>
-          <ul className="writing-patterns-list">
-            <li><strong>Citation Issues</strong> — future dates, unusual year clusters, mixed citation styles</li>
-            <li><strong>Completeness</strong> — placeholder text such as TODO, lorem ipsum, or [citation needed]</li>
-            <li><strong>Style Observations</strong> — repetitive sentence starters, formulaic transitions, overused vocabulary, self-referencing, emojis, excessive em-dashes, intensifier phrases, hyperbole, wordy phrases, and excessive bullet points</li>
-          </ul>
-          <p>
-            Each pattern is assigned a severity level (High, Medium, or Low). These are observations
-            for the reviewer — the human makes the final decision on significance.
-          </p>
-        </section>
-
         <section className="about-section about-section-alt">
           <h2>Privacy</h2>
           <p>
