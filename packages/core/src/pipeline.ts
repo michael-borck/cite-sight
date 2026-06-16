@@ -97,9 +97,21 @@ export async function analyzePipeline(
 
   // Stage 8: Cross-reference check
   onProgress?.({ stage: 'checking_urls', progress: 90, message: 'Cross-referencing citations...' });
-  const crossReference = options.checkInText
+  let crossReference = options.checkInText
     ? crossReferenceCheck(references, inTextCitations)
     : { unmatchedBibliography: [], unmatchedInText: [] };
+
+  // Source-list detection: if EVERY reference is uncited, the document is a bare
+  // source list / annotated bibliography (e.g. a deep-research export), not a
+  // manuscript — so the cross-reference check is meaningless and flagging all N
+  // entries as "uncited" is pure noise. Suppress it and record why. Requires a
+  // few references so a one- or two-entry snippet doesn't trip it.
+  const sourceListLikely =
+    references.length >= 3 &&
+    crossReference.unmatchedBibliography.length === references.length;
+  if (sourceListLikely) {
+    crossReference = { unmatchedBibliography: [], unmatchedInText: [] };
+  }
 
   const referenceResult: ReferenceAnalysisResult = {
     references,
@@ -113,6 +125,7 @@ export async function analyzePipeline(
     notFoundCount: verifications.filter(v => v.status === 'not_found').length,
     unverifiedCount: verifications.filter(v => v.status === 'unverified').length,
     brokenUrlCount: verifications.filter(v => v.urlCheck?.status === 'dead').length,
+    sourceListLikely,
   };
 
   onProgress?.({ stage: 'complete', progress: 100, message: 'Analysis complete.' });

@@ -112,6 +112,12 @@ function printReport(result: AnalysisResult, minimal: boolean): void {
         chalk.yellow(String(references.crossReference.unmatchedInText.length))
       );
     }
+    if (references.sourceListLikely) {
+      console.log(
+        `  ${chalk.cyan('Note:')} no reference is cited in the body — this looks like a source list, ` +
+        `not a manuscript, so the in-text cross-reference check was skipped.`
+      );
+    }
   } else {
     console.log(`  ${chalk.gray('No references detected.')}`);
   }
@@ -272,6 +278,7 @@ async function runAnalysis(filePath: string, opts: {
   urls: boolean;
   doi: boolean;
   inText: boolean;
+  sourceList?: boolean;
   email?: string;
   s2Key?: string;
   json: boolean;
@@ -288,7 +295,9 @@ async function runAnalysis(filePath: string, opts: {
     citationStyle: opts.style as ProcessingOptions['citationStyle'],
     checkUrls: opts.urls,
     checkDoi: opts.doi,
-    checkInText: opts.inText,
+    // --source-list forces the in-text cross-reference off: a bare source list
+    // / bibliography has no manuscript body to cross-reference against.
+    checkInText: opts.inText && !opts.sourceList,
     screenshotUrls: false,
     contactEmail: opts.email,
     semanticScholarApiKey: opts.s2Key ?? process.env.SEMANTIC_SCHOLAR_API_KEY,
@@ -334,6 +343,7 @@ program
   .option('--no-urls', 'Skip URL checking')
   .option('--no-doi', 'Skip DOI verification')
   .option('--no-in-text', 'Skip in-text citation cross-referencing')
+  .option('--source-list', 'Treat the input as a bare source list / bibliography (skips the in-text cross-reference)', false)
   .option('--email <email>', 'Contact email for API polite pool')
   .option('--s2-key <key>', 'Semantic Scholar API key (or set SEMANTIC_SCHOLAR_API_KEY) to avoid rate-limiting')
   .option('--json', 'Output result as JSON', false)
@@ -344,6 +354,7 @@ program
     urls: boolean;
     doi: boolean;
     inText: boolean;
+    sourceList?: boolean;
     email?: string;
     s2Key?: string;
     json: boolean;
@@ -365,6 +376,7 @@ program
   .option('--no-urls', 'Skip URL checking')
   .option('--no-doi', 'Skip DOI verification')
   .option('--no-in-text', 'Skip in-text citation cross-referencing')
+  .option('--source-list', 'Treat the input as a bare source list / bibliography (skips the in-text cross-reference)', false)
   .option('--email <email>', 'Contact email for API polite pool')
   .option('--s2-key <key>', 'Semantic Scholar API key (or set SEMANTIC_SCHOLAR_API_KEY) to avoid rate-limiting')
   .option('--json', 'Output result as JSON', false)
@@ -375,6 +387,7 @@ program
     urls: boolean;
     doi: boolean;
     inText: boolean;
+    sourceList?: boolean;
     email?: string;
     s2Key?: string;
     json: boolean;

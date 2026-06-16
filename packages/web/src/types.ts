@@ -104,6 +104,7 @@ export interface ReferenceAnalysisResult {
   notFoundCount: number;
   unverifiedCount: number;
   brokenUrlCount: number;
+  sourceListLikely: boolean;
 }
 
 // --- Full Pipeline Result ---

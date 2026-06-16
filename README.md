@@ -161,6 +161,12 @@ cite-sight check paper.pdf --style apa --email you@example.com
 # what the matched record holds, plus the surrounding text for in-text
 # citations. Use --minimal for a condensed summary-and-verdicts view.
 cite-sight check paper.pdf --minimal
+
+# For a bare source list / annotated bibliography (e.g. a deep-research export)
+# rather than a manuscript, use --source-list to skip the in-text
+# cross-reference check (otherwise every entry is reported as "uncited").
+# CiteSight also auto-skips that check when no reference is cited at all.
+cite-sight check sources.md --source-list
 ```
 
 **Batch checking and rate limits.** Lookups run one reference at a time and every

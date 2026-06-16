@@ -119,6 +119,10 @@ export interface ReferenceAnalysisResult {
   notFoundCount: number;
   unverifiedCount: number;
   brokenUrlCount: number;
+  // True when the document looks like a bare source list / annotated
+  // bibliography rather than a manuscript (no reference is cited in the body),
+  // so the in-text cross-reference check was suppressed as meaningless.
+  sourceListLikely: boolean;
 }
 
 // --- Full Pipeline Result ---
