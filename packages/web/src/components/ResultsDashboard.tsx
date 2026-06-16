@@ -6,6 +6,7 @@ import type {
   WritingPattern,
   PatternCategory,
 } from '../types';
+import { DISCLAIMER } from '../disclaimer';
 import './ResultsDashboard.css';
 
 interface Props {
@@ -414,6 +415,8 @@ export function ResultsDashboard({ results }: Props) {
         {activeSection === 'references'  && <ReferencesPanel results={results} />}
         {activeSection === 'crossrefs'   && <CrossReferencesPanel results={results} />}
         {activeSection === 'patterns'    && <WritingPatternsPanel results={results} />}
+
+        <p className="results-disclaimer">{DISCLAIMER}</p>
       </main>
     </div>
   );

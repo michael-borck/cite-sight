@@ -1,4 +1,5 @@
 import type { AnalysisResult } from '../types';
+import { DISCLAIMER } from '../disclaimer';
 
 /** Escape a value for CSV (RFC 4180). */
 function csvEscape(value: string): string {
@@ -22,6 +23,7 @@ export function downloadCsvReport(result: AnalysisResult): void {
   lines.push(
     `# Total: ${ref.totalReferences} | Verified: ${ref.verifiedCount} | Suspicious: ${ref.suspiciousCount} | Not Found: ${ref.notFoundCount} | Broken URLs: ${ref.brokenUrlCount}`,
   );
+  lines.push(`# Disclaimer: ${DISCLAIMER}`);
   lines.push('');
 
   // Column headers

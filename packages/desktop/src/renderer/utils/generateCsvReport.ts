@@ -1,4 +1,5 @@
 import type { AnalysisResult } from '@michaelborck/cite-sight-core';
+import { DISCLAIMER } from '@michaelborck/cite-sight-core/disclaimer';
 
 function csvEscape(value: string): string {
   if (value.includes('"') || value.includes(',') || value.includes('\n')) {
@@ -48,6 +49,7 @@ export function downloadCsvReport(results: AnalysisResult[]): void {
     lines.push(`# CiteSight Report — ${results[0].fileName}`);
   }
   lines.push(`# Date: ${formatDate()}`);
+  lines.push(`# Disclaimer: ${DISCLAIMER}`);
   lines.push('');
 
   // Column headers

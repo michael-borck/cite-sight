@@ -3,7 +3,7 @@
 import { program } from 'commander';
 import chalk from 'chalk';
 import { resolve } from 'path';
-import { analyzePipeline, MANIFEST, explainVerification } from '@michaelborck/cite-sight-core';
+import { analyzePipeline, MANIFEST, explainVerification, DISCLAIMER } from '@michaelborck/cite-sight-core';
 import type { AnalysisResult, ProcessingOptions, ProgressCallback } from '@michaelborck/cite-sight-core';
 import { readFileSync } from 'node:fs';
 
@@ -240,7 +240,31 @@ function printReport(result: AnalysisResult, minimal: boolean): void {
     console.log(`  ${chalk.cyan(`${totalPatterns} pattern(s) detected — review recommended.`)}`);
   }
 
+  // Accuracy disclaimer — always shown, even under --minimal, so a report is
+  // never mistaken for a guarantee.
+  printSectionHeader('Please note');
+  for (const line of wrapText(DISCLAIMER, 78)) {
+    console.log(chalk.gray(`  ${line}`));
+  }
+
   console.log('');
+}
+
+/** Greedy word-wrap to a column width, for the terminal disclaimer footer. */
+function wrapText(text: string, width: number): string[] {
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let current = '';
+  for (const word of words) {
+    if (current && current.length + 1 + word.length > width) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = current ? `${current} ${word}` : word;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
 }
 
 // -------------------------------------------------------
@@ -305,7 +329,9 @@ async function runAnalysis(filePath: string, opts: {
   }
 
   if (opts.json) {
-    process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+    // Carry the disclaimer in machine output too, so downstream consumers can
+    // surface it rather than presenting results as authoritative.
+    process.stdout.write(JSON.stringify({ ...result, disclaimer: DISCLAIMER }, null, 2) + '\n');
   } else {
     printReport(result, opts.minimal);
   }

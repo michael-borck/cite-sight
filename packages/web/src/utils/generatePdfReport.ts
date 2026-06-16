@@ -4,6 +4,7 @@ import type {
   ReferenceVerification,
   VerificationStatus,
 } from '../types';
+import { DISCLAIMER } from '../disclaimer';
 
 // ── Colours ──────────────────────────────────────────────────────────────────
 
@@ -99,6 +100,19 @@ function drawHeader(doc: jsPDF, result: AnalysisResult, _y: number, margin: numb
   doc.text(`${formatDate()}  •  ${(result.processingTime / 1000).toFixed(1)}s processing`, margin, 32);
 
   return 46;
+}
+
+function drawDisclaimer(doc: jsPDF, y: number, margin: number, contentW: number): number {
+  y = ensureSpace(doc, y, 16, margin);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  setColour(doc, GREY);
+  doc.text('Please note', margin, y);
+  y += 4;
+  doc.setFont('helvetica', 'italic');
+  y = printWrapped(doc, DISCLAIMER, margin, y, contentW, 3.6, margin);
+  doc.setFont('helvetica', 'normal');
+  return y + 4;
 }
 
 function drawSectionTitle(doc: jsPDF, title: string, y: number, margin: number): number {
@@ -353,6 +367,7 @@ export async function downloadPdfReport(result: AnalysisResult): Promise<void> {
   const contentW = pageW - margin * 2;
 
   let y = drawHeader(doc, result, 0, margin, pageW);
+  y = drawDisclaimer(doc, y, margin, contentW);
   y = drawOverview(doc, result, y, margin, contentW);
   y = drawReferencesTable(doc, result.references.verifications, y, margin, contentW);
   y = drawCrossReferences(doc, result, y, margin, contentW);

@@ -4,6 +4,7 @@ import type {
   ReferenceVerification,
   VerificationStatus,
 } from '@michaelborck/cite-sight-core';
+import { DISCLAIMER } from '@michaelborck/cite-sight-core/disclaimer';
 
 // ── Colours ──────────────────────────────────────────────────────────────────
 
@@ -96,6 +97,19 @@ function drawHeader(doc: jsPDF, title: string, subtitle: string, _y: number, mar
   doc.text(subtitle, margin, 32);
 
   return 46;
+}
+
+function drawDisclaimer(doc: jsPDF, y: number, margin: number, contentW: number): number {
+  y = ensureSpace(doc, y, 16, margin);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  setColour(doc, GREY);
+  doc.text('Please note', margin, y);
+  y += 4;
+  doc.setFont('helvetica', 'italic');
+  y = printWrapped(doc, DISCLAIMER, margin, y, contentW, 3.6, margin);
+  doc.setFont('helvetica', 'normal');
+  return y + 4;
 }
 
 function drawSectionTitle(doc: jsPDF, title: string, y: number, margin: number): number {
@@ -397,6 +411,7 @@ export async function downloadPdfReport(results: AnalysisResult[]): Promise<void
   const headerSubtitle = `${formatDate()}  \u2022  ${(totalTime / 1000).toFixed(1)}s processing`;
 
   let y = drawHeader(doc, headerTitle, headerSubtitle, 0, margin, pageW);
+  y = drawDisclaimer(doc, y, margin, contentW);
 
   for (let ri = 0; ri < results.length; ri++) {
     const result = results[ri];

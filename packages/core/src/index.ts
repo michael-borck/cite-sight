@@ -1,6 +1,7 @@
 // Core library entry point
 export { analyzePipeline } from './pipeline.js';
 export { MANIFEST } from './manifest.js';
+export { DISCLAIMER, DISCLAIMER_SHORT } from './disclaimer.js';
 export { extract, extractPdf, extractDocx } from './extractors/index.js';
 export { analyzeWritingPatterns } from './analyzers/writingPatterns.js';
 export { extractReferences } from './references/extractor.js';

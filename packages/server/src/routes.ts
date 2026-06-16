@@ -3,7 +3,7 @@ import multer from 'multer';
 import { tmpdir } from 'os';
 import { rename, unlink, open } from 'fs/promises';
 import path from 'path';
-import { analyzePipeline } from '@michaelborck/cite-sight-core';
+import { analyzePipeline, DISCLAIMER } from '@michaelborck/cite-sight-core';
 import type { ProcessingOptions } from '@michaelborck/cite-sight-core';
 import { isQueueAvailable, addJob, getJob } from './queue.js';
 import { fileCleanup } from './middleware.js';
@@ -187,7 +187,7 @@ router.post(
 
     try {
       const result = await analyzePipeline(filePath, options);
-      res.json({ status: 'complete', result });
+      res.json({ status: 'complete', result, disclaimer: DISCLAIMER });
     } catch (err) {
       next(err);
     } finally {
@@ -271,7 +271,7 @@ router.post('/analyse', fileCleanup, upload.single('file'), async (req, res, nex
 
   try {
     const result = await analyzePipeline(filePath, options);
-    res.json(result);
+    res.json({ ...result, disclaimer: DISCLAIMER });
   } catch (err) {
     next(err);
   } finally {

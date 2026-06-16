@@ -6,6 +6,7 @@ import type {
   WritingPattern,
   PatternCategory,
 } from '@michaelborck/cite-sight-core';
+import { DISCLAIMER } from '@michaelborck/cite-sight-core/disclaimer';
 import { OverviewPanel } from './Overview/index.js';
 import './ResultsDashboard.css';
 
@@ -394,6 +395,8 @@ export function ResultsDashboard({ results }: Props) {
         {activeSection === 'references'  && <ReferencesPanel results={results} />}
         {activeSection === 'crossrefs'   && <CrossReferencesPanel results={results} />}
         {activeSection === 'patterns'    && <WritingPatternsPanel results={results} />}
+
+        <p className="results-disclaimer">{DISCLAIMER}</p>
       </main>
     </div>
   );

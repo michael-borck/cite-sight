@@ -32,6 +32,11 @@
       "import": "./dist/dashboard/index.js",
       "require": "./dist/dashboard/index.js",
       "types": "./dist/dashboard/index.d.ts"
+    },
+    "./disclaimer": {
+      "import": "./dist/disclaimer.js",
+      "require": "./dist/disclaimer.js",
+      "types": "./dist/disclaimer.d.ts"
     }
   },
   "files": [
