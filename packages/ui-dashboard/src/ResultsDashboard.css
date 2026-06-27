@@ -1,5 +1,8 @@
 /* ============================================================
    RESULTS SHELL — Sidebar + Content grid
+   Shared by the web and desktop apps. Contains only the classes
+   the dashboard actually renders (the prose-analyser Quality /
+   Word / Pattern rules that used to live here were removed).
    ============================================================ */
 .results-shell {
   display: grid;
@@ -176,7 +179,18 @@
 .status-chip.likely    { background: var(--likely-bg); color: var(--likely); }
 .status-chip.suspicious{ background: var(--suspicious-bg); color: var(--suspicious); }
 .status-chip.notfound  { background: var(--notfound-bg); color: var(--notfound); }
-.status-chip.unverified{ background: #f1f5f9; color: #64748b; }
+.status-chip.unverified{ background: var(--amber-bg); color: var(--amber-dark); }
+
+/* Legend: explains the status taxonomy above the reference table. The
+   unverified-vs-not-found distinction is the highest-stakes one (re-run vs.
+   investigate), so it is spelled out explicitly. */
+.status-legend {
+  margin: calc(-1 * var(--sp-3)) 0 var(--sp-5);
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  line-height: 1.7;
+}
+.status-legend strong { color: var(--ink-soft); font-weight: 600; }
 
 /* ---- Reference table ---- */
 .ref-table-wrap { overflow-x: auto; }
@@ -231,6 +245,7 @@
   font-size: 0.73rem;
   font-weight: 600;
   letter-spacing: 0.2px;
+  border: 1px solid transparent;
 }
 .status-badge::before {
   content: '';
@@ -246,8 +261,10 @@
 .status-suspicious::before { background: var(--suspicious); }
 .status-not-found    { background: var(--notfound-bg); color: var(--notfound); }
 .status-not-found::before { background: var(--notfound); }
-.status-unverified   { background: var(--neutral-bg); color: var(--neutral); }
-.status-unverified::before { background: var(--neutral); }
+/* Unverified is deliberately distinct from not-found: amber + dashed reads as
+   "tentative / retry-able" (the database was unreachable), not "absent". */
+.status-unverified   { background: var(--amber-bg); color: var(--amber-dark); border: 1px dashed var(--amber); }
+.status-unverified::before { background: var(--amber); }
 .status-format-only  { background: var(--neutral-bg); color: var(--neutral); }
 .status-format-only::before { background: var(--neutral); }
 
@@ -268,6 +285,8 @@
 .ref-detail-matched { color: var(--verified); margin-bottom: var(--sp-2); }
 .ref-detail-issues ul { margin: var(--sp-1) 0 0 var(--sp-4); color: var(--rose-dark); }
 .ref-detail-flags { color: var(--amber-dark); margin-top: var(--sp-2); }
+
+/* URL screenshot evidence (desktop) */
 .ref-screenshot { margin-top: var(--sp-3); }
 .screenshot-img { max-width: 400px; max-height: 250px; border: 1px solid rgba(26,35,50,0.08); border-radius: var(--r-md); box-shadow: var(--shadow-sm); }
 
@@ -295,73 +314,3 @@
 }
 .no-issues { color: var(--verified); padding: var(--sp-3) 0; font-size: 0.87rem; }
 .no-data { color: var(--ink-faint); font-style: italic; padding: var(--sp-5) 0; }
-
-/* ---- Writing Patterns ---- */
-.category-counts {
-  display: flex; gap: var(--sp-4); margin-bottom: var(--sp-5);
-  padding: var(--sp-4) var(--sp-5); background: var(--paper); border-radius: var(--r-md);
-}
-.category-count-item { flex: 1; text-align: center; padding: var(--sp-3); background: var(--white); border-radius: var(--r-md); border: 1px solid rgba(26,35,50,0.06); }
-.category-count-num { font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; color: var(--ink); margin-bottom: 2px; }
-.category-count-label { font-size: 0.73rem; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.4px; }
-
-.patterns-category-group { margin-bottom: var(--sp-5); }
-.patterns-list h4 { margin: 0 0 var(--sp-3); font-size: 0.87rem; color: var(--ink-soft); }
-
-.pattern-card {
-  padding: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-3);
-  border-radius: var(--r-md); border-left: 3px solid transparent;
-  display: flex; align-items: start; gap: var(--sp-3);
-}
-.pattern-card.severity-high   { background: var(--rose-bg); border-left-color: var(--rose); }
-.pattern-card.severity-medium { background: var(--amber-bg); border-left-color: var(--amber); }
-.pattern-card.severity-low    { background: var(--accent-bg); border-left-color: var(--accent); }
-
-.pattern-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--sp-1); }
-.pattern-type { font-weight: 600; color: var(--ink); text-transform: capitalize; font-size: 0.87rem; }
-.severity-badge {
-  font-family: var(--font-mono); font-size: 0.65rem; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.5px;
-  padding: 2px 6px; border-radius: 3px; white-space: nowrap;
-}
-.severity-badge.high   { background: var(--rose); color: white; }
-.severity-badge.medium { background: var(--amber); color: var(--ink); }
-.severity-badge.low    { background: var(--accent); color: white; }
-
-.pattern-description { font-size: 0.87rem; color: var(--ink-soft); line-height: 1.5; margin: 0; }
-.pattern-evidence {
-  font-family: var(--font-mono); font-size: 0.78rem; color: var(--ink-muted);
-  margin-top: var(--sp-1); padding-left: var(--sp-3);
-  border-left: 2px solid rgba(26,35,50,0.08);
-}
-
-.no-patterns {
-  padding: var(--sp-8); text-align: center;
-  background: var(--accent-bg); border-radius: var(--r-md);
-  color: var(--accent); font-size: 0.93rem;
-}
-
-/* ---- Overview-specific ---- */
-.overview-metrics { margin: var(--sp-3) 0 var(--sp-5); }
-.overview-metric-row { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-3); }
-.oml { flex: 0 0 160px; font-size: 0.85rem; color: var(--ink-muted); }
-.ombar-wrap { flex: 1; height: 8px; background: rgba(26,35,50,0.06); border-radius: 4px; overflow: hidden; }
-.ombar { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
-.omv { flex: 0 0 60px; text-align: right; font-family: var(--font-mono); font-size: 0.85rem; font-weight: 500; color: var(--ink); }
-.processing-info {
-  margin-top: var(--sp-5); padding: var(--sp-3) var(--sp-4);
-  background: var(--accent-bg); border-radius: var(--r-md);
-  color: var(--accent); font-size: 0.85rem;
-  font-family: var(--font-mono);
-}
-
-.sidebar-divider {
-  margin: 0.6rem 0.5rem 0.3rem 0.5rem;
-  padding-top: 0.4rem;
-  border-top: 1px solid #ddd;
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #888;
-  font-weight: 600;
-}

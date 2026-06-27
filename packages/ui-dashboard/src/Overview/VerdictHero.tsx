@@ -14,8 +14,8 @@ const PILL_LABEL: Record<Verdict['state'], string> = {
 };
 
 function pillSuffix(v: Verdict): string {
-  if (v.state === 'all_clear') return ' — all checks pass';
-  return ` — ${v.toCheckCount} to check`;
+  if (v.state === 'all_clear') return ' \u2014 all checks pass';
+  return ` \u2014 ${v.toCheckCount} to check`;
 }
 
 export function VerdictHero({ fileName, pages, processingTimeMs, verdict }: Props) {
@@ -25,7 +25,7 @@ export function VerdictHero({ fileName, pages, processingTimeMs, verdict }: Prop
   const unverifiablePct = total === 0 ? 0 : (verdict.unverifiableCount / total) * 100;
 
   const breakdownParts = [
-    verdict.breakdown.suspect > 0 && `${verdict.breakdown.suspect} suspect`,
+    verdict.breakdown.suspect > 0 && `${verdict.breakdown.suspect} to review`,
     verdict.breakdown.notFound > 0 && `${verdict.breakdown.notFound} not found`,
     verdict.breakdown.orphanInText > 0 && `${verdict.breakdown.orphanInText} orphan citations`,
   ].filter(Boolean);

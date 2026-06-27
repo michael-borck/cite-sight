@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { PriorityItem, PriorityCategory } from '@michaelborck/cite-sight-core';
-import { PriorityListRow } from './PriorityListRow.js';
+import { PriorityListRow } from './PriorityListRow';
 
 interface Props {
   items: PriorityItem[];
@@ -9,7 +9,7 @@ interface Props {
 
 const CHIP_DEFS: { category: PriorityCategory; label: string; className: string }[] = [
   { category: 'not_found', label: 'Not found', className: 'chip-not_found' },
-  { category: 'suspect', label: 'Suspect', className: 'chip-suspect' },
+  { category: 'suspect', label: 'Needs review', className: 'chip-suspect' },
   { category: 'orphan', label: 'Orphan', className: 'chip-orphan' },
 ];
 
@@ -56,7 +56,7 @@ export function ThingsToCheckHero({ items, onDismiss }: Props) {
       {visibleItems.length === 0 ? (
         <div className="priority-empty">
           {items.length === 0
-            ? 'Nothing flagged — every reference verified and every in-text citation matched.'
+            ? 'Nothing flagged \u2014 every reference verified and every in-text citation matched.'
             : 'All flagged items are filtered out. Click a chip to show them.'}
         </div>
       ) : (

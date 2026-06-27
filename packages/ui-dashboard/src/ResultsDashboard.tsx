@@ -1,16 +1,36 @@
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, createContext, useContext, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import type {
   AnalysisResult,
   ReferenceVerification,
   VerificationStatus,
 } from '@michaelborck/cite-sight-core';
 import { DISCLAIMER } from '@michaelborck/cite-sight-core/disclaimer';
-import { OverviewPanel } from './Overview/index.js';
+import { OverviewPanel } from './Overview';
 import './ResultsDashboard.css';
 
-interface Props {
+export interface ResultsDashboardProps {
   results: AnalysisResult;
+  /**
+   * Optional screenshot reader. Desktop passes its Electron preload bridge
+   * (`window.citeSight.readScreenshot`) so URL-evidence screenshots render in
+   * expanded rows. Web omits it — and the server never sets
+   * `urlCheck.screenshotPath`, so the thumbnail never appears there. Injecting
+   * this keeps the shared component free of any Electron/global coupling.
+   */
+  readScreenshot?: (path: string) => Promise<string | null>;
 }
+
+// ─── screenshot capability (context) ──────────────────────────────────────────
+//
+// Defaults to a resolver that always yields null, so consumers that don't
+// supply `readScreenshot` (web) render nothing without any special-casing.
+
+const noScreenshot = (): Promise<string | null> => Promise.resolve(null);
+
+const ScreenshotContext = createContext<(path: string) => Promise<string | null>>(
+  noScreenshot,
+);
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -36,17 +56,20 @@ function statusClass(s: VerificationStatus): string {
   }
 }
 
-
 // ─── sub-panels ───────────────────────────────────────────────────────────────
 
 function ScreenshotThumbnail({ path }: { path: string }) {
+  const read = useContext(ScreenshotContext);
   const [src, setSrc] = useState<string | null>(null);
 
+  // Read asynchronously; guard against setting state after unmount.
   useEffect(() => {
-    window.citeSight?.readScreenshot(path).then((dataUrl) => {
-      if (dataUrl) setSrc(dataUrl);
+    let alive = true;
+    read(path).then((dataUrl) => {
+      if (alive && dataUrl) setSrc(dataUrl);
     });
-  }, [path]);
+    return () => { alive = false; };
+  }, [path, read]);
 
   if (!src) return null;
 
@@ -102,7 +125,7 @@ function ReferenceRow({ v, index }: { v: ReferenceVerification; index: number })
                   <strong>Matched:</strong> {v.matchedWork.title}
                   {v.matchedWork.year ? ` (${v.matchedWork.year})` : ''}
                   {' \u2014 '}<em>{v.matchedWork.source}</em>
-                  {v.matchedWork.doi && <> &mdash; DOI: {v.matchedWork.doi}</>}
+                  {v.matchedWork.doi && <>{' \u2014 DOI: '}{v.matchedWork.doi}</>}
                 </div>
               )}
               {v.formatIssues.length > 0 && (
@@ -131,7 +154,11 @@ function ReferenceRow({ v, index }: { v: ReferenceVerification; index: number })
   );
 }
 
-function ReferencesPanel({ results }: Props) {
+interface PanelProps {
+  results: AnalysisResult;
+}
+
+function ReferencesPanel({ results }: PanelProps) {
   const { references } = results;
 
   return (
@@ -158,6 +185,11 @@ function ReferencesPanel({ results }: Props) {
             <span className="count">{references.unverifiedCount}</span> Unverified
           </div>
         </div>
+        <p className="status-legend">
+          <strong>Not found</strong> = searched, no record &middot;{' '}
+          <strong>Unverified</strong> = database unreachable, re-run to retry &middot;{' '}
+          <strong>Needs review</strong> = found but metadata disagrees
+        </p>
 
         {references.verifications.length > 0 ? (
           <div className="ref-table-wrap">
@@ -188,7 +220,7 @@ function ReferencesPanel({ results }: Props) {
   );
 }
 
-function CrossReferencesPanel({ results }: Props) {
+function CrossReferencesPanel({ results }: PanelProps) {
   const { crossReference } = results.references;
 
   return (
@@ -252,7 +284,7 @@ const SECTIONS = [
 
 // ─── main component ───────────────────────────────────────────────────────────
 
-export function ResultsDashboard({ results }: Props) {
+export function ResultsDashboard({ results, readScreenshot }: ResultsDashboardProps) {
   const [activeSection, setActiveSection] = useState('overview');
   const refs = results.references;
   const crossRefCount =
@@ -268,7 +300,7 @@ export function ResultsDashboard({ results }: Props) {
     }
   };
 
-  return (
+  const body: ReactNode = (
     <div className="results-shell">
       <aside className="results-sidebar">
         <div className="sidebar-filename">{results.fileName}</div>
@@ -328,5 +360,13 @@ export function ResultsDashboard({ results }: Props) {
         <p className="results-disclaimer">{DISCLAIMER}</p>
       </main>
     </div>
+  );
+
+  // Provide the screenshot capability once, at the top, so descendants can
+  // read it via context without prop-drilling through every panel.
+  return (
+    <ScreenshotContext.Provider value={readScreenshot ?? noScreenshot}>
+      {body}
+    </ScreenshotContext.Provider>
   );
 }

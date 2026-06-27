@@ -1,0 +1,128 @@
+/* ============================================================
+   ANALYSIS PROGRESS — staged indicator shown while a document is
+   being analysed. Honest by design: no invented percentage; the
+   slow Verify stage dwells with an indeterminate shimmer.
+   ============================================================ */
+
+.analysis-progress {
+  margin-top: var(--sp-5);
+  padding: var(--sp-5);
+  background: var(--white);
+  border: 1px solid rgba(26, 35, 50, 0.08);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ---- Upload phase ---- */
+.ap-upload {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  color: var(--ink-soft);
+}
+.ap-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(42, 157, 143, 0.2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: ap-spin 0.8s linear infinite;
+}
+@keyframes ap-spin {
+  to { transform: rotate(360deg); }
+}
+.ap-text { font-size: 0.9rem; }
+
+/* ---- Processing stepper ---- */
+.ap-stepper {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--sp-5);
+}
+.ap-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: 1;
+  position: relative;
+}
+/* Connector line between dots (drawn from each step except the last). */
+.ap-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 13px;
+  left: calc(50% + 16px);
+  right: calc(-50% + 16px);
+  height: 2px;
+  background: rgba(26, 35, 50, 0.1);
+}
+.ap-step.done:not(:last-child)::after { background: var(--accent); }
+
+.ap-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--paper-warm);
+  color: var(--ink-faint);
+  border: 2px solid rgba(26, 35, 50, 0.1);
+  z-index: 1;
+}
+.ap-step.done .ap-dot {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.ap-step.active .ap-dot {
+  background: var(--white);
+  color: var(--accent);
+  border-color: var(--accent);
+  animation: ap-pulse 1.6s ease-in-out infinite;
+}
+@keyframes ap-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(42, 157, 143, 0.3); }
+  50% { box-shadow: 0 0 0 6px rgba(42, 157, 143, 0); }
+}
+
+.ap-step-label { font-size: 0.78rem; color: var(--ink-muted); }
+.ap-step.active .ap-step-label { color: var(--ink); font-weight: 600; }
+.ap-step.done .ap-step-label { color: var(--accent); }
+
+/* ---- Indeterminate shimmer bar ---- */
+.ap-bar-track {
+  height: 6px;
+  background: rgba(26, 35, 50, 0.06);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: var(--sp-4);
+}
+.ap-bar-fill {
+  height: 100%;
+  width: 100%;
+  border-radius: 3px;
+  background: linear-gradient(
+    90deg,
+    rgba(42, 157, 143, 0.15),
+    var(--accent),
+    rgba(42, 157, 143, 0.15)
+  );
+  background-size: 200% 100%;
+  animation: ap-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes ap-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ---- Plain-language status message ---- */
+.ap-message {
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+  line-height: 1.6;
+  text-align: center;
+}

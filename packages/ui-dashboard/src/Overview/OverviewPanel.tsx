@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 import type { AnalysisResult } from '@michaelborck/cite-sight-core';
 import { computeVerdict, gatherPriorityItems } from '@michaelborck/cite-sight-core/dashboard';
-import { VerdictHero } from './VerdictHero.js';
-import { ThingsToCheckHero } from './ThingsToCheckHero.js';
-import { UndoToast } from './UndoToast.js';
+import { VerdictHero } from './VerdictHero';
+import { ThingsToCheckHero } from './ThingsToCheckHero';
+import { UndoToast } from './UndoToast';
 import './Overview.css';
 
 interface Props {
@@ -17,7 +17,7 @@ interface PendingDismissal {
 }
 
 export function OverviewPanel({ results }: Props) {
-  // Session-only dismissal state — lost on tab change or reload (Phase 1).
+  // Session-only dismissal state — lost on tab change or reload.
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [pending, setPending] = useState<PendingDismissal | null>(null);
 
@@ -47,8 +47,6 @@ export function OverviewPanel({ results }: Props) {
   };
 
   const handleExpire = () => {
-    // No-op for the dismissal itself — it was already applied at click time.
-    // We just clear the toast slot.
     setPending(null);
   };
 

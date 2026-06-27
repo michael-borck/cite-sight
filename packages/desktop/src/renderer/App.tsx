@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { FileUpload } from './components/FileUpload';
 import { ProcessingOptions } from './components/ProcessingOptions';
 import { ProcessingProgress } from './components/ProcessingProgress';
-import { ResultsDashboard } from './components/ResultsDashboard';
+import { ResultsDashboard } from '@michaelborck/cite-sight-ui';
 import { UpdateNotification } from './components/UpdateNotification';
 import { downloadPdfReport } from './utils/generatePdfReport';
 import { downloadCsvReport } from './utils/generateCsvReport';
@@ -230,7 +230,12 @@ export function App() {
                 </div>
               )}
 
-              {currentResult && <ResultsDashboard results={currentResult} />}
+              {currentResult && (
+                <ResultsDashboard
+                  results={currentResult}
+                  readScreenshot={(path) => window.citeSight?.readScreenshot(path) ?? Promise.resolve(null)}
+                />
+              )}
             </>
           )}
         </div>

@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { ResultsDashboard } from '../components/ResultsDashboard';
+import { ResultsDashboard } from '@michaelborck/cite-sight-ui';
+import { AnalysisProgress } from '../components/AnalysisProgress';
 import { downloadPdfReport } from '../utils/generatePdfReport';
 import { downloadCsvReport } from '../utils/generateCsvReport';
 import type { AnalysisResult, ProcessingOptions } from '../types';
@@ -11,7 +12,7 @@ type AppState = 'idle' | 'uploading' | 'processing' | 'done' | 'error';
 interface JobResponse {
   jobId?: string;
   result?: AnalysisResult;
-  status?: 'pending' | 'running' | 'complete' | 'error';
+  status?: 'queued' | 'processing' | 'complete' | 'failed';
   error?: string;
 }
 
@@ -29,8 +30,8 @@ async function pollJob(jobId: string, onProgress?: (msg: string) => void): Promi
     if (!res.ok) throw new Error(`Poll failed: ${res.status}`);
     const data: JobResponse = await res.json();
     if (data.status === 'complete' && data.result) return data.result;
-    if (data.status === 'error') throw new Error(data.error ?? 'Analysis failed');
-    if (onProgress) onProgress(data.status ?? 'running');
+    if (data.status === 'failed') throw new Error(data.error ?? 'Analysis failed');
+    if (onProgress) onProgress(data.status ?? 'processing');
   }
 }
 
@@ -40,7 +41,7 @@ export function ToolPage() {
   const [options, setOptions] = useState<ProcessingOptions>(DEFAULT_OPTIONS);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string>('');
-  const [progressMsg, setProgressMsg] = useState<string>('');
+  const [jobStatus, setJobStatus] = useState<string>('');
   const [showDesktopTip, setShowDesktopTip] = useState(true);
 
   const onDrop = useCallback((accepted: File[]) => {
@@ -67,7 +68,6 @@ export function ToolPage() {
     setError('');
     setResult(null);
     setState('uploading');
-    setProgressMsg('Uploading file...');
 
     try {
       const fd = new FormData();
@@ -90,8 +90,8 @@ export function ToolPage() {
         setState('done');
       } else if (data.jobId) {
         setState('processing');
-        setProgressMsg('Analyzing document...');
-        const finalResult = await pollJob(data.jobId, (msg) => setProgressMsg(`Processing: ${msg}...`));
+        setJobStatus('');
+        const finalResult = await pollJob(data.jobId, setJobStatus);
         setResult(finalResult);
         setState('done');
       } else {
@@ -108,7 +108,7 @@ export function ToolPage() {
     setResult(null);
     setError('');
     setState('idle');
-    setProgressMsg('');
+    setJobStatus('');
   }
 
   const isProcessing = state === 'uploading' || state === 'processing';
@@ -206,10 +206,10 @@ export function ToolPage() {
           </details>
 
           {isProcessing && (
-            <div className="progress-indicator">
-              <div className="progress-spinner" />
-              <span className="progress-text">{progressMsg}</span>
-            </div>
+            <AnalysisProgress
+              phase={state === 'uploading' ? 'uploading' : 'processing'}
+              serverStatus={jobStatus}
+            />
           )}
 
           {state === 'error' && error && (

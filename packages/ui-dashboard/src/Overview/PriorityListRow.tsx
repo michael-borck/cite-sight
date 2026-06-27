@@ -8,7 +8,7 @@ interface Props {
 
 const CATEGORY_LABEL: Record<PriorityItem['category'], string> = {
   not_found: 'Not found',
-  suspect: 'Suspect',
+  suspect: 'Needs review',
   orphan: 'Orphan citation',
 };
 
@@ -27,7 +27,7 @@ export function PriorityListRow({ item, onDismiss }: Props) {
         onClick={() => setExpanded((x) => !x)}
         aria-expanded={expanded}
       >
-        <span className="priority-row-chevron">{expanded ? '▾' : '▸'}</span>
+        <span className="priority-row-chevron">{expanded ? '\u25BE' : '\u25B8'}</span>
         <span className="priority-row-category">{CATEGORY_LABEL[item.category]}</span>
         <span className="priority-row-headline">{item.headline}</span>
       </button>
@@ -45,8 +45,8 @@ export function PriorityListRow({ item, onDismiss }: Props) {
               <div className="priority-row-matched">
                 <strong>{item.matched.title ?? '(no title)'}</strong>
                 {item.matched.year && <> ({item.matched.year})</>}
-                {item.matched.source && <> — {item.matched.source}</>}
-                {item.matched.doi && <> — DOI: {item.matched.doi}</>}
+                {item.matched.source && <>{' \u2014 '}{item.matched.source}</>}
+                {item.matched.doi && <>{' \u2014 DOI: '}{item.matched.doi}</>}
               </div>
             </>
           )}
