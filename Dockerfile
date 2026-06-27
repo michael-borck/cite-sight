@@ -1,5 +1,5 @@
 # Stage 1: Install dependencies and build
-FROM node:20-slim AS builder
+FROM node:24-slim AS builder
 
 WORKDIR /app
 
@@ -25,7 +25,7 @@ RUN npm run build:server
 RUN npm run build:web
 
 # Stage 2: Production runtime
-FROM node:20-slim AS runtime
+FROM node:24-slim AS runtime
 
 WORKDIR /app
 
