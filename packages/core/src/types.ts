@@ -140,7 +140,7 @@ export type AnalysisStage =
   | 'extracting'
   | 'extracting_references'
   | 'verifying_references'
-  | 'checking_urls'
+  | 'cross_referencing'
   | 'complete';
 
 export interface ProgressUpdate {

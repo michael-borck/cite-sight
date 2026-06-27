@@ -96,7 +96,7 @@ export async function analyzePipeline(
     : [];
 
   // Stage 8: Cross-reference check
-  onProgress?.({ stage: 'checking_urls', progress: 90, message: 'Cross-referencing citations...' });
+  onProgress?.({ stage: 'cross_referencing', progress: 90, message: 'Cross-referencing citations...' });
   let crossReference = options.checkInText
     ? crossReferenceCheck(references, inTextCitations)
     : { unmatchedBibliography: [], unmatchedInText: [] };

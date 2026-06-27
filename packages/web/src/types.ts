@@ -120,12 +120,9 @@ export interface AnalysisResult {
 
 export type AnalysisStage =
   | 'extracting'
-  | 'analyzing_readability'
-  | 'analyzing_writing'
-  | 'analyzing_words'
   | 'extracting_references'
   | 'verifying_references'
-  | 'checking_urls'
+  | 'cross_referencing'
   | 'complete';
 
 export interface ProgressUpdate {

@@ -10,14 +10,14 @@ interface ProcessingProgressProps {
 }
 
 const STAGES = [
-  { label: 'Extract', threshold: 5 },
-  { label: 'Readability', threshold: 15 },
-  { label: 'Quality', threshold: 25 },
-  { label: 'Words', threshold: 35 },
-  { label: 'Patterns', threshold: 45 },
-  { label: 'References', threshold: 60 },
-  { label: 'Verify', threshold: 80 },
-  { label: 'Cross-ref', threshold: 100 },
+  // Thresholds mirror the real progress % emitted by core's pipeline:
+  // extracting(5) → extracting_references(55) → verifying_references(65)
+  // → cross_referencing(90) → complete(100). A stage flips to "done" once the
+  // reported progress reaches its threshold, so the dots track reality.
+  { label: 'Extract',    threshold: 55 },
+  { label: 'References', threshold: 65 },
+  { label: 'Verify',     threshold: 90 },
+  { label: 'Cross-ref',  threshold: 100 },
 ];
 
 export function ProcessingProgress({ progress, batchIndex, batchTotal, currentFileName, onCancel }: ProcessingProgressProps) {
