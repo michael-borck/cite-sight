@@ -40,12 +40,22 @@ jobs:
 
       - name: Publish core
         working-directory: packages/core
-        run: npm publish --access public
+        run: |
+          # Publish under a temp tag, then move `latest` here with dist-tag.
+          # A stray 1.0.0 on the registry blocks npm's implicit-latest guard
+          # (latest "must be highest"); dist-tag can still target a sub-1.0.0
+          # version, so this keeps the 0.8.x line installable as `latest`.
+          npm publish --access public --tag next
+          npm dist-tag add @michaelborck/cite-sight-core@${{ steps.version.outputs.version }} latest || true
+          npm dist-tag rm @michaelborck/cite-sight-core next || true
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish CLI
         working-directory: packages/cli
-        run: npm publish --access public
+        run: |
+          npm publish --access public --tag next
+          npm dist-tag add cite-sight@${{ steps.version.outputs.version }} latest || true
+          npm dist-tag rm cite-sight next || true
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
