@@ -1,5 +1,6 @@
 import type { AcademicWork } from '../types.js';
 import { lookupDoi } from './crossref.js';
+import { lookupDoiDataCite } from './datacite.js';
 import { throttle } from './rateLimiter.js';
 
 // ============================================================
@@ -22,9 +23,14 @@ export async function resolveDoi(
   const crossrefResult = await lookupDoi(doi, mailto);
   if (crossrefResult) return crossrefResult;
 
+  // --- Secondary: DataCite (datasets, software, repository deposits such as
+  // Zenodo/Figshare/Dryad — DOIs Crossref does not hold). ---
+  const dataciteResult = await lookupDoiDataCite(doi, mailto);
+  if (dataciteResult) return dataciteResult;
+
   // --- Fallback: dx.doi.org ---
   try {
-    await throttle();
+    await throttle('doi.org');
     const res = await fetch(`https://dx.doi.org/${encodeURIComponent(doi)}`, {
       method: 'HEAD',
       redirect: 'follow',

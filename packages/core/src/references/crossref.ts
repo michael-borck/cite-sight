@@ -78,7 +78,7 @@ export async function searchCrossref(
   const cached = getCached<AcademicWork[]>(key);
   if (cached !== undefined) return cached;
 
-  await throttle();
+  await throttle('crossref');
 
   const params = new URLSearchParams({
     'query.bibliographic': query,
@@ -121,7 +121,7 @@ export async function lookupDoi(
   const cached = getCached<AcademicWork | null>(key);
   if (cached !== undefined) return cached;
 
-  await throttle();
+  await throttle('crossref');
 
   try {
     const params = new URLSearchParams();

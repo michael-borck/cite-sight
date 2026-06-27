@@ -274,14 +274,18 @@ async function verifySingleReference(
     }
   }
 
-  // --- Steps 3–5: academic search cascade (Crossref → S2 → OpenAlex) ---
+  // --- Steps 3–5: academic search cascade (Crossref → OpenAlex → Semantic Scholar) ---
+  // OpenAlex precedes Semantic Scholar: it aggregates Crossref+PubMed and more,
+  // is reliably available on the free polite pool, and S2's keyless tier is the
+  // flakiest source. The loop keeps going past a weak (above-floor but
+  // below-moderate) match so a stronger candidate from a later source can win.
   if (!matched && searchQuery.length > 3) {
     for (const search of [
       () => searchCrossref(searchQuery, options.mailto),
-      () => searchSemanticScholar(searchQuery, options.semanticScholarApiKey),
       () => searchOpenAlex(searchQuery, options.mailto),
+      () => searchSemanticScholar(searchQuery, options.semanticScholarApiKey),
     ]) {
-      if (matched) break;
+      if (matched && similarity >= TITLE_MODERATE) break;
       try {
         considerResults(await search());
       } catch (err) {

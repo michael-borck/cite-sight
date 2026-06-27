@@ -98,7 +98,7 @@ export async function searchSemanticScholar(
   let reason: LookupFailureReason = 'unknown';
   for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
     if (attempt > 0) await delay(RETRY_DELAYS_MS[attempt - 1]);
-    await throttle();
+    await throttle('s2');
 
     let res: Response;
     try {

@@ -25,6 +25,14 @@ export function ProcessingOptions() {
             value={options.contactEmail ?? ''}
             onChange={(e) => updateOptions({ contactEmail: e.target.value || undefined })} />
         </div>
+        <div className="option-group full">
+          <div className="option-label">Semantic Scholar API key (optional)</div>
+          <input className="option-select" id="s2-key" type="password"
+            placeholder="Free key — lifts rate limits, fewer unverified"
+            value={options.semanticScholarApiKey ?? ''}
+            onChange={(e) => updateOptions({ semanticScholarApiKey: e.target.value || undefined })} />
+          <span className="hint">Get a free key at semanticscholar.org/product/api — large batches verify far more reliably with one.</span>
+        </div>
       </div>
 
       <div className="checkbox-group">

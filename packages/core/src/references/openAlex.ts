@@ -94,7 +94,7 @@ export async function searchOpenAlex(
   let reason: LookupFailureReason = 'unknown';
   for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
     if (attempt > 0) await delay(RETRY_DELAYS_MS[attempt - 1]);
-    await throttle();
+    await throttle('openalex');
 
     let res: Response;
     try {

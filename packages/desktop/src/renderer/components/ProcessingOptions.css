@@ -41,6 +41,12 @@
   flex-direction: column;
   gap: var(--sp-1);
 }
+.option-group.full { grid-column: 1 / -1; }
+.option-group .hint {
+  font-size: 0.75rem;
+  color: var(--ink-faint);
+  line-height: 1.4;
+}
 
 .option-label {
   font-size: 0.8rem;
