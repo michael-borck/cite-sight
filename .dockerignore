@@ -1,6 +1,6 @@
 node_modules
-*/node_modules
-*/dist
+**/node_modules
+**/dist
 .git
 .github
 .claude
@@ -9,3 +9,6 @@ packages/cli
 *.md
 LICENSE
 LEGAL.md
+# macOS resource forks (created on non-HFS+ volumes); never useful in an image
+._*
+**/._*

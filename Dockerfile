@@ -10,6 +10,7 @@ COPY package.json package-lock.json tsconfig.base.json ./
 COPY packages/core/package.json packages/core/
 COPY packages/server/package.json packages/server/
 COPY packages/web/package.json packages/web/
+COPY packages/ui-dashboard/package.json packages/ui-dashboard/
 
 # Install all workspace dependencies
 RUN npm ci
@@ -18,6 +19,7 @@ RUN npm ci
 COPY packages/core/ packages/core/
 COPY packages/server/ packages/server/
 COPY packages/web/ packages/web/
+COPY packages/ui-dashboard/ packages/ui-dashboard/
 
 # Build core → server → web
 RUN npm run build:core
