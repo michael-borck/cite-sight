@@ -10,6 +10,7 @@ WORKSPACES=(
   packages/desktop
   packages/server
   packages/web
+  packages/ui-dashboard
 )
 
 # --- helpers ----------------------------------------------------------------
