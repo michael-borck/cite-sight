@@ -412,12 +412,16 @@ async function verifySingleReference(
 export async function verifyReferences(
   refs: ParsedReference[],
   options: { mailto?: string; citationStyle: CitationStyle; semanticScholarApiKey?: string },
+  onVerified?: (verification: ReferenceVerification, index: number, total: number) => void,
 ): Promise<ReferenceVerification[]> {
   const results: ReferenceVerification[] = [];
 
   for (let i = 0; i < refs.length; i++) {
     const verification = await verifySingleReference(refs[i], options);
     results.push(verification);
+    // Stream each verdict as it lands so callers (web SSE, desktop UI) can
+    // render references incrementally instead of waiting for the whole batch.
+    onVerified?.(verification, i, refs.length);
   }
 
   return results;

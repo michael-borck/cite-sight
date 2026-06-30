@@ -7,6 +7,7 @@ import { analyzePipeline, DISCLAIMER } from '@michaelborck/cite-sight-core';
 import type { ProcessingOptions } from '@michaelborck/cite-sight-core';
 import { isQueueAvailable, addJob, getJob } from './queue.js';
 import { fileCleanup } from './middleware.js';
+import { subscribe, type StreamMessage } from './stream.js';
 import { MANIFEST } from './manifest.js';
 
 // ---------------------------------------------------------------------------
@@ -219,6 +220,52 @@ router.get('/api/job/:id', async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+// ---- GET /api/stream/:id (SSE) ---------------------------------------------
+// Streams per-reference progress for a queued job to the browser. The client
+// opens this right after POST /api/analyze returns a jobId; the BullMQ worker
+// (same process) emits references as it verifies them (queue.ts + stream.ts).
+
+router.get('/api/stream/:id', (req, res) => {
+  const jobId = req.params['id'] ?? '';
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    // Hint reverse proxies (nginx) not to buffer; Caddy doesn't buffer by default.
+    'X-Accel-Buffering': 'no',
+  });
+  res.write(': connected\n\n');
+
+  const send = (msg: StreamMessage): boolean => {
+    res.write(`data: ${JSON.stringify(msg)}\n\n`);
+    return msg.type === 'complete' || msg.type === 'error';
+  };
+
+  // subscribe() replays any buffered messages first (catch-up for a client that
+  // connected after the first references were verified) then registers for live
+  // ones. There is no await between replay and registration, so no worker emit
+  // can slip through the gap (single-threaded JS).
+  const { unsubscribe, replayedTerminal } = subscribe(jobId, (msg) => {
+    if (send(msg)) {
+      res.end();
+    }
+  });
+
+  if (replayedTerminal) {
+    unsubscribe();
+    return;
+  }
+
+  // Keep the connection alive through idle proxies.
+  const heartbeat = setInterval(() => res.write(': ping\n\n'), 15_000);
+
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    unsubscribe();
+  });
 });
 
 // ---- GET /api/health -------------------------------------------------------

@@ -6,6 +6,7 @@ import type {
   ProcessingOptions,
   ProgressCallback,
   ReferenceAnalysisResult,
+  ReferenceVerification,
   CitationStyle,
   ParsedReference,
   InTextCitation,
@@ -63,6 +64,7 @@ export async function analyzePipeline(
   filePath: string,
   options: ProcessingOptions,
   onProgress?: ProgressCallback,
+  onReference?: (verification: ReferenceVerification, index: number, total: number) => void,
 ): Promise<AnalysisResult> {
   const startTime = Date.now();
 
@@ -92,7 +94,7 @@ export async function analyzePipeline(
         mailto: options.contactEmail,
         citationStyle: detectedStyle,
         semanticScholarApiKey: options.semanticScholarApiKey,
-      })
+      }, onReference)
     : [];
 
   // Stage 8: Cross-reference check

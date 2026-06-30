@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { ProcessingOptions, AnalysisResult, ProgressUpdate } from '@michaelborck/cite-sight-core';
+import type { ProcessingOptions, AnalysisResult, ProgressUpdate, ReferenceVerification } from '@michaelborck/cite-sight-core';
 
 contextBridge.exposeInMainWorld('citeSight', {
   analyzeFile: (filePath: string, options: ProcessingOptions): Promise<AnalysisResult> => {
@@ -17,6 +17,12 @@ contextBridge.exposeInMainWorld('citeSight', {
   onProgress: (callback: (update: ProgressUpdate) => void): void => {
     ipcRenderer.on('cite-sight:progress', (_event, update: ProgressUpdate) => {
       callback(update);
+    });
+  },
+
+  onReference: (callback: (data: { verification: ReferenceVerification; index: number; total: number }) => void): void => {
+    ipcRenderer.on('cite-sight:reference', (_event, data) => {
+      callback(data);
     });
   },
 

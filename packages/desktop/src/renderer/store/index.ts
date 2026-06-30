@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { AnalysisResult, ProcessingOptions, ProgressUpdate } from '@michaelborck/cite-sight-core';
+import type { AnalysisResult, ProcessingOptions, ProgressUpdate, ReferenceVerification } from '@michaelborck/cite-sight-core';
 
 interface AppState {
   // Files
@@ -22,6 +22,10 @@ interface AppState {
   currentResultIndex: number;
   error: string | null;
 
+  // Live per-reference streaming for the file currently being analysed.
+  streamingRefs: ReferenceVerification[];
+  streamingTotal: number;
+
   // Actions
   setProcessing: (processing: boolean) => void;
   requestCancel: () => void;
@@ -31,6 +35,8 @@ interface AppState {
   addResult: (result: AnalysisResult) => void;
   setCurrentResultIndex: (index: number) => void;
   setError: (error: string | null) => void;
+  addStreamingRef: (verification: ReferenceVerification, total: number) => void;
+  resetStreaming: () => void;
   reset: () => void;
 }
 
@@ -53,6 +59,8 @@ export const useStore = create<AppState>((set) => ({
   results: [],
   currentResultIndex: 0,
   error: null,
+  streamingRefs: [],
+  streamingTotal: 0,
 
   addFiles: (paths) => set((s) => {
     const unique = paths.filter((p) => !s.filePaths.includes(p));
@@ -69,6 +77,9 @@ export const useStore = create<AppState>((set) => ({
   addResult: (result) => set((s) => ({ results: [...s.results, result] })),
   setCurrentResultIndex: (currentResultIndex) => set({ currentResultIndex }),
   setError: (error) => set({ error, isProcessing: false, progress: null }),
+  addStreamingRef: (verification, total) =>
+    set((s) => ({ streamingRefs: [...s.streamingRefs, verification], streamingTotal: total || s.streamingTotal })),
+  resetStreaming: () => set({ streamingRefs: [], streamingTotal: 0 }),
   reset: () =>
     set({
       filePaths: [],
@@ -81,5 +92,7 @@ export const useStore = create<AppState>((set) => ({
       results: [],
       currentResultIndex: 0,
       error: null,
+      streamingRefs: [],
+      streamingTotal: 0,
     }),
 }));

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { FileUpload } from './components/FileUpload';
 import { ProcessingOptions } from './components/ProcessingOptions';
 import { ProcessingProgress } from './components/ProcessingProgress';
-import { ResultsDashboard } from '@michaelborck/cite-sight-ui';
+import { ResultsDashboard, StreamingResults } from '@michaelborck/cite-sight-ui';
 import { UpdateNotification } from './components/UpdateNotification';
 import { downloadPdfReport } from './utils/generatePdfReport';
 import { downloadCsvReport } from './utils/generateCsvReport';
@@ -17,6 +17,8 @@ export function App() {
     isProcessing,
     cancelRequested,
     progress,
+    streamingRefs,
+    streamingTotal,
     batchIndex,
     batchTotal,
     results,
@@ -26,6 +28,8 @@ export function App() {
     requestCancel,
     clearCancel,
     setProgress,
+    addStreamingRef,
+    resetStreaming,
     setBatch,
     addResult,
     setCurrentResultIndex,
@@ -34,6 +38,7 @@ export function App() {
   } = useStore();
 
   const [version, setVersion] = useState('');
+  const [streamElapsed, setStreamElapsed] = useState(0);
   const cancelRef = useRef(false);
 
   // Keep ref in sync with store so the async loop can read it
@@ -50,6 +55,24 @@ export function App() {
       setProgress(update);
     });
   }, [setProgress]);
+
+  // Stream per-reference verdicts for the file currently being analysed.
+  useEffect(() => {
+    window.citeSight?.onReference(({ verification, total }) => {
+      addStreamingRef(verification, total);
+    });
+  }, [addStreamingRef]);
+
+  // Elapsed timer for the streaming view.
+  useEffect(() => {
+    if (!isProcessing) {
+      setStreamElapsed(0);
+      return;
+    }
+    const start = Date.now();
+    const id = setInterval(() => setStreamElapsed(Date.now() - start), 250);
+    return () => clearInterval(id);
+  }, [isProcessing]);
 
   const handleAnalyze = async () => {
     if (filePaths.length === 0) {
@@ -74,6 +97,7 @@ export function App() {
         }
 
         setBatch(i, total);
+        resetStreaming();
         const result = await window.citeSight.analyzeFile(filePaths[i], options);
         addResult(result);
       }
@@ -116,13 +140,22 @@ export function App() {
           {results.length === 0 ? (
             <>
               {isProcessing && progress ? (
-                <ProcessingProgress
-                  progress={progress}
-                  batchIndex={batchIndex}
-                  batchTotal={batchTotal}
-                  currentFileName={getFileName(filePaths[batchIndex] ?? '')}
-                  onCancel={handleCancel}
-                />
+                <>
+                  <ProcessingProgress
+                    progress={progress}
+                    batchIndex={batchIndex}
+                    batchTotal={batchTotal}
+                    currentFileName={getFileName(filePaths[batchIndex] ?? '')}
+                    onCancel={handleCancel}
+                  />
+                  <StreamingResults
+                    verifications={streamingRefs}
+                    total={streamingTotal}
+                    stage={progress.stage}
+                    elapsedMs={streamElapsed}
+                    fileName={getFileName(filePaths[batchIndex] ?? '')}
+                  />
+                </>
               ) : (
                 <>
                   <section className="upload-section">

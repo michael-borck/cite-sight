@@ -54,11 +54,20 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         ...options,
         semanticScholarApiKey: options.semanticScholarApiKey ?? process.env.SEMANTIC_SCHOLAR_API_KEY,
       };
-      const result: AnalysisResult = await analyzePipeline(filePath, mergedOptions, (update) => {
-        if (!mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('cite-sight:progress', update);
-        }
-      });
+      const result: AnalysisResult = await analyzePipeline(
+        filePath,
+        mergedOptions,
+        (update) => {
+          if (!mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('cite-sight:progress', update);
+          }
+        },
+        (verification, index, total) => {
+          if (!mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('cite-sight:reference', { verification, index, total });
+          }
+        },
+      );
 
       // Take screenshots of live URLs if requested
       if (options.screenshotUrls && result.references?.verifications) {

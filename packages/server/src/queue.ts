@@ -9,6 +9,7 @@
 import { unlink } from 'fs/promises';
 import { analyzePipeline } from '@michaelborck/cite-sight-core';
 import type { AnalysisResult, ProcessingOptions } from '@michaelborck/cite-sight-core';
+import { emit } from './stream.js';
 
 // BullMQ types — imported lazily so the module loads even without Redis.
 // We use `import type` here; the actual values are required() at runtime.
@@ -35,17 +36,16 @@ let _available = false;
 // Initialisation
 // ---------------------------------------------------------------------------
 
-function init(): void {
+async function init(): Promise<void> {
   const redisUrl = process.env['REDIS_URL'];
   if (!redisUrl) {
     return; // Redis not configured — run in synchronous mode
   }
 
   try {
-    // Dynamic import so the module can be loaded without bullmq/ioredis installed
-    // if running in synchronous mode.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { Queue, Worker } = require('bullmq') as typeof import('bullmq');
+    // Dynamic import so the module loads even without bullmq/ioredis installed
+    // (synchronous mode). ESM requires import(), not require().
+    const { Queue, Worker } = await import('bullmq');
 
     const connection = { url: redisUrl };
 
@@ -65,8 +65,22 @@ function init(): void {
           screenshotUrls: false,
         };
 
+        const jobId = job.id ?? '';
+
         try {
-          return await analyzePipeline(filePath, options);
+          const result = await analyzePipeline(
+            filePath,
+            options,
+            (p) =>
+              emit({ type: 'progress', jobId, stage: p.stage, message: p.message, progress: p.progress }),
+            (verification, index, total) =>
+              emit({ type: 'reference', jobId, verification, index, total }),
+          );
+          emit({ type: 'complete', jobId, result });
+          return result;
+        } catch (err) {
+          emit({ type: 'error', jobId, error: err instanceof Error ? err.message : String(err) });
+          throw err;
         } finally {
           await unlink(filePath).catch(() => undefined);
         }
@@ -90,7 +104,7 @@ function init(): void {
 }
 
 // Run on module load
-init();
+void init();
 
 // ---------------------------------------------------------------------------
 // Public API

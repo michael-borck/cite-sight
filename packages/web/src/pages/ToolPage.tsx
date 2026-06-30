@@ -1,13 +1,13 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { ResultsDashboard } from '@michaelborck/cite-sight-ui';
+import { ResultsDashboard, StreamingResults } from '@michaelborck/cite-sight-ui';
 import { AnalysisProgress } from '../components/AnalysisProgress';
 import { downloadPdfReport } from '../utils/generatePdfReport';
 import { downloadCsvReport } from '../utils/generateCsvReport';
-import type { AnalysisResult, ProcessingOptions } from '../types';
+import type { AnalysisResult, ProcessingOptions, ReferenceVerification } from '../types';
 import './ToolPage.css';
 
-type AppState = 'idle' | 'uploading' | 'processing' | 'done' | 'error';
+type AppState = 'idle' | 'uploading' | 'streaming' | 'done' | 'error';
 
 interface JobResponse {
   jobId?: string;
@@ -16,6 +16,27 @@ interface JobResponse {
   error?: string;
 }
 
+/** Growing view of the in-flight analysis, fed by the SSE stream. */
+interface StreamPayload {
+  verifications: ReferenceVerification[];
+  total: number;
+  stage: string;
+}
+
+/** Wire shape of a single server-sent event from GET /api/stream/:id. */
+type StreamMessage = {
+  type: 'progress' | 'reference' | 'complete' | 'error';
+  jobId: string;
+  stage?: string;
+  message?: string;
+  progress?: number;
+  index?: number;
+  total?: number;
+  verification?: ReferenceVerification;
+  result?: AnalysisResult;
+  error?: string;
+};
+
 const DEFAULT_OPTIONS: ProcessingOptions = {
   citationStyle: 'auto',
   checkUrls: true,
@@ -23,15 +44,20 @@ const DEFAULT_OPTIONS: ProcessingOptions = {
   checkInText: true,
 };
 
-async function pollJob(jobId: string, onProgress?: (msg: string) => void): Promise<AnalysisResult> {
+const sleep = (ms: number): Promise<void> => {
+  const { promise, resolve } = Promise.withResolvers<void>();
+  setTimeout(resolve, ms);
+  return promise;
+};
+
+async function pollJob(jobId: string): Promise<AnalysisResult> {
   while (true) {
-    await new Promise((r) => setTimeout(r, 2000));
+    await sleep(2000);
     const res = await fetch(`/api/job/${jobId}`);
     if (!res.ok) throw new Error(`Poll failed: ${res.status}`);
     const data: JobResponse = await res.json();
     if (data.status === 'complete' && data.result) return data.result;
     if (data.status === 'failed') throw new Error(data.error ?? 'Analysis failed');
-    if (onProgress) onProgress(data.status ?? 'processing');
   }
 }
 
@@ -41,8 +67,10 @@ export function ToolPage() {
   const [options, setOptions] = useState<ProcessingOptions>(DEFAULT_OPTIONS);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string>('');
-  const [jobStatus, setJobStatus] = useState<string>('');
   const [showDesktopTip, setShowDesktopTip] = useState(true);
+  const [streaming, setStreaming] = useState<StreamPayload | null>(null);
+  const [elapsed, setElapsed] = useState(0);
+  const esRef = useRef<EventSource | null>(null);
 
   const onDrop = useCallback((accepted: File[]) => {
     if (accepted.length > 0) {
@@ -60,13 +88,106 @@ export function ToolPage() {
       'text/plain': ['.txt'],
     },
     multiple: false,
-    disabled: state === 'uploading' || state === 'processing',
+    disabled: state === 'uploading' || state === 'streaming',
   });
+
+  function closeStream() {
+    esRef.current?.close();
+    esRef.current = null;
+  }
+
+  // Elapsed timer for the streaming view.
+  useEffect(() => {
+    if (state !== 'streaming') {
+      setElapsed(0);
+      return;
+    }
+    const start = Date.now();
+    const id = setInterval(() => setElapsed(Date.now() - start), 250);
+    return () => clearInterval(id);
+  }, [state]);
+
+  // Never leave an EventSource open after unmount.
+  useEffect(() => () => closeStream(), []);
+
+  /**
+   * Stream per-reference verdicts for a queued job over SSE, rendering each
+   * reference as it lands. If the stream drops (proxy timeout, etc.) we fall
+   * back to polling so the final result is never lost.
+   */
+  function runStream(jobId: string) {
+    setState('streaming');
+    setStreaming({ verifications: [], total: 0, stage: 'queued' });
+    let settled = false;
+
+    const finish = (finalResult: AnalysisResult | null, err?: string) => {
+      if (settled) return;
+      settled = true;
+      closeStream();
+      setStreaming(null);
+      if (err) {
+        setError(err);
+        setState('error');
+      } else if (finalResult) {
+        setResult(finalResult);
+        setState('done');
+      }
+    };
+
+    const es = new EventSource(`/api/stream/${encodeURIComponent(jobId)}`);
+    esRef.current = es;
+
+    es.onmessage = (ev) => {
+      let msg: StreamMessage;
+      try {
+        msg = JSON.parse(ev.data);
+      } catch {
+        return;
+      }
+      switch (msg.type) {
+        case 'progress':
+          setStreaming((s) => {
+            if (!s) return s;
+            // "Verifying N references..." — surface N early so the bar can move.
+            const m = msg.message && /(\d+)\s+references/i.exec(msg.message);
+            const total = m ? parseInt(m[1], 10) : s.total;
+            return { ...s, stage: msg.stage ?? s.stage, total };
+          });
+          break;
+        case 'reference':
+          setStreaming((s) => {
+            if (!s || !msg.verification) return s;
+            return {
+              verifications: [...s.verifications, msg.verification],
+              total: msg.total ?? s.total,
+              stage: 'verifying_references',
+            };
+          });
+          break;
+        case 'complete':
+          finish(msg.result ?? null);
+          break;
+        case 'error':
+          finish(null, msg.error ?? 'Analysis failed');
+          break;
+      }
+    };
+
+    es.onerror = () => {
+      if (settled) return;
+      closeStream();
+      pollJob(jobId)
+        .then((r) => finish(r))
+        .catch((e) => finish(null, e instanceof Error ? e.message : String(e)));
+    };
+  }
 
   async function handleAnalyze() {
     if (!file) return;
     setError('');
     setResult(null);
+    setStreaming(null);
+    closeStream();
     setState('uploading');
 
     try {
@@ -86,14 +207,12 @@ export function ToolPage() {
       const data: JobResponse = await res.json();
 
       if (data.result) {
+        // Synchronous path (no queue): whole result at once.
         setResult(data.result);
         setState('done');
       } else if (data.jobId) {
-        setState('processing');
-        setJobStatus('');
-        const finalResult = await pollJob(data.jobId, setJobStatus);
-        setResult(finalResult);
-        setState('done');
+        // Queue path: stream references as they're verified.
+        runStream(data.jobId);
       } else {
         throw new Error('Unexpected server response');
       }
@@ -104,14 +223,22 @@ export function ToolPage() {
   }
 
   function handleReset() {
+    closeStream();
     setFile(null);
     setResult(null);
+    setStreaming(null);
     setError('');
     setState('idle');
-    setJobStatus('');
   }
 
-  const isProcessing = state === 'uploading' || state === 'processing';
+  const isProcessing = state === 'uploading' || state === 'streaming';
+
+  const trustScore =
+    result && result.references.totalReferences > 0
+      ? Math.round((result.references.verifiedCount / result.references.totalReferences) * 100)
+      : null;
+  const scoreTier =
+    trustScore === null ? null : trustScore >= 80 ? 'high' : trustScore >= 50 ? 'mid' : 'low';
 
   return (
     <div className="tool-page">
@@ -125,7 +252,20 @@ export function ToolPage() {
         Your files are processed and immediately deleted. No data is stored on our servers.
       </div>
 
-      {!result && (
+      {state === 'streaming' && streaming ? (
+        <div className="streaming-section">
+          <StreamingResults
+            verifications={streaming.verifications}
+            total={streaming.total}
+            stage={streaming.stage}
+            elapsedMs={elapsed}
+            fileName={file?.name ?? 'Document'}
+          />
+          <div className="action-buttons">
+            <button className="btn btn-secondary" onClick={handleReset}>Cancel</button>
+          </div>
+        </div>
+      ) : !result ? (
         <div className="upload-section">
           <div
             {...getRootProps()}
@@ -205,12 +345,7 @@ export function ToolPage() {
             </div>
           </details>
 
-          {isProcessing && (
-            <AnalysisProgress
-              phase={state === 'uploading' ? 'uploading' : 'processing'}
-              serverStatus={jobStatus}
-            />
-          )}
+          {state === 'uploading' && <AnalysisProgress phase="uploading" />}
 
           {state === 'error' && error && (
             <div className="error-message">
@@ -234,12 +369,15 @@ export function ToolPage() {
             )}
           </div>
         </div>
-      )}
-
-      {result && (
+      ) : (
         <div className="results-section">
           <div className="results-toolbar">
-            <h3 className="results-file-name">{result.fileName}</h3>
+            <div className="results-toolbar-title">
+              <h3 className="results-file-name">{result.fileName}</h3>
+              {trustScore !== null && scoreTier && (
+                <span className={`trust-score trust-score--${scoreTier}`}>{trustScore}% verified</span>
+              )}
+            </div>
             <div className="results-toolbar-actions">
               <button className="btn btn-primary" onClick={() => downloadPdfReport(result)}>
                 Download PDF Report

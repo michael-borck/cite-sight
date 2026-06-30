@@ -1,4 +1,4 @@
-import type { AnalysisResult, ProcessingOptions, ProgressUpdate } from '@michaelborck/cite-sight-core';
+import type { AnalysisResult, ProcessingOptions, ProgressUpdate, ReferenceVerification } from '@michaelborck/cite-sight-core';
 
 declare global {
   interface Window {
@@ -7,6 +7,7 @@ declare global {
       selectFiles: () => Promise<string[]>;
       selectFolder: () => Promise<string[]>;
       onProgress: (callback: (update: ProgressUpdate) => void) => void;
+      onReference: (callback: (data: { verification: ReferenceVerification; index: number; total: number }) => void) => void;
       onUpdateAvailable: (callback: (info: { version: string; releaseNotes?: string }) => void) => void;
       onUpdateNotAvailable: (callback: () => void) => void;
       onUpdateProgress: (callback: (progress: { percent: number }) => void) => void;

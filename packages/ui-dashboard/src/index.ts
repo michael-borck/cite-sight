@@ -3,3 +3,5 @@
 export { ResultsDashboard } from './ResultsDashboard';
 export type { ResultsDashboardProps } from './ResultsDashboard';
 export { OverviewPanel } from './Overview';
+export { StreamingResults } from './StreamingResults';
+export type { StreamingResultsProps } from './StreamingResults';
