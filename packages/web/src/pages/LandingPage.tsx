@@ -85,6 +85,127 @@ const FEATURES = [
   },
 ];
 
+// ─── Hero animated report mock ───────────────────────────────────────────────
+// Decorative only (aria-hidden). Cycles through references as if verifying
+// them live, mirroring the real ResultsDashboard: status badges + confidence
+// meters rendered in the project palette.
+
+type MockStatus = 'checking' | 'verified' | 'likely_valid' | 'suspicious' | 'not_found';
+
+interface MockRef {
+  title: string;
+  final: Exclude<MockStatus, 'checking'>;
+  confidence: number;
+}
+
+const MOCK_REFS: MockRef[] = [
+  { title: 'Smith, J. et al. (2021). Neural scaling laws in vision…', final: 'verified', confidence: 0.96 },
+  { title: 'Chen, L. & Park, K. (2019). Adaptive sampling under drift…', final: 'likely_valid', confidence: 0.74 },
+  { title: 'Okafor, A. (2023). The reproducibility crisis revisited…', final: 'not_found', confidence: 0.11 },
+  { title: 'Vargas, R. & Schmidt, H. (2020). Long-horizon planning…', final: 'suspicious', confidence: 0.38 },
+  { title: 'Tanaka, Y. et al. (2022). Few-shot generalisation limits…', final: 'verified', confidence: 0.91 },
+];
+
+const MOCK_STATUS_LABEL: Record<MockStatus, string> = {
+  checking: 'Checking',
+  verified: 'Verified',
+  likely_valid: 'Likely Valid',
+  suspicious: 'Needs review',
+  not_found: 'Not Found',
+};
+
+const MOCK_STEP_MS = 820;
+
+function HeroMock() {
+  const [revealed, setRevealed] = useState(0);
+  const [cycle, setCycle] = useState(0);
+
+  // Reveal one verdict per tick until every reference has been checked.
+  useEffect(() => {
+    setRevealed(0);
+    const id = setInterval(() => {
+      setRevealed((n) => {
+        if (n >= MOCK_REFS.length) {
+          clearInterval(id);
+          return n;
+        }
+        return n + 1;
+      });
+    }, MOCK_STEP_MS);
+    return () => clearInterval(id);
+  }, [cycle]);
+
+  // After completion, pause briefly then loop from the top.
+  useEffect(() => {
+    if (revealed !== MOCK_REFS.length) return;
+    const id = setTimeout(() => setCycle((c) => c + 1), 4400);
+    return () => clearTimeout(id);
+  }, [revealed]);
+
+  const done = revealed;
+  const busy = done < MOCK_REFS.length;
+  const verified = MOCK_REFS.slice(0, done).filter((r) => r.final === 'verified').length;
+  const flagged = MOCK_REFS.slice(0, done).filter(
+    (r) => r.final === 'not_found' || r.final === 'suspicious',
+  ).length;
+
+  return (
+    <div className="report-mock" aria-hidden="true">
+      <div className="report-mock-head">
+        <span className="report-mock-title">Citation Report</span>
+        <span className={`report-mock-live ${busy ? 'is-active' : ''}`}>
+          <i className="live-dot" /> {busy ? 'Verifying' : 'Complete'}
+        </span>
+      </div>
+      <div className="report-mock-progress">
+        <div className="report-mock-progress-fill" style={{ width: `${(done / MOCK_REFS.length) * 100}%` }} />
+      </div>
+      <ul className="report-mock-rows">
+        {MOCK_REFS.map((r, i) => {
+          const checked = i < done;
+          const checking = busy && i === done;
+          return (
+            <li
+              key={i}
+              className={[
+                'mock-ref',
+                checked ? 'is-done' : '',
+                checking ? 'is-checking' : '',
+                !checked && !checking ? 'is-pending' : '',
+              ].join(' ')}
+            >
+              <span className="mock-ref-title">{r.title}</span>
+              <span className="mock-ref-right">
+                {checked && (
+                  <>
+                    <span className={`mock-status mock-status--${r.final}`}>{MOCK_STATUS_LABEL[r.final]}</span>
+                    <span className="mock-conf">
+                      <span className="mock-conf-bar">
+                        <span
+                          className={`mock-conf-fill mock-conf-fill--${r.final}`}
+                          style={{ width: `${r.confidence * 100}%` }}
+                        />
+                      </span>
+                      <span className="mock-conf-val">{r.confidence.toFixed(2)}</span>
+                    </span>
+                  </>
+                )}
+                {checking && <span className="mock-status mock-status--checking">{MOCK_STATUS_LABEL.checking}</span>}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="report-mock-foot">
+        <span>{done}/{MOCK_REFS.length} checked</span>
+        <span className="report-mock-stats">
+          <b className="mock-st mock-st--verified">{verified}</b> verified ·{' '}
+          <b className="mock-st mock-st--flagged">{flagged}</b> flagged
+        </span>
+      </div>
+    </div>
+  );
+}
 export function LandingPage({ onNavigate }: Props) {
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>(detectPlatform);
   const { assets, version } = useReleaseAssets();
@@ -96,19 +217,30 @@ export function LandingPage({ onNavigate }: Props) {
     <div className="landing">
       {/* Hero */}
       <section className="hero">
-        <div className="hero-inner">
-          <h2 className="hero-heading">Verify Academic <em>Citations</em> in Seconds</h2>
-          <p className="hero-sub">
-            Check references exist, validate formatting, and catch suspicious citations — before submission.
-          </p>
-          <div className="hero-ctas">
-            <button className="btn btn-primary" onClick={() => onNavigate('tool')}>
-              Check Citations Online
-            </button>
-            <a className="btn btn-secondary" href={downloadUrl}>
-              {label}
-            </a>
+        <div className="hero-grid">
+          <div className="hero-text">
+            <span className="hero-pill">
+              <span className="hero-pill-dot" /> Automated citation verification
+            </span>
+            <h2 className="hero-heading">
+              Verify Academic <em>Citations</em> in Seconds
+            </h2>
+            <p className="hero-sub">
+              Check references exist, validate formatting, and catch suspicious citations — before submission.
+            </p>
+            <div className="hero-ctas">
+              <button className="btn btn-primary" onClick={() => onNavigate('tool')}>
+                Check Citations Online
+              </button>
+              <a className="btn btn-secondary" href={downloadUrl}>
+                {label}
+              </a>
+            </div>
+            <p className="hero-note">
+              PDF · DOCX · TXT — verified against Crossref, Semantic Scholar &amp; OpenAlex.
+            </p>
           </div>
+          <HeroMock />
         </div>
       </section>
 
