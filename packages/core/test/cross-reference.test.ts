@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { resolve } from 'node:path';
-import { extract } from '../src/extractors/index.js';
+import { extract } from '../src/extractors/fromFile.js';
 import { extractReferences } from '../src/references/extractor.js';
 // Import the pipeline's crossReferenceCheck indirectly by testing the full pipeline
 // or by reimplementing the logic inline. Since crossReferenceCheck is not exported,

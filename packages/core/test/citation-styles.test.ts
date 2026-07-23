@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { resolve } from 'node:path';
-import { extract } from '../src/extractors/index.js';
+import { extract } from '../src/extractors/fromFile.js';
 import { extractReferences } from '../src/references/extractor.js';
 
 const FIXTURES = resolve(import.meta.dirname, 'fixtures');

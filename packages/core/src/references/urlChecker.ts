@@ -1,5 +1,6 @@
 import type { UrlCheckResult, UrlStatus } from '../types.js';
 import { isPrivateUrl } from './ssrf.js';
+import { httpFetch } from '../httpClient.js';
 
 const TIMEOUT_MS = 10_000;
 const USER_AGENT =
@@ -28,7 +29,7 @@ export async function checkUrl(url: string): Promise<UrlCheckResult> {
 
     let res: Response;
     try {
-      res = await fetch(url, {
+      res = await httpFetch(url, {
         method: 'GET',
         redirect: 'follow',
         signal: controller.signal,

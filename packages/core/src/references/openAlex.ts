@@ -2,6 +2,7 @@ import type { AcademicWork } from '../types.js';
 import { throttle } from './rateLimiter.js';
 import { getCached, setCached, cacheKey } from './lookupCache.js';
 import { LookupError, reasonFromStatus, reasonFromFetchError, type LookupFailureReason } from './lookupError.js';
+import { httpFetch } from '../httpClient.js';
 
 /** Hard timeout for a single external API request. OpenAlex can be slow under
  *  load, so this is generous; a too-short timeout makes valid works look
@@ -98,7 +99,7 @@ export async function searchOpenAlex(
 
     let res: Response;
     try {
-      res = await fetch(url, {
+      res = await httpFetch(url, {
         headers: {
           'User-Agent': 'CiteSight/1.0' + (mailto ? ` (mailto:${mailto})` : ''),
         },

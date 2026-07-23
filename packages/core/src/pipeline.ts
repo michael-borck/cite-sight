@@ -1,4 +1,6 @@
-import { extract } from './extractors/index.js';
+// Platform-neutral: no node:* imports may appear in this module or anything it
+// reaches. The Node-only, path-taking wrapper lives in ./pipelineFromFile.js.
+import { extractFromBytes } from './extractors/fromBytes.js';
 import { extractReferences } from './references/extractor.js';
 import { verifyReferences } from './references/verifier.js';
 import type {
@@ -60,8 +62,19 @@ function crossReferenceCheck(
   return { unmatchedBibliography, unmatchedInText };
 }
 
-export async function analyzePipeline(
-  filePath: string,
+/**
+ * Analyse a document supplied as raw bytes.
+ *
+ * The platform-neutral entry point: identical behaviour in Node, a browser, and
+ * a webview. Everything downstream of extraction is already platform-neutral,
+ * so this is the whole of the analysis pipeline minus the disk read.
+ *
+ * @param bytes    The document's raw bytes.
+ * @param fileName File name (not a path) — used for type detection and metadata.
+ */
+export async function analyzeDocument(
+  bytes: Uint8Array,
+  fileName: string,
   options: ProcessingOptions,
   onProgress?: ProgressCallback,
   onReference?: (verification: ReferenceVerification, index: number, total: number) => void,
@@ -70,7 +83,7 @@ export async function analyzePipeline(
 
   // Stage 1: Extract text
   onProgress?.({ stage: 'extracting', progress: 5, message: 'Extracting text from document...' });
-  const doc = await extract(filePath);
+  const doc = await extractFromBytes(bytes, fileName);
 
   if (!doc.text.trim()) {
     throw new Error('No text could be extracted from the document.');

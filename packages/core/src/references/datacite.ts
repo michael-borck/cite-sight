@@ -1,6 +1,7 @@
 import type { AcademicWork } from '../types.js';
 import { throttle } from './rateLimiter.js';
 import { getCached, setCached, cacheKey } from './lookupCache.js';
+import { httpFetch } from '../httpClient.js';
 
 /** Hard timeout for a single DataCite API request. */
 const API_TIMEOUT_MS = 10_000;
@@ -49,7 +50,7 @@ export async function lookupDoiDataCite(
 
   const url = `https://api.datacite.org/dois/${encodeURIComponent(doi)}`;
   try {
-    const res = await fetch(url, {
+    const res = await httpFetch(url, {
       headers: { 'User-Agent': 'CiteSight/1.0' + (mailto ? ` (mailto:${mailto})` : '') },
       signal: AbortSignal.timeout(API_TIMEOUT_MS),
     });

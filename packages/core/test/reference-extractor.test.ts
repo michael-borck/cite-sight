@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { extractReferences } from '../src/references/extractor.js';
-import { extract } from '../src/extractors/index.js';
+import { extract } from '../src/extractors/fromFile.js';
 
 const FIXTURES = resolve(import.meta.dirname, 'fixtures');
 

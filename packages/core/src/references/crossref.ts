@@ -2,6 +2,7 @@ import type { AcademicWork } from '../types.js';
 import { throttle } from './rateLimiter.js';
 import { getCached, setCached, cacheKey } from './lookupCache.js';
 import { LookupError, reasonFromStatus, reasonFromFetchError } from './lookupError.js';
+import { httpFetch } from '../httpClient.js';
 
 /** Hard timeout for a single external API request. */
 const API_TIMEOUT_MS = 10_000;
@@ -89,7 +90,7 @@ export async function searchCrossref(
   const url = `https://api.crossref.org/works?${params.toString()}`;
   let res: Response;
   try {
-    res = await fetch(url, {
+    res = await httpFetch(url, {
       headers: { 'User-Agent': 'CiteSight/1.0 (mailto:' + (mailto ?? 'unknown') + ')' },
       signal: AbortSignal.timeout(API_TIMEOUT_MS),
     });
@@ -130,7 +131,7 @@ export async function lookupDoi(
     const queryString = params.toString();
     const url = `https://api.crossref.org/works/${encodeURIComponent(doi)}${queryString ? '?' + queryString : ''}`;
 
-    const res = await fetch(url, {
+    const res = await httpFetch(url, {
       headers: { 'User-Agent': 'CiteSight/1.0 (mailto:' + (mailto ?? 'unknown') + ')' },
       signal: AbortSignal.timeout(API_TIMEOUT_MS),
     });

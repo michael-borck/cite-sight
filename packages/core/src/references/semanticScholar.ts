@@ -2,6 +2,7 @@ import type { AcademicWork } from '../types.js';
 import { throttle } from './rateLimiter.js';
 import { getCached, setCached, cacheKey } from './lookupCache.js';
 import { LookupError, reasonFromStatus, reasonFromFetchError, type LookupFailureReason } from './lookupError.js';
+import { httpFetch } from '../httpClient.js';
 
 /** Hard timeout for a single external API request. */
 const API_TIMEOUT_MS = 10_000;
@@ -102,7 +103,7 @@ export async function searchSemanticScholar(
 
     let res: Response;
     try {
-      res = await fetch(url, {
+      res = await httpFetch(url, {
         headers,
         signal: AbortSignal.timeout(API_TIMEOUT_MS),
       });

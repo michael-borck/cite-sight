@@ -2,30 +2,52 @@ import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist/legacy/build/pdf.mj
 import type { ExtractedDocument } from '../types.js';
 import { assertInputSize, clampText, MAX_PDF_PAGES, MAX_TEXT_CHARS } from './limits.js';
 
+/**
+ * Point pdfjs at the worker script.
+ *
+ * Bundled hosts (browser, webview) must call this with a URL their bundler
+ * emitted — e.g. in Vite:
+ *
+ *   import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.mjs?url';
+ *   setPdfWorkerSrc(workerUrl);
+ */
+export function setPdfWorkerSrc(src: string): void {
+  GlobalWorkerOptions.workerSrc = src;
+}
+
 // Point workerSrc at the bundled worker file so pdfjs-dist doesn't throw
 // "No GlobalWorkerOptions.workerSrc specified". In Node the worker won't
 // actually be spawned, but the path must resolve for the check to pass.
 // import.meta.resolve returns a file:// URL which is what the ESM loader
 // expects. Do NOT convert to a native path — on Windows, a bare "C:\..."
 // path is rejected by the ESM loader as an invalid URL scheme.
-GlobalWorkerOptions.workerSrc = import.meta.resolve('pdfjs-dist/legacy/build/pdf.worker.mjs');
+//
+// Outside Node this THROWS at module-evaluation time: a browser or webview
+// cannot resolve a bare specifier without an import map, so the whole module
+// (and everything importing it) would fail to load. Guard it, and leave those
+// hosts to call setPdfWorkerSrc() themselves.
+try {
+  GlobalWorkerOptions.workerSrc = import.meta.resolve('pdfjs-dist/legacy/build/pdf.worker.mjs');
+} catch {
+  /* bundled host — setPdfWorkerSrc() supplies the URL instead */
+}
 
 /**
- * Extract all text from a PDF file supplied as a Node.js Buffer.
+ * Extract all text from a PDF file supplied as raw bytes.
  *
  * Pages are joined with a single newline character. Within each page, text
  * items are joined with a space so that word-wrapped lines are readable.
  */
 export async function extractPdf(
-  buffer: Buffer,
+  bytes: Uint8Array,
   fileName: string,
 ): Promise<ExtractedDocument> {
-  assertInputSize(buffer.byteLength, fileName);
+  assertInputSize(bytes.byteLength, fileName);
 
-  // pdfjs-dist expects a Uint8Array (or similar TypedArray), not a Buffer.
-  // Buffer extends Uint8Array in Node.js, but we use Uint8Array explicitly to
-  // keep the typing clean and avoid any future incompatibilities.
-  const data = new Uint8Array(buffer);
+  // pdfjs-dist expects a Uint8Array (or similar TypedArray). Copy rather than
+  // pass through: pdfjs transfers ownership of the buffer it is given, which
+  // would detach a caller's array.
+  const data = new Uint8Array(bytes);
 
   const loadingTask = getDocument({
     data,

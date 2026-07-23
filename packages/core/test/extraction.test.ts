@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { extract, extractPdf, extractDocx } from '../src/extractors/index.js';
+import { extract } from '../src/extractors/fromFile.js';
+import { extractPdf, extractDocx } from '../src/extractors/index.js';
 
 const FIXTURES = resolve(import.meta.dirname, 'fixtures');
 

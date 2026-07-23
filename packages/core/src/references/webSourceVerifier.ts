@@ -1,5 +1,6 @@
 import type { ParsedReference, AcademicWork } from '../types.js';
 import { isPrivateUrl } from './ssrf.js';
+import { httpFetch } from '../httpClient.js';
 
 // ============================================================
 // Web Source Verifier — non-academic reference verification
@@ -35,7 +36,7 @@ async function safeFetch(url: string, timeoutMs = 8000): Promise<Response | null
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
-    const res = await fetch(url, {
+    const res = await httpFetch(url, {
       signal: controller.signal,
       headers: { 'User-Agent': 'CiteSight/1.0 (academic-reference-checker)' },
       redirect: 'follow',

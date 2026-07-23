@@ -10,17 +10,28 @@ import { assertInputSize, clampText } from './limits.js';
  * stripping afterwards.
  */
 export async function extractDocx(
-  buffer: Buffer,
+  bytes: Uint8Array,
   fileName: string,
 ): Promise<ExtractedDocument> {
   // A DOCX is a zip; this bounds the *compressed* input. (Note: mammoth/jszip
   // decompress in memory, so a high-ratio zip bomb can still expand beyond this
   // during parsing — the upload-size limit on the server is the primary guard;
   // here we cap the input and the extracted text.)
-  assertInputSize(buffer.byteLength, fileName);
+  assertInputSize(bytes.byteLength, fileName);
 
-  // mammoth accepts an `{ buffer }` option directly; no temporary file needed.
-  const result = await mammoth.extractRawText({ buffer });
+  // mammoth resolves its input differently per build: the Node entry point
+  // accepts { path | buffer | file } while the browser entry point accepts
+  // only { arrayBuffer }. Supplying both keys lets one call site serve Node,
+  // the browser, and a webview — each build reads the key it understands and
+  // ignores the other. No temporary file is needed either way.
+  const arrayBuffer = bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength,
+  ) as ArrayBuffer;
+  const result = await mammoth.extractRawText({
+    buffer: bytes,
+    arrayBuffer,
+  } as unknown as Parameters<typeof mammoth.extractRawText>[0]);
 
   return {
     text: clampText(result.value),

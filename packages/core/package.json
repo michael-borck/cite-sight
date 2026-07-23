@@ -28,6 +28,11 @@
       "require": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
+    "./browser": {
+      "import": "./dist/browser.js",
+      "require": "./dist/browser.js",
+      "types": "./dist/browser.d.ts"
+    },
     "./dashboard": {
       "import": "./dist/dashboard/index.js",
       "require": "./dist/dashboard/index.js",

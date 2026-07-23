@@ -1,13 +1,20 @@
-// Core library entry point (Node).
+// Browser / webview entry point — `@michaelborck/cite-sight-core/browser`.
 //
-// This barrel reaches node:fs — via `extract` and `analyzePipeline`, both of
-// which take paths. Bundled hosts (browser, webview) must import
-// '@michaelborck/cite-sight-core/browser' instead; see ./browser.ts.
-export { analyzePipeline } from './pipelineFromFile.js';
+// Everything the main entry point offers EXCEPT the two filesystem-bound
+// helpers (`extract` and `analyzePipeline`, which take paths). Import this from
+// a bundled host and nothing will drag node:* into the bundle.
+//
+// Hosts using this must supply the pdfjs worker URL their bundler emitted:
+//
+//   import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.mjs?url';
+//   setPdfWorkerSrc(workerUrl);
+//
+// A webview host that routes HTTP through a native layer installs it with
+// setFetch() rather than overwriting globalThis.fetch — see ./httpClient.ts for
+// why that distinction matters.
 export { analyzeDocument } from './pipeline.js';
 export { MANIFEST } from './manifest.js';
 export { DISCLAIMER, DISCLAIMER_SHORT } from './disclaimer.js';
-export { extract } from './extractors/fromFile.js';
 export {
   extractFromBytes,
   extractPdf,
@@ -16,8 +23,6 @@ export {
   TEXT_EXTENSIONS,
   setPdfWorkerSrc,
 } from './extractors/index.js';
-export { setFetch, httpFetch } from './httpClient.js';
-export type { FetchLike } from './httpClient.js';
 export { extractReferences } from './references/extractor.js';
 export { validateFormat } from './references/formatValidator.js';
 export { searchCrossref, lookupDoi } from './references/crossref.js';
@@ -31,6 +36,8 @@ export type { FlagExplanation } from './references/explain.js';
 export { clearLookupCache } from './references/lookupCache.js';
 export { setMinRequestInterval } from './references/rateLimiter.js';
 export { isPrivateUrl } from './references/ssrf.js';
+export { setFetch, httpFetch } from './httpClient.js';
+export type { FetchLike } from './httpClient.js';
 
 // Re-export all types
 export type * from './types.js';

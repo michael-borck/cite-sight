@@ -2,6 +2,7 @@ import type { AcademicWork } from '../types.js';
 import { lookupDoi } from './crossref.js';
 import { lookupDoiDataCite } from './datacite.js';
 import { throttle } from './rateLimiter.js';
+import { httpFetch } from '../httpClient.js';
 
 // ============================================================
 // Public API
@@ -31,7 +32,7 @@ export async function resolveDoi(
   // --- Fallback: dx.doi.org ---
   try {
     await throttle('doi.org');
-    const res = await fetch(`https://dx.doi.org/${encodeURIComponent(doi)}`, {
+    const res = await httpFetch(`https://dx.doi.org/${encodeURIComponent(doi)}`, {
       method: 'HEAD',
       redirect: 'follow',
       headers: {
