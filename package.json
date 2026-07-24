@@ -24,6 +24,9 @@
     "dev:server": "npm run dev -w packages/server",
     "dev:core": "npm run dev -w packages/core",
     "lint": "eslint packages/*/src/**/*.ts packages/*/src/**/*.tsx",
+    "test:core": "npm test -w packages/core",
+    "test:cli": "npm test -w packages/cli",
+    "test": "npm run test:core && npm run test:cli",
     "bump": "bash scripts/bump.sh"
   },
   "devDependencies": {
