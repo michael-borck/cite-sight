@@ -1,11 +1,28 @@
 #!/usr/bin/env node
 
-import { program } from 'commander';
+import { program, type Command } from 'commander';
 import chalk from 'chalk';
-import { resolve } from 'path';
 import { analyzePipeline, MANIFEST, explainVerification, DISCLAIMER } from '@michaelborck/cite-sight-core';
 import type { AnalysisResult, ProcessingOptions, ProgressCallback } from '@michaelborck/cite-sight-core';
 import { readFileSync } from 'node:fs';
+import { SUPPORTED_EXTENSIONS, collectInputs } from './inputs.js';
+import {
+  type FailOnLevel,
+  type Findings,
+  FAIL_ON_LEVELS,
+  fileFindings,
+  meetsThreshold,
+  findingsSummary,
+  isFailOnLevel,
+} from './findings.js';
+
+// Exit codes (documented in --help so CI can branch on them):
+//   0  success, no findings (or --fail-on none)
+//   1  execution error (unreadable file, extraction failure, bad usage)
+//   2  analysis succeeded but findings met the --fail-on threshold
+const EXIT_OK = 0;
+const EXIT_ERROR = 1;
+const EXIT_FINDINGS = 2;
 
 // Read the real version from this package's package.json (relative to the
 // built dist/index.js → ../package.json), instead of hardcoding it.
@@ -273,7 +290,7 @@ function makeProgressCallback(verbose: boolean): ProgressCallback {
 // Run analysis
 // -------------------------------------------------------
 
-async function runAnalysis(filePath: string, opts: {
+interface AnalysisOpts {
   style: string;
   urls: boolean;
   doi: boolean;
@@ -284,14 +301,18 @@ async function runAnalysis(filePath: string, opts: {
   json: boolean;
   verbose: boolean;
   minimal: boolean;
-}): Promise<void> {
-  const absolutePath = resolve(filePath);
+  failOn: string;
+}
 
-  if (!opts.json) {
-    console.log(chalk.cyan(`Analyzing: ${absolutePath}`));
-  }
+/** A single file's outcome, as carried through a batch run. */
+interface FileOutcome {
+  file: string;
+  result?: AnalysisResult;
+  error?: string;
+}
 
-  const options: ProcessingOptions = {
+function toProcessingOptions(opts: AnalysisOpts): ProcessingOptions {
+  return {
     citationStyle: opts.style as ProcessingOptions['citationStyle'],
     checkUrls: opts.urls,
     checkDoi: opts.doi,
@@ -302,29 +323,160 @@ async function runAnalysis(filePath: string, opts: {
     contactEmail: opts.email,
     semanticScholarApiKey: opts.s2Key ?? process.env.SEMANTIC_SCHOLAR_API_KEY,
   };
+}
 
-  const onProgress = opts.json ? undefined : makeProgressCallback(opts.verbose);
-
-  let result: AnalysisResult;
+/** Analyse one file. Never throws — failures come back on `error`. */
+async function analyzeOne(
+  filePath: string,
+  options: ProcessingOptions,
+  onProgress: ProgressCallback | undefined,
+): Promise<FileOutcome> {
   try {
-    result = await analyzePipeline(absolutePath, options, onProgress);
+    const result = await analyzePipeline(filePath, options, onProgress);
+    return { file: filePath, result };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    if (!opts.json) {
-      console.error(chalk.red(`\nError: ${message}`));
-    } else {
-      process.stdout.write(JSON.stringify({ error: message }) + '\n');
-    }
-    process.exit(1);
+    return { file: filePath, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+function parseFailOn(value: string): FailOnLevel {
+  if (!isFailOnLevel(value)) {
+    console.error(
+      chalk.red(`Error: --fail-on must be one of: ${FAIL_ON_LEVELS.join(', ')} (got "${value}")`),
+    );
+    process.exit(EXIT_ERROR);
+  }
+  return value;
+}
+
+/** Print the roll-up shown after a multi-file run. */
+function printAggregate(outcomes: FileOutcome[], level: FailOnLevel): void {
+  const analysed = outcomes.filter((o) => o.result);
+  const errored = outcomes.filter((o) => o.error);
+
+  let totalRefs = 0, verified = 0, review = 0, notFound = 0, broken = 0;
+  const flagged: { file: string; findings: Findings }[] = [];
+
+  for (const o of analysed) {
+    const r = o.result!.references;
+    totalRefs += r.totalReferences;
+    verified += r.verifiedCount;
+    review += r.suspiciousCount;
+    notFound += r.notFoundCount;
+    broken += r.brokenUrlCount;
+    const f = fileFindings(o.result!);
+    if (f.any > 0) flagged.push({ file: o.file, findings: f });
   }
 
-  if (opts.json) {
-    // Carry the disclaimer in machine output too, so downstream consumers can
-    // surface it rather than presenting results as authoritative.
-    process.stdout.write(JSON.stringify({ ...result, disclaimer: DISCLAIMER }, null, 2) + '\n');
-  } else {
-    printReport(result, opts.minimal);
+  printSectionHeader('Batch Summary');
+  console.log(`  Files analyzed:     ${analysed.length}${errored.length ? chalk.red(`  (${errored.length} errored)`) : ''}`);
+  console.log(`  Total references:   ${totalRefs}`);
+  console.log(`  Verified:           ${chalk.green(String(verified))}`);
+  console.log(`  Needs review:       ${review > 0 ? chalk.yellow(String(review)) : chalk.green('0')}`);
+  console.log(`  Not found:          ${notFound > 0 ? chalk.yellow(String(notFound)) : chalk.green('0')}`);
+  console.log(`  Broken URLs:        ${broken > 0 ? chalk.red(String(broken)) : chalk.green('0')}`);
+  console.log(`  Files with issues:  ${flagged.length > 0 ? chalk.yellow(String(flagged.length)) : chalk.green('0')}`);
+
+  for (const { file, findings } of flagged) {
+    console.log(`    ${chalk.yellow('•')} ${file} ${chalk.gray(`— ${findingsSummary(findings)}`)}`);
   }
+  for (const o of errored) {
+    console.log(`    ${chalk.red('✗')} ${o.file} ${chalk.gray(`— ${o.error}`)}`);
+  }
+
+  if (level !== 'none') {
+    const tripped = analysed.some((o) => meetsThreshold(fileFindings(o.result!), level));
+    console.log('');
+    if (errored.length > 0) {
+      console.log(chalk.red(`  Exit ${EXIT_ERROR}: ${errored.length} file(s) failed to analyze.`));
+    } else if (tripped) {
+      console.log(chalk.yellow(`  Exit ${EXIT_FINDINGS}: findings met --fail-on ${level}.`));
+    } else {
+      console.log(chalk.green(`  Exit ${EXIT_OK}: no findings at --fail-on ${level}.`));
+    }
+  }
+}
+
+/**
+ * Drive analysis over one or more path arguments (files, directories, globs),
+ * print reports, and exit with a code reflecting findings and errors.
+ */
+async function runAnalysis(paths: string[], opts: AnalysisOpts): Promise<void> {
+  const level = parseFailOn(opts.failOn);
+  const files = collectInputs(paths);
+
+  if (files.length === 0) {
+    console.error(chalk.red(`Error: no supported documents found in: ${paths.join(', ')}`));
+    console.error(chalk.gray(`Supported: ${[...SUPPORTED_EXTENSIONS].join(', ')}`));
+    process.exit(EXIT_ERROR);
+  }
+
+  const options = toProcessingOptions(opts);
+  const batch = files.length > 1;
+  const outcomes: FileOutcome[] = [];
+
+  for (const file of files) {
+    if (!opts.json) {
+      console.log(chalk.cyan(`\nAnalyzing: ${file}`));
+    }
+    // Live progress only in human mode; JSON stays clean for piping.
+    const onProgress = opts.json ? undefined : makeProgressCallback(opts.verbose);
+    const outcome = await analyzeOne(file, options, onProgress);
+    outcomes.push(outcome);
+
+    if (!opts.json) {
+      if (outcome.error) {
+        console.error(chalk.red(`\nError: ${outcome.error}`));
+      } else {
+        printReport(outcome.result!, opts.minimal);
+      }
+    }
+  }
+
+  // --- JSON output ---
+  if (opts.json) {
+    if (batch) {
+      // Batch envelope: per-file results plus a roll-up. Distinct from the
+      // single-file shape below, which is preserved for existing consumers.
+      const analysed = outcomes.filter((o) => o.result);
+      const summary = {
+        filesAnalyzed: analysed.length,
+        filesErrored: outcomes.length - analysed.length,
+        totalReferences: analysed.reduce((n, o) => n + o.result!.references.totalReferences, 0),
+        verified: analysed.reduce((n, o) => n + o.result!.references.verifiedCount, 0),
+        needsReview: analysed.reduce((n, o) => n + o.result!.references.suspiciousCount, 0),
+        notFound: analysed.reduce((n, o) => n + o.result!.references.notFoundCount, 0),
+        brokenUrls: analysed.reduce((n, o) => n + o.result!.references.brokenUrlCount, 0),
+        filesWithIssues: analysed.filter((o) => fileFindings(o.result!).any > 0).length,
+      };
+      process.stdout.write(
+        JSON.stringify(
+          {
+            files: outcomes.map((o) => (o.error ? { file: o.file, error: o.error } : { file: o.file, ...o.result })),
+            summary,
+            disclaimer: DISCLAIMER,
+          },
+          null,
+          2,
+        ) + '\n',
+      );
+    } else {
+      const only = outcomes[0];
+      if (only.error) {
+        process.stdout.write(JSON.stringify({ error: only.error }) + '\n');
+      } else {
+        // Single-file shape unchanged: the bare result plus the disclaimer.
+        process.stdout.write(JSON.stringify({ ...only.result, disclaimer: DISCLAIMER }, null, 2) + '\n');
+      }
+    }
+  } else if (batch) {
+    printAggregate(outcomes, level);
+  }
+
+  // --- Exit code ---
+  const hadError = outcomes.some((o) => o.error);
+  const tripped = outcomes.some((o) => o.result && meetsThreshold(fileFindings(o.result), level));
+  process.exit(hadError ? EXIT_ERROR : tripped ? EXIT_FINDINGS : EXIT_OK);
 }
 
 // -------------------------------------------------------
@@ -336,66 +488,61 @@ program
   .description('Academic integrity and citation checker')
   .version(pkgVersion);
 
-// Top-level default command: cite-sight <file>
-program
-  .argument('[file]', 'Document to analyze (PDF, DOCX, or plain text)')
-  .option('--style <style>', 'Citation style (auto|apa|mla|chicago)', 'auto')
-  .option('--no-urls', 'Skip URL checking')
-  .option('--no-doi', 'Skip DOI verification')
-  .option('--no-in-text', 'Skip in-text citation cross-referencing')
-  .option('--source-list', 'Treat the input as a bare source list / bibliography (skips the in-text cross-reference)', false)
-  .option('--email <email>', 'Contact email for API polite pool')
-  .option('--s2-key <key>', 'Semantic Scholar API key (or set SEMANTIC_SCHOLAR_API_KEY) to avoid rate-limiting')
-  .option('--json', 'Output result as JSON', false)
-  .option('--verbose', 'Log progress line by line', false)
-  .option('--minimal', 'Condensed report: summary and verdicts only, no per-issue detail', false)
-  .action(async (file: string | undefined, opts: {
-    style: string;
-    urls: boolean;
-    doi: boolean;
-    inText: boolean;
-    sourceList?: boolean;
-    email?: string;
-    s2Key?: string;
-    json: boolean;
-    verbose: boolean;
-    minimal: boolean;
-  }) => {
-    if (!file) {
-      program.help();
-      return;
-    }
-    await runAnalysis(file, opts);
-  });
+/**
+ * Attach the analysis options shared by the default command and `check`, so the
+ * two never drift apart. Path arguments are variadic: each may be a file, a
+ * directory (recursed for supported documents), or a glob.
+ */
+function addAnalysisOptions(cmd: Command): Command {
+  return cmd
+    .option('--style <style>', 'Citation style (auto|apa|mla|chicago)', 'auto')
+    .option('--no-urls', 'Skip URL checking')
+    .option('--no-doi', 'Skip DOI verification')
+    .option('--no-in-text', 'Skip in-text citation cross-referencing')
+    .option('--source-list', 'Treat the input as a bare source list / bibliography (skips the in-text cross-reference)', false)
+    .option('--email <email>', 'Contact email for API polite pool')
+    .option('--s2-key <key>', 'Semantic Scholar API key (or set SEMANTIC_SCHOLAR_API_KEY) to avoid rate-limiting')
+    .option('--fail-on <level>', `Exit ${EXIT_FINDINGS} when findings are present — for CI (none|suspicious|broken-url|any)`, 'none')
+    .option('--json', 'Output result as JSON', false)
+    .option('--verbose', 'Log progress line by line', false)
+    .option('--minimal', 'Condensed report: summary and verdicts only, no per-issue detail', false);
+}
 
-// Explicit sub-command: cite-sight check <file>
-program
-  .command('check <file>')
-  .description('Check a document for citation and writing pattern issues')
-  .option('--style <style>', 'Citation style (auto|apa|mla|chicago)', 'auto')
-  .option('--no-urls', 'Skip URL checking')
-  .option('--no-doi', 'Skip DOI verification')
-  .option('--no-in-text', 'Skip in-text citation cross-referencing')
-  .option('--source-list', 'Treat the input as a bare source list / bibliography (skips the in-text cross-reference)', false)
-  .option('--email <email>', 'Contact email for API polite pool')
-  .option('--s2-key <key>', 'Semantic Scholar API key (or set SEMANTIC_SCHOLAR_API_KEY) to avoid rate-limiting')
-  .option('--json', 'Output result as JSON', false)
-  .option('--verbose', 'Log progress line by line', false)
-  .option('--minimal', 'Condensed report: summary and verdicts only, no per-issue detail', false)
-  .action(async (file: string, opts: {
-    style: string;
-    urls: boolean;
-    doi: boolean;
-    inText: boolean;
-    sourceList?: boolean;
-    email?: string;
-    s2Key?: string;
-    json: boolean;
-    verbose: boolean;
-    minimal: boolean;
-  }) => {
-    await runAnalysis(file, opts);
-  });
+// Top-level default command: cite-sight <paths...>
+addAnalysisOptions(
+  program
+    .argument('[paths...]', 'Documents, folders, or globs to analyze (PDF, DOCX, TXT, MD)')
+    .addHelpText(
+      'after',
+      '\nExit codes:\n' +
+        `  ${EXIT_OK}  success (or no findings under --fail-on)\n` +
+        `  ${EXIT_ERROR}  execution error (unreadable file, bad usage)\n` +
+        `  ${EXIT_FINDINGS}  findings met the --fail-on threshold\n` +
+        '\nExamples:\n' +
+        '  cite-sight paper.pdf\n' +
+        '  cite-sight ./submissions --fail-on suspicious\n' +
+        "  cite-sight 'essays/**/*.docx' --minimal --json",
+    ),
+).action(async (paths: string[], opts: AnalysisOpts) => {
+  if (!paths || paths.length === 0) {
+    program.help();
+    return;
+  }
+  await runAnalysis(paths, opts);
+});
+
+// Explicit sub-command: cite-sight check <paths...>
+addAnalysisOptions(
+  program
+    .command('check [paths...]')
+    .description('Check documents (files, folders, or globs) for citation and writing pattern issues'),
+).action(async (paths: string[], opts: AnalysisOpts) => {
+  if (!paths || paths.length === 0) {
+    console.error(chalk.red('Error: provide at least one file, folder, or glob to check.'));
+    process.exit(EXIT_ERROR);
+  }
+  await runAnalysis(paths, opts);
+});
 
 // Family contract: cite-sight manifest
 program

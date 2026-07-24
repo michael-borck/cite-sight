@@ -28,11 +28,16 @@
   "scripts": {
     "build": "tsc && chmod +x dist/index.js",
     "dev": "tsc --watch",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@michaelborck/cite-sight-core": "^0.8.7",
     "chalk": "^5.4.0",
     "commander": "^13.0.0"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.0"
   }
 }
