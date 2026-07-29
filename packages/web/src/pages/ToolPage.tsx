@@ -5,6 +5,7 @@ import { AnalysisProgress } from '../components/AnalysisProgress';
 import { downloadPdfReport } from '../utils/generatePdfReport';
 import { downloadCsvReport } from '../utils/generateCsvReport';
 import type { AnalysisResult, ProcessingOptions, ReferenceVerification } from '../types';
+import { HOSTED_LIMITS_NOTICE, HOSTED_LIMITS_SHORT } from '../disclaimer';
 import './ToolPage.css';
 
 type AppState = 'idle' | 'uploading' | 'streaming' | 'done' | 'error';
@@ -70,7 +71,10 @@ export function ToolPage() {
   const [showDesktopTip, setShowDesktopTip] = useState(true);
   const [streaming, setStreaming] = useState<StreamPayload | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  const [notice, setNotice] = useState<string>('');
   const esRef = useRef<EventSource | null>(null);
+  // Job currently streaming — needed to withdraw it from the server queue.
+  const jobIdRef = useRef<string | null>(null);
 
   const onDrop = useCallback((accepted: File[]) => {
     if (accepted.length > 0) {
@@ -118,11 +122,13 @@ export function ToolPage() {
   function runStream(jobId: string) {
     setState('streaming');
     setStreaming({ verifications: [], total: 0, stage: 'queued' });
+    jobIdRef.current = jobId;
     let settled = false;
 
     const finish = (finalResult: AnalysisResult | null, err?: string) => {
       if (settled) return;
       settled = true;
+      jobIdRef.current = null;
       closeStream();
       setStreaming(null);
       if (err) {
@@ -182,8 +188,38 @@ export function ToolPage() {
     };
   }
 
+  /**
+   * Stop watching, and ask the server to withdraw the job if it is still
+   * waiting its turn. A job already being analysed cannot be interrupted — the
+   * server says so and we tell the user rather than implying we stopped it.
+   */
+  async function handleCancel() {
+    const jobId = jobIdRef.current;
+    jobIdRef.current = null;
+    closeStream();
+    setStreaming(null);
+    setState('idle');
+
+    if (!jobId) return;
+
+    try {
+      const res = await fetch(`/api/job/${encodeURIComponent(jobId)}`, { method: 'DELETE' });
+      if (res.ok) {
+        setNotice('Cancelled — your document was removed from the queue and deleted.');
+      } else if (res.status === 409) {
+        setNotice(
+          'Your document had already started analysis, so it will run to completion on the server. ' +
+            'The result has been discarded and your file deleted.',
+        );
+      }
+    } catch {
+      // Network failure on a best-effort cancel — the UI has already stopped.
+    }
+  }
+
   async function handleAnalyze() {
     if (!file) return;
+    setNotice('');
     setError('');
     setResult(null);
     setStreaming(null);
@@ -223,11 +259,13 @@ export function ToolPage() {
   }
 
   function handleReset() {
+    jobIdRef.current = null;
     closeStream();
     setFile(null);
     setResult(null);
     setStreaming(null);
     setError('');
+    setNotice('');
     setState('idle');
   }
 
@@ -247,9 +285,21 @@ export function ToolPage() {
         <p className="tool-subtitle">Upload your document and CiteSight will verify every reference automatically.</p>
       </div>
 
-      <div className="privacy-notice">
-        <span className="privacy-icon">🔒</span>
-        Your files are processed and immediately deleted. No data is stored on our servers.
+      <div className="notices">
+        <div className="privacy-notice">
+          <span className="privacy-icon">🔒</span>
+          Your files are processed and immediately deleted. No data is stored on our servers.
+        </div>
+
+        <div className="hosted-notice">
+          <span className="hosted-notice-icon">ℹ</span>
+          <span>
+            {HOSTED_LIMITS_NOTICE}{' '}
+            <a href="https://github.com/michael-borck/cite-sight/releases/latest" target="_blank" rel="noopener noreferrer">
+              Download the desktop app
+            </a>.
+          </span>
+        </div>
       </div>
 
       {state === 'streaming' && streaming ? (
@@ -262,7 +312,7 @@ export function ToolPage() {
             fileName={file?.name ?? 'Document'}
           />
           <div className="action-buttons">
-            <button className="btn btn-secondary" onClick={handleReset}>Cancel</button>
+            <button className="btn btn-secondary" onClick={() => void handleCancel()}>Cancel</button>
           </div>
         </div>
       ) : !result ? (
@@ -347,6 +397,13 @@ export function ToolPage() {
 
           {state === 'uploading' && <AnalysisProgress phase="uploading" />}
 
+          {notice && (
+            <div className="cancel-notice">
+              <span>{notice}</span>
+              <button className="dismiss-btn" onClick={() => setNotice('')} aria-label="Dismiss">×</button>
+            </div>
+          )}
+
           {state === 'error' && error && (
             <div className="error-message">
               <span>⚠ {error}</span>
@@ -394,10 +451,11 @@ export function ToolPage() {
           {showDesktopTip && (
             <div className="desktop-tip">
               <span>
-                Want offline analysis and screenshot verification?{' '}
+                {HOSTED_LIMITS_SHORT}{' '}
                 <a href="https://github.com/michael-borck/cite-sight/releases/latest" target="_blank" rel="noopener noreferrer">
                   Try the desktop app
-                </a>.
+                </a>{' '}
+                for offline analysis and screenshot verification too.
               </span>
               <button className="desktop-tip-dismiss" onClick={() => setShowDesktopTip(false)} aria-label="Dismiss">
                 ×

@@ -5,7 +5,7 @@ import { rename, unlink, open } from 'fs/promises';
 import path from 'path';
 import { analyzePipeline, DISCLAIMER } from '@michaelborck/cite-sight-core';
 import type { ProcessingOptions } from '@michaelborck/cite-sight-core';
-import { isQueueAvailable, addJob, getJob } from './queue.js';
+import { isQueueAvailable, addJob, getJob, cancelJob } from './queue.js';
 import { fileCleanup } from './middleware.js';
 import { subscribe, type StreamMessage } from './stream.js';
 import { MANIFEST } from './manifest.js';
@@ -217,6 +217,42 @@ router.get('/api/job/:id', async (req, res, next) => {
     }
 
     res.json(jobData);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---- DELETE /api/job/:id ---------------------------------------------------
+// Withdraw a job that is still waiting its turn. An analysis already running
+// cannot be interrupted (see cancelJob), so this answers 409 rather than
+// pretending it stopped.
+
+router.delete('/api/job/:id', async (req, res, next) => {
+  if (!isQueueAvailable()) {
+    res.status(404).json({ error: 'Job queue is not configured on this server.' });
+    return;
+  }
+
+  try {
+    const outcome = await cancelJob(req.params['id'] ?? '');
+
+    switch (outcome) {
+      case 'cancelled':
+        res.json({ status: 'cancelled' });
+        return;
+      case 'running':
+        res.status(409).json({
+          status: 'processing',
+          error: 'This document is already being analysed and cannot be stopped.',
+        });
+        return;
+      case 'finished':
+        res.status(409).json({ status: 'finished', error: 'This job has already finished.' });
+        return;
+      default:
+        res.status(404).json({ error: 'Job not found.' });
+        return;
+    }
   } catch (err) {
     next(err);
   }

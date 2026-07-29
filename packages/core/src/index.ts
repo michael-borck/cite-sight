@@ -6,7 +6,7 @@
 export { analyzePipeline } from './pipelineFromFile.js';
 export { analyzeDocument } from './pipeline.js';
 export { MANIFEST } from './manifest.js';
-export { DISCLAIMER, DISCLAIMER_SHORT } from './disclaimer.js';
+export { DISCLAIMER, DISCLAIMER_SHORT, HOSTED_LIMITS_NOTICE, HOSTED_LIMITS_SHORT } from './disclaimer.js';
 export { extract } from './extractors/fromFile.js';
 export {
   extractFromBytes,

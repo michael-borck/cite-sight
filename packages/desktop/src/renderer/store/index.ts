@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type { AnalysisResult, ProcessingOptions, ProgressUpdate, ReferenceVerification } from '@michaelborck/cite-sight-core';
 
 interface AppState {
@@ -48,7 +49,13 @@ const defaultOptions: ProcessingOptions = {
   screenshotUrls: true,
 };
 
-export const useStore = create<AppState>((set) => ({
+// Analysis options are the only slice worth keeping between launches — above
+// all the contact email and Semantic Scholar key, which are tedious to retype
+// and directly determine how many references verify. Everything else (files,
+// results, progress) is per-session and deliberately starts empty.
+const OPTIONS_STORAGE_KEY = 'cite-sight-options';
+
+export const useStore = create<AppState>()(persist((set) => ({
   filePaths: [],
   options: defaultOptions,
   isProcessing: false,
@@ -80,10 +87,11 @@ export const useStore = create<AppState>((set) => ({
   addStreamingRef: (verification, total) =>
     set((s) => ({ streamingRefs: [...s.streamingRefs, verification], streamingTotal: total || s.streamingTotal })),
   resetStreaming: () => set({ streamingRefs: [], streamingTotal: 0 }),
+  // "Start over" clears the session, not the user's settings — resetting
+  // `options` here would wipe the saved email and API key on every new batch.
   reset: () =>
     set({
       filePaths: [],
-      options: defaultOptions,
       isProcessing: false,
       cancelRequested: false,
       progress: null,
@@ -95,4 +103,15 @@ export const useStore = create<AppState>((set) => ({
       streamingRefs: [],
       streamingTotal: 0,
     }),
+}), {
+  name: OPTIONS_STORAGE_KEY,
+  storage: createJSONStorage(() => localStorage),
+  partialize: (s) => ({ options: s.options }),
+  // Fold the stored options over the current defaults rather than replacing
+  // them, so an option added in a later release still gets its default value
+  // for users who already have something saved.
+  merge: (persisted, current) => ({
+    ...current,
+    options: { ...defaultOptions, ...((persisted as { options?: Partial<ProcessingOptions> } | undefined)?.options ?? {}) },
+  }),
 }));

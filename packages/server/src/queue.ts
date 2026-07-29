@@ -7,6 +7,7 @@
  */
 
 import { unlink } from 'fs/promises';
+import { randomUUID } from 'crypto';
 import { analyzePipeline } from '@michaelborck/cite-sight-core';
 import type { AnalysisResult, ProcessingOptions } from '@michaelborck/cite-sight-core';
 import { emit } from './stream.js';
@@ -127,6 +128,11 @@ export async function addJob(data: AnalysisJobData): Promise<string> {
   }
 
   const job = await _queue.add('analyze', data, {
+    // A random id, not BullMQ's default counter. The id is the only thing
+    // guarding /api/job/:id, /api/stream/:id and DELETE /api/job/:id, so a
+    // sequential one would let anybody read — or cancel — a stranger's
+    // analysis by counting upwards.
+    jobId: randomUUID(),
     removeOnComplete: { age: 3600 }, // keep results for 1 hour
     removeOnFail: { age: 86400 },    // keep failures for 24 hours
   });
@@ -153,8 +159,9 @@ export async function getJob(
     return null;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { Job } = require('bullmq') as typeof import('bullmq');
+  // Must be import(), not require(): this file is ESM, where require is not
+  // defined — a require() here threw on every poll and returned a 500.
+  const { Job } = await import('bullmq');
   const job = await Job.fromId<AnalysisJobData, AnalysisResult>(_queue, jobId);
 
   if (!job) {
@@ -180,4 +187,55 @@ export async function getJob(
       // waiting, delayed, prioritized, etc.
       return { status: 'queued' };
   }
+}
+
+/**
+ * Cancel a job that has not started yet.
+ *
+ * Only a *waiting* job can be pulled out: BullMQ holds a lock on an active job
+ * and has no way to interrupt one, and `analyzePipeline` takes no abort signal,
+ * so a run already in progress plays out to the end regardless. The caller gets
+ * an honest answer either way:
+ *
+ *   'cancelled'  — removed from the queue, upload deleted
+ *   'running'    — already being analysed; nothing was changed
+ *   'finished'   — already completed or failed
+ *   'not_found'  — no such job (or it aged out of Redis)
+ */
+export async function cancelJob(
+  jobId: string,
+): Promise<'cancelled' | 'running' | 'finished' | 'not_found'> {
+  if (!_queue) {
+    return 'not_found';
+  }
+
+  const { Job } = await import('bullmq');
+  const job = await Job.fromId<AnalysisJobData, AnalysisResult>(_queue, jobId);
+
+  if (!job) {
+    return 'not_found';
+  }
+
+  const state = await job.getState();
+  if (state === 'active') return 'running';
+  if (state === 'completed' || state === 'failed') return 'finished';
+
+  const filePath = job.data.filePath;
+
+  try {
+    await job.remove();
+  } catch {
+    // The worker picked it up between getState() and remove() — BullMQ refuses
+    // to remove a locked job. The upload now belongs to the worker, which
+    // deletes it in its own `finally`, so leave the file alone.
+    return 'running';
+  }
+
+  // The worker never ran, so nothing else will clean up the upload.
+  await unlink(filePath).catch(() => undefined);
+
+  // Close any SSE client still attached to this job (e.g. a second tab).
+  emit({ type: 'error', jobId, error: 'Analysis cancelled.' });
+
+  return 'cancelled';
 }

@@ -20,7 +20,18 @@
   font-size: 0.95rem;
 }
 
-/* ── Privacy notice ─────────────────────────────────────────────────────────── */
+/* ── Notices ────────────────────────────────────────────────────────────────── */
+
+.notices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-8);
+}
+
+.notices > .privacy-notice {
+  margin-bottom: 0;
+}
 
 .privacy-notice {
   display: flex;
@@ -37,6 +48,63 @@
 
 .privacy-icon {
   font-size: 1rem;
+}
+
+/* Hosted-demo caveat — why the online checker finds less than the desktop app.
+   Amber ties it to the same message family as the post-results desktop tip. */
+.hosted-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  background: var(--amber-bg);
+  border: 1px solid rgba(196,149,42,0.2);
+  border-radius: var(--r-md);
+  padding: var(--sp-3) var(--sp-4);
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.hosted-notice-icon {
+  font-size: 1rem;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.hosted-notice a {
+  color: var(--amber-dark);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.hosted-notice a:hover {
+  text-decoration: underline;
+}
+
+/* Outcome of a cancel — informational, so neutral rather than the rose used
+   for errors. Shares .dismiss-btn with .error-message; recolour it to match. */
+.cancel-notice {
+  margin-top: var(--sp-5);
+  padding: var(--sp-3) var(--sp-8) var(--sp-3) var(--sp-4);
+  background: var(--neutral-bg);
+  border: 1px solid rgba(107,124,138,0.2);
+  border-radius: var(--r-md);
+  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  position: relative;
+  font-size: 0.87rem;
+  line-height: 1.5;
+}
+
+.cancel-notice .dismiss-btn {
+  color: var(--ink-faint);
+}
+
+.cancel-notice .dismiss-btn:hover {
+  color: var(--ink-muted);
 }
 
 /* ── Upload section ─────────────────────────────────────────────────────────── */

@@ -6,4 +6,8 @@
 // constant with no Node dependencies — so it imports cleanly in the browser.
 // ============================================================
 
-export { DISCLAIMER } from '@michaelborck/cite-sight-core/disclaimer';
+export {
+  DISCLAIMER,
+  HOSTED_LIMITS_NOTICE,
+  HOSTED_LIMITS_SHORT,
+} from '@michaelborck/cite-sight-core/disclaimer';
