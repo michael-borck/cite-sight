@@ -102,11 +102,22 @@ function extractAuthors(raw: string, _style: CitationStyle): string[] {
   // Strip leading number/bullet: "1. " or "• "
   const stripped = raw.replace(/^[\d]+[.)]\s*/, '').replace(/^[•\-]\s*/, '');
 
-  // APA / MLA / Chicago: author block ends at the year "(YYYY)" or at the
-  // first period that is followed by a space and a capital letter / quote.
+  // APA / MLA / Chicago: author block ends at the year "(YYYY)".
   const yearIdx = stripped.search(/\((19|20)\d{2}[a-z]?\)/);
-  const authorBlock =
-    yearIdx > 0 ? stripped.slice(0, yearIdx) : stripped.split(/\.\s+[A-Z"]/)[0];
+  let authorBlock: string;
+  if (yearIdx > 0) {
+    authorBlock = stripped.slice(0, yearIdx);
+  } else {
+    // Author–date styles without the parenthesis (MISQ/ACIS, some Chicago):
+    // "Goodhue, D. L., and Thompson, R. L. 1995. "Title," ...". Anchor the
+    // author block at the bare year so initials ("D. L.") don't end it early.
+    const bareYear = stripped.match(/^(.{2,300}?)[.,]?\s+(?:19|20)\d{2}[a-z]?[.,]/);
+    authorBlock = bareYear
+      ? bareYear[1]
+      : // Fallback: first period followed by a capital or an opening quote
+        // (straight or typographic — rendered documents use curly quotes).
+        stripped.split(/\.\s+[A-Z"“]/)[0];
+  }
 
   if (!authorBlock || authorBlock.length > 300) return [];
 
@@ -159,10 +170,16 @@ function extractTitle(raw: string, style: CitationStyle): string {
     if (m) return cleanTitle(titleUpToSentenceBreak(m[1]));
   }
 
-  if (style === 'mla' || style === 'chicago') {
-    // Title in quotes: "Title."
-    const m = stripped.match(/"([^"]+)"/);
-    if (m) return m[1].trim();
+  // Quoted title — MLA, Chicago, and quote-styles without a distinctive
+  // signature (MISQ/ACIS renders as `Authors. Year. "Title," Journal (v:i)`,
+  // detected as 'unknown'). Matching the quoted segment beats the year
+  // fallback, which would swallow the journal/volume/pages into the title and
+  // deflate every downstream title comparison. Real documents carry
+  // typographic (curly) quotes, so match those alongside straight ones, and
+  // drop the in-quote trailing comma these styles place before the close.
+  if (style !== 'apa') {
+    const m = stripped.match(/["“]([^"”]{8,})["”]/);
+    if (m) return m[1].replace(/[\s,.;]+$/, '').trim();
   }
 
   // Fallback: grab text between the year and the journal-ish segment.

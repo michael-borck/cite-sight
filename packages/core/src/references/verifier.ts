@@ -157,6 +157,39 @@ function assessAcademicMatch(
   }
 
   // --- Search-match path (no resolving DOI) ---
+
+  // Containment rescue: registries store clean titles, while citations reach
+  // the matcher longer (venue/volume/pages glued on by an author–date parse)
+  // or shorter (subtitle omitted). Word-overlap deflates in both cases even
+  // when one title sits wholly inside the other. Direction decides safety:
+  //  - cited ⊂ record: subtitle omission — safe with a corroborating author.
+  //  - record ⊂ cited: safe ONLY when the cited title's excess tokens look
+  //    like venue debris (numbers, "pp", "vol"). Prose excess is the
+  //    fabricated-elaboration pattern ("Attention is NOT all you need: a
+  //    critical re-examination …"), which contains the real title yet must
+  //    stay suspicious — containment cannot tell negation from decoration.
+  if (author === 'match') {
+    const { containment, smallerSize } = titleContainment(ref.title, work.title);
+    if (smallerSize >= 4 && containment >= 0.8) {
+      const tokens = (t: string) =>
+        new Set(t.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean));
+      const refSet = tokens(ref.title);
+      const workSet = tokens(work.title);
+      const citedIsShorter = refSet.size <= workSet.size;
+      let excessOk = citedIsShorter;
+      if (!citedIsShorter) {
+        const excess = [...refSet].filter((w) => !workSet.has(w));
+        const venueish = excess.filter((w) => /^\d+$|^pp?$|^vol$|^no$/.test(w));
+        excessOk = excess.length === 0 || venueish.length / excess.length >= 0.5;
+      }
+      if (excessOk) {
+        return year === 'mismatch'
+          ? { status: 'likely_valid', confidence: 0.7, flags }
+          : { status: 'verified', confidence: 0.9, flags };
+      }
+    }
+  }
+
   if (titleSim >= TITLE_STRONG) {
     if (author === 'mismatch' && year === 'mismatch') {
       // Same title but wrong author AND year → a different work, or fabricated.
