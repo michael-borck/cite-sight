@@ -11,6 +11,7 @@ import { resolveDoi } from './doiResolver.js';
 import { searchCrossref } from './crossref.js';
 import { searchSemanticScholar } from './semanticScholar.js';
 import { searchOpenAlex } from './openAlex.js';
+import { extractArxivId, lookupArxivId, searchArxiv } from './arxiv.js';
 import { checkUrl } from './urlChecker.js';
 import { verifyWebSource } from './webSourceVerifier.js';
 import { LookupError, type LookupFailureReason } from './lookupError.js';
@@ -279,17 +280,34 @@ async function verifySingleReference(
 
   const searchQuery = [ref.authors[0], ref.title].filter(Boolean).join(' ');
 
-  // Pick the best candidate (highest title similarity) from a result set,
-  // keeping it only if it clears the floor.
+  // Pick the best candidate from a result set by a JOINT score, not title
+  // similarity alone. Title-only ranking picks the wrong record whenever a
+  // similar-titled different work outranks the cited one — a book review over
+  // the book, a "Design Science Research in IS" chapter over the "Design
+  // Science in IS Research" article — and the wrong pick then reads as a
+  // metadata mismatch blamed on the citation. Author overlap dominates the
+  // tie-break; a corroborating year separates editions/reprints of the same
+  // title. `similarity` still records the winner's plain title similarity,
+  // which the verdict logic downstream interprets.
+  let bestScore = 0;
+  let matchedCorroborated = false;
   const considerResults = (results: AcademicWork[]): void => {
     for (const work of results) {
       const sim = titleSimilarity(ref.title, work.title);
-      if (sim > similarity) {
+      if (sim < TITLE_FLOOR) continue;
+      const author = authorCorroboration(ref.authors, work.authors);
+      const year = yearCorroboration(ref.year, work.year);
+      const score =
+        sim +
+        (author === 'match' ? 0.25 : author === 'mismatch' ? -0.2 : 0) +
+        (year === 'match' ? 0.1 : year === 'mismatch' ? -0.05 : 0);
+      if (score > bestScore) {
+        bestScore = score;
         similarity = sim;
         matched = work;
+        matchedCorroborated = author === 'match';
       }
     }
-    if (similarity < TITLE_FLOOR) matched = undefined;
   };
 
   // --- Step 2: DOI resolution ---
@@ -307,18 +325,52 @@ async function verifySingleReference(
     }
   }
 
-  // --- Steps 3–5: academic search cascade (Crossref → OpenAlex → Semantic Scholar) ---
+  // --- Step 2b: arXiv ID resolution ---
+  // A reference that names its arXiv ID identifies the preprint as
+  // authoritatively as a DOI identifies a published work — and preprints are
+  // exactly what the Crossref-first cascade cannot see (arXiv registers with
+  // DataCite), so without this step they fuzzy-match the nearest-titled
+  // unrelated record instead.
+  if (!matched && ref.raw) {
+    const arxivId = extractArxivId(ref.raw);
+    if (arxivId) {
+      try {
+        const work = await lookupArxivId(arxivId);
+        if (work) {
+          const sim = titleSimilarity(ref.title, work.title);
+          if (sim >= TITLE_FLOOR) {
+            matched = work;
+            similarity = sim;
+            matchedCorroborated =
+              authorCorroboration(ref.authors, work.authors) === 'match';
+          }
+        }
+      } catch (err) {
+        noteFailure(err);
+      }
+    }
+  }
+
+  // --- Steps 3–6: academic search cascade (Crossref → OpenAlex → Semantic Scholar → arXiv) ---
   // OpenAlex precedes Semantic Scholar: it aggregates Crossref+PubMed and more,
   // is reliably available on the free polite pool, and S2's keyless tier is the
   // flakiest source. The loop keeps going past a weak (above-floor but
-  // below-moderate) match so a stronger candidate from a later source can win.
+  // below-moderate) match so a stronger candidate from a later source can win —
+  // and past an UNCORROBORATED match of any strength: a strong-titled record
+  // whose authors don't overlap the citation is likely the wrong work (a review
+  // of the book, a similarly-titled chapter), and the right one may live in the
+  // next index. Only a corroborated moderate-or-better match ends the search.
   if (!matched && searchQuery.length > 3) {
     for (const search of [
       () => searchCrossref(searchQuery, options.mailto),
       () => searchOpenAlex(searchQuery, options.mailto),
       () => searchSemanticScholar(searchQuery, options.semanticScholarApiKey),
+      // Last resort: preprint-only works (ICLR/NeurIPS papers cited by venue,
+      // arXiv-only reports) reach here when the big indexes offered nothing
+      // corroborated; a title search on arXiv is what finally finds them.
+      () => searchArxiv(ref.title),
     ]) {
-      if (matched && similarity >= TITLE_MODERATE) break;
+      if (matched && similarity >= TITLE_MODERATE && matchedCorroborated) break;
       try {
         considerResults(await search());
       } catch (err) {

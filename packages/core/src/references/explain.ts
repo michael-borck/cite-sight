@@ -28,6 +28,7 @@ const SERVICE_NAMES: Record<string, string> = {
   crossref: 'Crossref',
   semantic_scholar: 'Semantic Scholar',
   openalex: 'OpenAlex',
+  arxiv: 'arXiv',
   doi: 'the DOI resolver',
 };
 
