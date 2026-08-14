@@ -1,6 +1,6 @@
 {
   "name": "cite-sight",
-  "version": "0.8.10",
+  "version": "0.8.11",
   "description": "CLI tool for checking academic references and citations",
   "type": "module",
   "license": "MIT",
@@ -33,7 +33,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@michaelborck/cite-sight-core": "^0.8.10",
+    "@michaelborck/cite-sight-core": "^0.8.11",
     "chalk": "^5.4.0",
     "commander": "^13.0.0"
   },
