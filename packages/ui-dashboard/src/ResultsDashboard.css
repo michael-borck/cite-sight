@@ -314,3 +314,12 @@
 }
 .no-issues { color: var(--verified); padding: var(--sp-3) 0; font-size: 0.87rem; }
 .no-data { color: var(--ink-faint); font-style: italic; padding: var(--sp-5) 0; }
+
+/* ── References panel interactivity ─────────────────────────── */
+button.status-chip { border: none; cursor: pointer; font: inherit; }
+.status-chip.off { opacity: 0.4; }
+.ref-table th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+.ref-table th.sortable:hover { text-decoration: underline; }
+.ref-row.dismissed { opacity: 0.45; }
+.ref-row.dismissed .ref-title { text-decoration: line-through; }
+.ref-detail-actions { margin-top: 8px; }

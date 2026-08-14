@@ -80,7 +80,26 @@ function ScreenshotThumbnail({ path }: { path: string }) {
   );
 }
 
-function ReferenceRow({ v, index }: { v: ReferenceVerification; index: number }) {
+function scholarSearchUrl(text: string): string {
+  return `https://scholar.google.com/scholar?q=${encodeURIComponent(text)}`;
+}
+function webSearchUrl(text: string): string {
+  return `https://www.google.com/search?q=${encodeURIComponent(text)}`;
+}
+
+// Sort order for the Status column: most-worrying first when descending.
+const STATUS_SEVERITY: Record<string, number> = {
+  suspicious: 5, not_found: 4, unverified: 3, format_only: 2, likely_valid: 1, verified: 0,
+};
+
+interface ReferenceRowProps {
+  v: ReferenceVerification;
+  index: number;
+  isDismissed: boolean;
+  onToggleDismiss: (index: number) => void;
+}
+
+function ReferenceRow({ v, index, isDismissed, onToggleDismiss }: ReferenceRowProps) {
   const [expanded, setExpanded] = useState(false);
   const ref = v.reference;
   const title = ref.title || ref.raw.slice(0, 80);
@@ -88,7 +107,7 @@ function ReferenceRow({ v, index }: { v: ReferenceVerification; index: number })
   return (
     <>
       <tr
-        className={`ref-row ${index % 2 === 0 ? 'even' : 'odd'}`}
+        className={`ref-row ${index % 2 === 0 ? 'even' : 'odd'} ${isDismissed ? 'dismissed' : ''}`}
         onClick={() => setExpanded((x) => !x)}
       >
         <td className="ref-index">{index + 1}</td>
@@ -146,6 +165,32 @@ function ReferenceRow({ v, index }: { v: ReferenceVerification; index: number })
               {v.urlCheck?.screenshotPath && (
                 <ScreenshotThumbnail path={v.urlCheck.screenshotPath} />
               )}
+              {/* Same escape hatches as the Overview — on every row, verified
+                  included: "the tool says verified, let me check anyway" is a
+                  legitimate manual-verification workflow. Dismiss only where
+                  there is something to dismiss. */}
+              <div className="priority-row-actions ref-detail-actions" onClick={(e) => e.stopPropagation()}>
+                {ref.url && (
+                  <a className="priority-action priority-action-search" href={ref.url} target="_blank" rel="noreferrer">
+                    Open cited URL
+                  </a>
+                )}
+                <a className="priority-action priority-action-search" href={scholarSearchUrl(ref.raw)} target="_blank" rel="noreferrer">
+                  Search Scholar
+                </a>
+                <a className="priority-action priority-action-search" href={webSearchUrl(ref.raw)} target="_blank" rel="noreferrer">
+                  Search web
+                </a>
+                {(v.status === 'suspicious' || v.status === 'not_found' || v.status === 'unverified') && (
+                  <button
+                    type="button"
+                    className="priority-action priority-action-dismiss"
+                    onClick={() => onToggleDismiss(index)}
+                  >
+                    {isDismissed ? 'Restore' : 'Dismiss'}
+                  </button>
+                )}
+              </div>
             </div>
           </td>
         </tr>
@@ -158,10 +203,62 @@ interface PanelProps {
   results: AnalysisResult;
 }
 
-function ReferencesPanel({ results, dismissed }: PanelProps & { dismissed: Set<string> }) {
+type SortKey = 'index' | 'title' | 'status' | 'doi' | 'url' | 'confidence';
+
+function ReferencesPanel({ results, dismissed, onDismissedChange }: PanelProps & {
+  dismissed: Set<string>;
+  onDismissedChange: (next: Set<string>) => void;
+}) {
   const { references } = results;
   const live = (status: string) =>
     references.verifications.filter((v, idx) => v.status === status && !dismissed.has(`ref:${idx}`)).length;
+
+  // Chip filters: clicking a status chip toggles that status's rows.
+  const [hiddenStatuses, setHiddenStatuses] = useState<Set<string>>(new Set());
+  const toggleStatus = (status: string) => {
+    setHiddenStatuses((prev) => {
+      const next = new Set(prev);
+      if (next.has(status)) next.delete(status);
+      else next.add(status);
+      return next;
+    });
+  };
+
+  // Column sorting: click a header to sort, click again to flip direction.
+  const [sortKey, setSortKey] = useState<SortKey>('index');
+  const [sortDir, setSortDir] = useState<1 | -1>(1);
+  const setSort = (key: SortKey) => {
+    if (key === sortKey) setSortDir((d) => (d === 1 ? -1 : 1));
+    else { setSortKey(key); setSortDir(1); }
+  };
+  const sortIndicator = (key: SortKey) => (sortKey === key ? (sortDir === 1 ? ' \u25B4' : ' \u25BE') : '');
+
+  const rows = useMemo(() => {
+    const withIndex = references.verifications.map((v, idx) => ({ v, idx }));
+    const filtered = withIndex.filter(({ v }) => !hiddenStatuses.has(v.status));
+    const keyOf = ({ v, idx }: { v: ReferenceVerification; idx: number }): string | number => {
+      switch (sortKey) {
+        case 'title':      return (v.reference.title || v.reference.raw).toLowerCase();
+        case 'status':     return STATUS_SEVERITY[v.status] ?? 0;
+        case 'doi':        return v.reference.doi ? `0${v.reference.doi}` : '1';
+        case 'url':        return v.urlCheck?.status ?? '\uffff';
+        case 'confidence': return v.confidenceScore;
+        default:           return idx;
+      }
+    };
+    return filtered.sort((a, b) => {
+      const ka = keyOf(a); const kb = keyOf(b);
+      return (ka < kb ? -1 : ka > kb ? 1 : 0) * sortDir;
+    });
+  }, [references.verifications, hiddenStatuses, sortKey, sortDir]);
+
+  const toggleDismiss = (idx: number) => {
+    const key = `ref:${idx}`;
+    const next = new Set(dismissed);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    onDismissedChange(next);
+  };
 
   return (
     <div className="panel-card">
@@ -171,21 +268,24 @@ function ReferencesPanel({ results, dismissed }: PanelProps & { dismissed: Set<s
       </div>
       <div className="panel-body">
         <div className="status-summary">
-          <div className="status-chip verified">
-            <span className="count">{references.verifications.filter(v => v.status === 'verified').length}</span> Verified
-          </div>
-          <div className="status-chip likely">
-            <span className="count">{references.verifications.filter(v => v.status === 'likely_valid').length}</span> Likely Valid
-          </div>
-          <div className="status-chip suspicious">
-            <span className="count">{live('suspicious')}</span> Needs review
-          </div>
-          <div className="status-chip notfound">
-            <span className="count">{live('not_found')}</span> Not Found
-          </div>
-          <div className="status-chip unverified">
-            <span className="count">{references.unverifiedCount}</span> Unverified
-          </div>
+          {([
+            ['verified', 'Verified', 'verified', references.verifications.filter(v => v.status === 'verified').length],
+            ['likely_valid', 'Likely Valid', 'likely', references.verifications.filter(v => v.status === 'likely_valid').length],
+            ['suspicious', 'Needs review', 'suspicious', live('suspicious')],
+            ['not_found', 'Not Found', 'notfound', live('not_found')],
+            ['unverified', 'Unverified', 'unverified', references.unverifiedCount],
+          ] as const).map(([status, label, cls, count]) => (
+            <button
+              key={status}
+              type="button"
+              className={`status-chip ${cls} ${hiddenStatuses.has(status) ? 'off' : ''}`}
+              onClick={() => toggleStatus(status)}
+              aria-pressed={!hiddenStatuses.has(status)}
+              title={hiddenStatuses.has(status) ? `Show ${label} rows` : `Hide ${label} rows`}
+            >
+              <span className="count">{count}</span> {label}
+            </button>
+          ))}
         </div>
         <p className="status-legend">
           <strong>Not found</strong> = searched, no record &middot;{' '}
@@ -198,18 +298,24 @@ function ReferencesPanel({ results, dismissed }: PanelProps & { dismissed: Set<s
             <table className="ref-table">
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th>Reference</th>
-                  <th>Status</th>
-                  <th>DOI</th>
-                  <th>URL</th>
-                  <th>Confidence</th>
+                  <th className="sortable" onClick={() => setSort('index')}>#{sortIndicator('index')}</th>
+                  <th className="sortable" onClick={() => setSort('title')}>Reference{sortIndicator('title')}</th>
+                  <th className="sortable" onClick={() => setSort('status')}>Status{sortIndicator('status')}</th>
+                  <th className="sortable" onClick={() => setSort('doi')}>DOI{sortIndicator('doi')}</th>
+                  <th className="sortable" onClick={() => setSort('url')}>URL{sortIndicator('url')}</th>
+                  <th className="sortable" onClick={() => setSort('confidence')}>Confidence{sortIndicator('confidence')}</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
-                {references.verifications.map((v, i) => (
-                  <ReferenceRow key={i} v={v} index={i} />
+                {rows.map(({ v, idx }) => (
+                  <ReferenceRow
+                    key={idx}
+                    v={v}
+                    index={idx}
+                    isDismissed={dismissed.has(`ref:${idx}`)}
+                    onToggleDismiss={toggleDismiss}
+                  />
                 ))}
               </tbody>
             </table>
@@ -383,7 +489,9 @@ export function ResultsDashboard({ results, readScreenshot }: ResultsDashboardPr
         {activeSection === 'overview'    && (
           <OverviewPanel results={results} dismissed={dismissed} onDismissedChange={setDismissed} />
         )}
-        {activeSection === 'references'  && <ReferencesPanel results={results} dismissed={dismissed} />}
+        {activeSection === 'references'  && (
+          <ReferencesPanel results={results} dismissed={dismissed} onDismissedChange={setDismissed} />
+        )}
         {activeSection === 'crossrefs'   && <CrossReferencesPanel results={results} />}
 
         <p className="results-disclaimer">{DISCLAIMER}</p>
