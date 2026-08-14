@@ -1,6 +1,6 @@
 {
   "name": "@michaelborck/cite-sight-desktop",
-  "version": "0.8.9",
+  "version": "0.8.10",
   "private": true,
   "type": "module",
   "description": "CiteSight Desktop - Academic integrity checker",
