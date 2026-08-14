@@ -8,6 +8,10 @@ import './Overview.css';
 
 interface Props {
   results: AnalysisResult;
+  /** Dismissal state now lives in the dashboard shell so all count surfaces
+   *  (summary strip, sidebar badges, panel chips) update together. */
+  dismissed: Set<string>;
+  onDismissedChange: (next: Set<string>) => void;
 }
 
 interface PendingDismissal {
@@ -16,9 +20,7 @@ interface PendingDismissal {
   headline: string;
 }
 
-export function OverviewPanel({ results }: Props) {
-  // Session-only dismissal state — lost on tab change or reload.
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+export function OverviewPanel({ results, dismissed, onDismissedChange }: Props) {
   const [pending, setPending] = useState<PendingDismissal | null>(null);
 
   const verdict = useMemo(() => computeVerdict(results.references, dismissed), [results.references, dismissed]);
@@ -28,21 +30,17 @@ export function OverviewPanel({ results }: Props) {
     const item = items.find((i) => i.itemKey === itemKey);
     const headline = item?.headline ?? itemKey;
 
-    setDismissed((s) => {
-      const next = new Set(s);
-      next.add(itemKey);
-      return next;
-    });
+    const next = new Set(dismissed);
+    next.add(itemKey);
+    onDismissedChange(next);
     setPending({ itemKey, type, headline });
   };
 
   const handleUndo = () => {
     if (!pending) return;
-    setDismissed((s) => {
-      const next = new Set(s);
-      next.delete(pending.itemKey);
-      return next;
-    });
+    const next = new Set(dismissed);
+    next.delete(pending.itemKey);
+    onDismissedChange(next);
     setPending(null);
   };
 

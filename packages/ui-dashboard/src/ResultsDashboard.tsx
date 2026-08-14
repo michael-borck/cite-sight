@@ -1,4 +1,4 @@
-import { Fragment, createContext, useContext, useEffect, useState } from 'react';
+import { Fragment, createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type {
   AnalysisResult,
@@ -158,8 +158,10 @@ interface PanelProps {
   results: AnalysisResult;
 }
 
-function ReferencesPanel({ results }: PanelProps) {
+function ReferencesPanel({ results, dismissed }: PanelProps & { dismissed: Set<string> }) {
   const { references } = results;
+  const live = (status: string) =>
+    references.verifications.filter((v, idx) => v.status === status && !dismissed.has(`ref:${idx}`)).length;
 
   return (
     <div className="panel-card">
@@ -176,10 +178,10 @@ function ReferencesPanel({ results }: PanelProps) {
             <span className="count">{references.verifications.filter(v => v.status === 'likely_valid').length}</span> Likely Valid
           </div>
           <div className="status-chip suspicious">
-            <span className="count">{references.suspiciousCount}</span> Needs review
+            <span className="count">{live('suspicious')}</span> Needs review
           </div>
           <div className="status-chip notfound">
-            <span className="count">{references.notFoundCount}</span> Not Found
+            <span className="count">{live('not_found')}</span> Not Found
           </div>
           <div className="status-chip unverified">
             <span className="count">{references.unverifiedCount}</span> Unverified
@@ -286,11 +288,30 @@ const SECTIONS = [
 
 export function ResultsDashboard({ results, readScreenshot }: ResultsDashboardProps) {
   const [activeSection, setActiveSection] = useState('overview');
+  // Dismissal state lives HERE (not in the Overview) so every surface that
+  // shows counts — summary strip, sidebar badges, per-panel chips — reflects
+  // a dismissal the moment it happens. Item keys mirror the priority list
+  // (`ref:<idx>`, `intext:<idx>`). Session-only, like before.
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const refs = results.references;
+
+  const adjusted = useMemo(() => {
+    let suspicious = 0;
+    let notFound = 0;
+    refs.verifications.forEach((v, idx) => {
+      if (dismissed.has(`ref:${idx}`)) return;
+      if (v.status === 'suspicious') suspicious++;
+      if (v.status === 'not_found') notFound++;
+    });
+    const orphanInText = refs.crossReference.unmatchedInText.filter(
+      (_c, idx) => !dismissed.has(`intext:${idx}`),
+    ).length;
+    return { suspicious, notFound, orphanInText };
+  }, [refs, dismissed]);
+
   const crossRefCount =
-    refs.crossReference.unmatchedBibliography.length +
-    refs.crossReference.unmatchedInText.length;
-  const issueCount = refs.suspiciousCount + refs.notFoundCount;
+    refs.crossReference.unmatchedBibliography.length + adjusted.orphanInText;
+  const issueCount = adjusted.suspicious + adjusted.notFound;
 
   const getBadge = (id: string): { count: number | null; warn: boolean } => {
     switch (id) {
@@ -336,13 +357,19 @@ export function ResultsDashboard({ results, readScreenshot }: ResultsDashboardPr
             <span className="label">Verified</span>
           </div>
           <div className="summary-stat amber">
-            <span className="value">{refs.suspiciousCount}</span>
+            <span className="value">{adjusted.suspicious}</span>
             <span className="label">Needs review</span>
           </div>
           <div className="summary-stat rose">
-            <span className="value">{refs.notFoundCount}</span>
+            <span className="value">{adjusted.notFound}</span>
             <span className="label">Not Found</span>
           </div>
+          {dismissed.size > 0 && (
+            <div className="summary-stat muted">
+              <span className="value">{dismissed.size}</span>
+              <span className="label">Dismissed</span>
+            </div>
+          )}
           <div className="summary-stat muted">
             <span className="value">{refs.unverifiedCount}</span>
             <span className="label">Unverified</span>
@@ -353,8 +380,10 @@ export function ResultsDashboard({ results, readScreenshot }: ResultsDashboardPr
           </div>
         </div>
 
-        {activeSection === 'overview'    && <OverviewPanel results={results} />}
-        {activeSection === 'references'  && <ReferencesPanel results={results} />}
+        {activeSection === 'overview'    && (
+          <OverviewPanel results={results} dismissed={dismissed} onDismissedChange={setDismissed} />
+        )}
+        {activeSection === 'references'  && <ReferencesPanel results={results} dismissed={dismissed} />}
         {activeSection === 'crossrefs'   && <CrossReferencesPanel results={results} />}
 
         <p className="results-disclaimer">{DISCLAIMER}</p>
