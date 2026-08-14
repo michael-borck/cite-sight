@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { PriorityItem } from '@michaelborck/cite-sight-core';
+import { ScreenshotThumbnail } from '../Screenshot';
 
 interface Props {
   item: PriorityItem;
@@ -23,6 +24,7 @@ function webSearchUrl(text: string): string {
 
 export function PriorityListRow({ item, onDismiss }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const [showSnapshot, setShowSnapshot] = useState(false);
 
   return (
     <div className={`priority-row category-${item.category} ${expanded ? 'expanded' : ''}`}>
@@ -110,6 +112,15 @@ export function PriorityListRow({ item, onDismiss }: Props) {
                 </a>
               </>
             )}
+            {item.screenshotPath && (
+              <button
+                type="button"
+                className="priority-action priority-action-search"
+                onClick={() => setShowSnapshot((x) => !x)}
+              >
+                {showSnapshot ? 'Hide snapshot' : 'Page snapshot'}
+              </button>
+            )}
             <button
               type="button"
               className="priority-action priority-action-dismiss"
@@ -125,6 +136,9 @@ export function PriorityListRow({ item, onDismiss }: Props) {
               Mark as fabricated
             </button>
           </div>
+          {showSnapshot && item.screenshotPath && (
+            <ScreenshotThumbnail path={item.screenshotPath} />
+          )}
         </div>
       )}
     </div>

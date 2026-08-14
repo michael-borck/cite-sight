@@ -1,4 +1,4 @@
-import { Fragment, createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type {
   AnalysisResult,
@@ -7,6 +7,7 @@ import type {
 } from '@michaelborck/cite-sight-core';
 import { DISCLAIMER } from '@michaelborck/cite-sight-core/disclaimer';
 import { OverviewPanel } from './Overview';
+import { ScreenshotContext, ScreenshotThumbnail } from './Screenshot';
 import './ResultsDashboard.css';
 
 export interface ResultsDashboardProps {
@@ -28,9 +29,6 @@ export interface ResultsDashboardProps {
 
 const noScreenshot = (): Promise<string | null> => Promise.resolve(null);
 
-const ScreenshotContext = createContext<(path: string) => Promise<string | null>>(
-  noScreenshot,
-);
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -58,27 +56,6 @@ function statusClass(s: VerificationStatus): string {
 
 // ─── sub-panels ───────────────────────────────────────────────────────────────
 
-function ScreenshotThumbnail({ path }: { path: string }) {
-  const read = useContext(ScreenshotContext);
-  const [src, setSrc] = useState<string | null>(null);
-
-  // Read asynchronously; guard against setting state after unmount.
-  useEffect(() => {
-    let alive = true;
-    read(path).then((dataUrl) => {
-      if (alive && dataUrl) setSrc(dataUrl);
-    });
-    return () => { alive = false; };
-  }, [path, read]);
-
-  if (!src) return null;
-
-  return (
-    <div className="ref-screenshot">
-      <img src={src} alt="Page screenshot" className="screenshot-img" />
-    </div>
-  );
-}
 
 function scholarSearchUrl(text: string): string {
   return `https://scholar.google.com/scholar?q=${encodeURIComponent(text)}`;
@@ -101,6 +78,7 @@ interface ReferenceRowProps {
 
 function ReferenceRow({ v, index, isDismissed, onToggleDismiss }: ReferenceRowProps) {
   const [expanded, setExpanded] = useState(false);
+  const [showSnapshot, setShowSnapshot] = useState(false);
   const ref = v.reference;
   const title = ref.title || ref.raw.slice(0, 80);
 
@@ -162,9 +140,6 @@ function ReferenceRow({ v, index, isDismissed, onToggleDismiss }: ReferenceRowPr
                   <strong>Flags:</strong> {v.flags.join(', ')}
                 </div>
               )}
-              {v.urlCheck?.screenshotPath && (
-                <ScreenshotThumbnail path={v.urlCheck.screenshotPath} />
-              )}
               {/* Same escape hatches as the Overview — on every row, verified
                   included: "the tool says verified, let me check anyway" is a
                   legitimate manual-verification workflow. Dismiss only where
@@ -181,6 +156,15 @@ function ReferenceRow({ v, index, isDismissed, onToggleDismiss }: ReferenceRowPr
                 <a className="priority-action priority-action-search" href={webSearchUrl(ref.raw)} target="_blank" rel="noreferrer">
                   Search web
                 </a>
+                {v.urlCheck?.screenshotPath && (
+                  <button
+                    type="button"
+                    className="priority-action priority-action-search"
+                    onClick={() => setShowSnapshot((x) => !x)}
+                  >
+                    {showSnapshot ? 'Hide snapshot' : 'Page snapshot'}
+                  </button>
+                )}
                 {(v.status === 'suspicious' || v.status === 'not_found' || v.status === 'unverified') && (
                   <button
                     type="button"
@@ -191,6 +175,9 @@ function ReferenceRow({ v, index, isDismissed, onToggleDismiss }: ReferenceRowPr
                   </button>
                 )}
               </div>
+              {showSnapshot && v.urlCheck?.screenshotPath && (
+                <ScreenshotThumbnail path={v.urlCheck.screenshotPath} />
+              )}
             </div>
           </td>
         </tr>

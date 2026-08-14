@@ -25,6 +25,8 @@ export interface PriorityItem {
   reason?: string;
   /** The URL the reference itself cites, when present — drives "Open cited URL". */
   citedUrl?: string;
+  /** Path of the URL-evidence screenshot captured during analysis, if any. */
+  screenshotPath?: string;
   /** The verification's match category — lets the UI order its escape-hatch
    *  actions (web search before Scholar for grey literature, etc.). */
   matchCategory?: string;

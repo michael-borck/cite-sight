@@ -35,6 +35,7 @@ export function gatherPriorityItems(
           ? 'Looks like an organisational/web source; academic databases do not index these. Check its URL or publisher — absence here is expected, not evidence of fabrication.'
           : 'Crossref, Semantic Scholar, OpenAlex, and arXiv returned no match.',
         citedUrl: v.reference.url,
+        screenshotPath: v.urlCheck?.screenshotPath,
         matchCategory: v.matchCategory,
       });
     } else if (v.status === 'suspicious') {
@@ -51,6 +52,7 @@ export function gatherPriorityItems(
         sourceText: v.reference.raw,
         reason,
         citedUrl: v.reference.url,
+        screenshotPath: v.urlCheck?.screenshotPath,
         matchCategory: v.matchCategory,
         matched: v.matchedWork
           ? {
@@ -78,6 +80,7 @@ export function gatherPriorityItems(
           ? `Could not check: ${v.unavailable.reason.replace('_', '-')} on ${v.unavailable.service.replace('_', ' ')}. This is not a judgement on the citation — re-run to retry.`
           : 'A database lookup failed (rate-limit, timeout, or network). This is not a judgement on the citation — re-run to retry.',
         citedUrl: v.reference.url,
+        screenshotPath: v.urlCheck?.screenshotPath,
         matchCategory: v.matchCategory,
       });
     }
