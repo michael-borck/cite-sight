@@ -86,9 +86,37 @@ export type VerificationStatus =
   | 'suspicious'      // Found but metadata doesn't match
   | 'format_only';    // Only format was checked (no API lookup)
 
+/**
+ * What KIND of match situation a verification represents — orthogonal to
+ * `status` (the severity axis). Status says how worried to be; the category
+ * says what actually happened, so presentation can phrase each case
+ * accurately instead of collapsing everything into "suspect":
+ *  - exact:                the cited record itself was matched
+ *  - variant_record:       a different registration of the same work
+ *                          (edition/reissue, preprint vs published)
+ *  - metadata_drift:       right work, but a cited field disagrees
+ *  - match_dubious:        the best candidate is probably a DIFFERENT work
+ *                          (no author overlap) — the citation itself is
+ *                          unmatched; suspicion attaches to the match
+ *  - conflict:             the citation's own identifiers disagree (e.g. its
+ *                          DOI resolves to a different-titled work)
+ *  - not_indexed_expected: grey literature — absence from scholarly indexes
+ *                          is the expected state for this source type
+ *  - none:                 no candidate at all
+ */
+export type MatchCategory =
+  | 'exact'
+  | 'variant_record'
+  | 'metadata_drift'
+  | 'match_dubious'
+  | 'conflict'
+  | 'not_indexed_expected'
+  | 'none';
+
 export interface ReferenceVerification {
   reference: ParsedReference;
   status: VerificationStatus;
+  matchCategory: MatchCategory;
   formatIssues: FormatIssue[];
   matchedWork?: AcademicWork;
   urlCheck?: UrlCheckResult;

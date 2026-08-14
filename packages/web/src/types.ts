@@ -77,9 +77,20 @@ export type VerificationStatus =
   | 'suspicious'      // Found but metadata doesn't match
   | 'format_only';    // Only format was checked (no API lookup)
 
+/** Mirrors core's MatchCategory — what kind of match situation this is. */
+export type MatchCategory =
+  | 'exact'
+  | 'variant_record'
+  | 'metadata_drift'
+  | 'match_dubious'
+  | 'conflict'
+  | 'not_indexed_expected'
+  | 'none';
+
 export interface ReferenceVerification {
   reference: ParsedReference;
   status: VerificationStatus;
+  matchCategory: MatchCategory;
   formatIssues: FormatIssue[];
   matchedWork?: AcademicWork;
   urlCheck?: UrlCheckResult;

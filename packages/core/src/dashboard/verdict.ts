@@ -23,6 +23,10 @@ export function computeVerdict(
   let unverifiable = 0;
   let suspect = 0;
   let notFound = 0;
+  // not_found where absence is EXPECTED (grey literature): still listed for
+  // the user to check, but must not drive the red "issues" verdict the way a
+  // possible fabrication does.
+  let notFoundExpected = 0;
 
   refs.verifications.forEach((v, idx) => {
     const itemKey = `ref:${idx}`;
@@ -34,7 +38,10 @@ export function computeVerdict(
       unverifiable++;
     } else if (!isDismissed && TO_CHECK_STATUSES.includes(v.status)) {
       if (v.status === 'suspicious') suspect++;
-      if (v.status === 'not_found') notFound++;
+      if (v.status === 'not_found') {
+        if (v.matchCategory === 'not_indexed_expected') notFoundExpected++;
+        else notFound++;
+      }
     }
   });
 
@@ -44,7 +51,7 @@ export function computeVerdict(
     if (!dismissed.has(itemKey)) orphanInText++;
   });
 
-  const toCheckCount = suspect + notFound + orphanInText;
+  const toCheckCount = suspect + notFound + notFoundExpected + orphanInText;
   const total = refs.totalReferences;
 
   let state: Verdict['state'];
@@ -59,7 +66,7 @@ export function computeVerdict(
     unverifiableCount: unverifiable,
     breakdown: {
       suspect,
-      notFound,
+      notFound: notFound + notFoundExpected,
       orphanInText,
       parserUnsure: 0,
     },

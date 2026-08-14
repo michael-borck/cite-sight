@@ -129,6 +129,7 @@ describe('verification verdicts — real references pass', () => {
     const v = await run(ref({ authors: ['Vaswani'], title: 'Attention is all you need', year: 2017 }));
     expect(v.status).toBe('verified');
     expect(v.matchedWork?.title).toBe('Attention Is All You Need');
+    expect(v.matchCategory).toBe('exact');
   });
 
   it('verifies a real paper whose DOI resolves with matching metadata', async () => {
@@ -162,6 +163,7 @@ describe('verification verdicts — fabricated references are caught', () => {
     }));
     expect(v.status).toBe('suspicious');
     expect(v.matchedWork?.title).toContain('Quantum-Resistant'); // matched the wrong paper
+    expect(v.matchCategory).toBe('match_dubious'); // suspicion attaches to the MATCH
   });
 
   it('flags a fabricated paper with an unresolvable DOI', async () => {

@@ -3,6 +3,7 @@ import type {
   CitationStyle,
   ReferenceVerification,
   VerificationStatus,
+  MatchCategory,
   AcademicWork,
   FormatIssue,
 } from '../types.js';
@@ -269,6 +270,36 @@ function computeIntrinsicFlags(
 }
 
 // ============================================================
+// Match categorisation
+// ============================================================
+
+/**
+ * Derive the machine-readable match category from the decided status and
+ * flags. Kept as a pure function of the verdict's outputs so it cannot drift
+ * from the decision logic above.
+ */
+function categorize(
+  status: VerificationStatus,
+  flags: string[],
+  matched: AcademicWork | undefined,
+): MatchCategory {
+  if (flags.includes('grey_literature')) return 'not_indexed_expected';
+  if (!matched) return 'none';
+  if (flags.includes('doi_title_mismatch')) return 'conflict';
+  if (status === 'suspicious') {
+    // A matched-but-suspicious verdict with no author overlap means the best
+    // candidate is probably a different work; the citation itself is
+    // unmatched, and manual checking should start from that framing.
+    return flags.includes('author_mismatch') || flags.includes('weak_match')
+      ? 'match_dubious'
+      : 'metadata_drift';
+  }
+  if (flags.includes('edition_difference')) return 'variant_record';
+  if (flags.includes('year_mismatch') || flags.includes('author_mismatch')) return 'metadata_drift';
+  return 'exact';
+}
+
+// ============================================================
 // Single-reference verification
 // ============================================================
 
@@ -514,6 +545,7 @@ async function verifySingleReference(
   return {
     reference: ref,
     status,
+    matchCategory: categorize(status, flags, matched),
     formatIssues,
     matchedWork: matched,
     urlCheck,

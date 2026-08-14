@@ -36,12 +36,18 @@ export function gatherPriorityItems(
           : 'Crossref, Semantic Scholar, OpenAlex, and arXiv returned no match.',
       });
     } else if (v.status === 'suspicious') {
+      const reason =
+        v.matchCategory === 'match_dubious'
+          ? 'The closest database record appears to be a different work (its authors do not overlap the citation). The citation itself is unmatched — check it at the source.'
+          : v.matchCategory === 'conflict'
+            ? "The citation's DOI resolves to a different-titled work — the identifier and the citation disagree."
+            : 'A database returned a match, but the metadata does not agree.';
       suspect.push({
         itemKey,
         category: 'suspect',
         headline: v.reference.raw,
         sourceText: v.reference.raw,
-        reason: 'A database returned a match, but the metadata does not agree.',
+        reason,
         matched: v.matchedWork
           ? {
               title: v.matchedWork.title,

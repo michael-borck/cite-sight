@@ -108,6 +108,7 @@ describe('grey-literature verdict routing', () => {
     }));
     expect(v.status).toBe('not_found');
     expect(v.flags).toContain('grey_literature');
+    expect(v.matchCategory).toBe('not_indexed_expected');
   });
 
   it('a plain academic miss is NOT tagged grey literature', async () => {
@@ -119,6 +120,7 @@ describe('grey-literature verdict routing', () => {
     }));
     expect(v.status).toBe('not_found');
     expect(v.flags).not.toContain('grey_literature');
+    expect(v.matchCategory).toBe('none');
   });
 });
 
@@ -132,5 +134,6 @@ describe('edition tolerance', () => {
     expect(['verified', 'likely_valid']).toContain(v.status);
     expect(v.flags).toContain('edition_difference');
     expect(v.flags).not.toContain('year_mismatch');
+    expect(v.matchCategory).toBe('variant_record');
   });
 });
