@@ -31,7 +31,9 @@ export function gatherPriorityItems(
         category: 'not_found',
         headline: v.reference.raw,
         sourceText: v.reference.raw,
-        reason: 'Crossref, Semantic Scholar, and OpenAlex returned no match.',
+        reason: v.flags.includes('grey_literature')
+          ? 'Looks like an organisational/web source; academic databases do not index these. Check its URL or publisher — absence here is expected, not evidence of fabrication.'
+          : 'Crossref, Semantic Scholar, OpenAlex, and arXiv returned no match.',
       });
     } else if (v.status === 'suspicious') {
       suspect.push({

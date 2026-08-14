@@ -131,6 +131,24 @@ export function explainVerification(v: ReferenceVerification): FlagExplanation[]
         });
         break;
 
+      case 'grey_literature':
+        out.push({
+          flag,
+          label: 'Organisational / web source',
+          detail: v.matchedWork || v.urlCheck?.status === 'live' || v.urlCheck?.status === 'redirect'
+            ? 'academic databases do not index this kind of source; its URL responds — verify content at the source'
+            : 'academic databases do not index this kind of source (report, blog, standards body) — verify via its URL or publisher rather than treating the miss as fabrication',
+        });
+        break;
+
+      case 'edition_difference':
+        out.push({
+          flag,
+          label: 'Different edition of the same work',
+          detail: `cited ${ref.year ?? 'no year'} — the matched record is the ${v.matchedWork?.year ?? 'unknown'} edition/reissue; citing the original is standard practice`,
+        });
+        break;
+
       case 'web_source':
         out.push({
           flag,

@@ -100,6 +100,12 @@ vi.mock('../src/references/urlChecker.js', () => ({
 vi.mock('../src/references/webSourceVerifier.js', () => ({
   verifyWebSource: vi.fn(async () => null),
 }));
+vi.mock('../src/references/arxiv.js', () => ({
+  // The cascade's last resort must never reach the live API from tests.
+  extractArxivId: vi.fn(() => null),
+  lookupArxivId: vi.fn(async () => null),
+  searchArxiv: vi.fn(async () => []),
+}));
 
 // Import AFTER mocks are registered.
 const { verifyReferences } = await import('../src/references/verifier.js');

@@ -220,6 +220,31 @@ function assessAcademicMatch(
 }
 
 // ============================================================
+// Grey literature
+// ============================================================
+
+/**
+ * Grey-literature shape: venue-less references by organisational authors —
+ * industry blogs, standards bodies, government and NGO reports. Academic
+ * indexes do not carry these, so their absence from Crossref/OpenAlex/S2 is
+ * the *expected* state, not evidence of fabrication; what can be checked is
+ * whether the source lives where the citation says it does (its URL).
+ * Detection is conservative: no DOI/journal/volume/pages, and either an
+ * explicit URL or a single corporate-shaped author (no "Surname, Initial"
+ * comma pattern — "Thoughtworks", "OECD", "World Health Organization").
+ */
+export function looksGreyLiterature(ref: ParsedReference): boolean {
+  if (ref.doi || ref.journal || ref.volume || ref.pages) return false;
+  if (ref.url) return true;
+  if (ref.authors.length === 1) {
+    const a = ref.authors[0].trim();
+    const personShaped = /,\s*[A-Z]/.test(a);
+    return !personShaped && a.length >= 3;
+  }
+  return false;
+}
+
+// ============================================================
 // Reference-intrinsic flags (independent of any match)
 // ============================================================
 
@@ -449,6 +474,19 @@ async function verifySingleReference(
       // the structured field below drives the friendly "rate-limited on …" text.
       flags.push(`${failure.reason}:${failure.service}`);
     }
+  } else if (looksGreyLiterature(ref)) {
+    // Grey literature: scholarly indexes returning nothing is expected, so a
+    // clean miss must not read as "possibly fabricated". A live URL is the
+    // evidence that counts for this class; without one, the reference is
+    // uncheckable here rather than missing.
+    flags.push('grey_literature');
+    if (urlCheck && (urlCheck.status === 'live' || urlCheck.status === 'redirect')) {
+      status = 'likely_valid';
+      confidenceScore = 0.55;
+    } else {
+      status = 'not_found';
+      confidenceScore = 0;
+    }
   } else {
     // Nothing matched and every lookup answered cleanly — a genuine miss.
     status = 'not_found';
@@ -457,6 +495,20 @@ async function verifySingleReference(
 
   if (urlCheck && (urlCheck.status === 'dead' || urlCheck.status === 'timeout' || urlCheck.status === 'error')) {
     flags = [...flags, 'broken_url'];
+  }
+
+  // Edition tolerance: a (near-)identical title with a corroborating author
+  // but a >1-year gap is a reissue/edition of the same work (a 1979 original
+  // matched to its 2013 classic-edition record), not a wrong citation —
+  // citing the original edition is standard scholarly practice. Rename the
+  // flag so presentation explains the difference instead of alleging error.
+  if (
+    matched &&
+    flags.includes('year_mismatch') &&
+    similarity >= 0.9 &&
+    authorCorroboration(ref.authors, matched.authors) === 'match'
+  ) {
+    flags = flags.map((f) => (f === 'year_mismatch' ? 'edition_difference' : f));
   }
 
   return {
