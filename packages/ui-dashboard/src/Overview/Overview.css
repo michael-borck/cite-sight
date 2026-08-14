@@ -108,6 +108,7 @@
 .chip-not_found { background: var(--notfound-bg);   color: var(--notfound); }
 .chip-suspect   { background: var(--suspicious-bg); color: var(--suspicious); }
 .chip-orphan    { background: var(--accent-bg);     color: var(--accent); }
+.chip-unverified { background: var(--muted-bg, #f0f0f2); color: var(--muted, #6b7280); }
 
 .priority-empty {
   color: var(--ink-muted);
@@ -162,6 +163,7 @@
 .category-not_found .priority-row-category { background: var(--notfound-bg);   color: var(--notfound); }
 .category-suspect   .priority-row-category { background: var(--suspicious-bg); color: var(--suspicious); }
 .category-orphan    .priority-row-category { background: var(--accent-bg);     color: var(--accent); }
+.category-unverified .priority-row-category { background: var(--muted-bg, #f0f0f2); color: var(--muted, #6b7280); }
 
 .priority-row-headline {
   color: var(--ink-soft);

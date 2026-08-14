@@ -11,6 +11,7 @@ const CHIP_DEFS: { category: PriorityCategory; label: string; className: string 
   { category: 'not_found', label: 'Not found', className: 'chip-not_found' },
   { category: 'suspect', label: 'Needs review', className: 'chip-suspect' },
   { category: 'orphan', label: 'Orphan', className: 'chip-orphan' },
+  { category: 'unverified', label: 'Unverified', className: 'chip-unverified' },
 ];
 
 export function ThingsToCheckHero({ items, onDismiss }: Props) {
@@ -18,7 +19,7 @@ export function ThingsToCheckHero({ items, onDismiss }: Props) {
 
   const counts = CHIP_DEFS.reduce<Record<PriorityCategory, number>>(
     (acc, def) => ({ ...acc, [def.category]: items.filter((i) => i.category === def.category).length }),
-    { not_found: 0, suspect: 0, orphan: 0 },
+    { not_found: 0, suspect: 0, orphan: 0, unverified: 0 },
   );
 
   const visibleItems = items.filter((i) => !hiddenCategories.has(i.category));

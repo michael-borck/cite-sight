@@ -10,6 +10,7 @@ const CATEGORY_LABEL: Record<PriorityItem['category'], string> = {
   not_found: 'Not found',
   suspect: 'Needs review',
   orphan: 'Orphan citation',
+  unverified: 'Unverified',
 };
 
 function scholarSearchUrl(text: string): string {

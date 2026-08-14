@@ -64,6 +64,25 @@ export function gatherPriorityItems(
     }
   });
 
+  const unverified: PriorityItem[] = [];
+  refs.verifications.forEach((v, idx) => {
+    const itemKey = `ref:${idx}`;
+    if (dismissed.has(itemKey)) return;
+    if (v.status === 'unverified') {
+      unverified.push({
+        itemKey,
+        category: 'unverified',
+        headline: v.reference.raw,
+        sourceText: v.reference.raw,
+        reason: v.unavailable
+          ? `Could not check: ${v.unavailable.reason.replace('_', '-')} on ${v.unavailable.service.replace('_', ' ')}. This is not a judgement on the citation — re-run to retry.`
+          : 'A database lookup failed (rate-limit, timeout, or network). This is not a judgement on the citation — re-run to retry.',
+        citedUrl: v.reference.url,
+        matchCategory: v.matchCategory,
+      });
+    }
+  });
+
   refs.crossReference.unmatchedInText.forEach((c, idx) => {
     const itemKey = `intext:${idx}`;
     if (dismissed.has(itemKey)) return;
@@ -77,5 +96,5 @@ export function gatherPriorityItems(
     });
   });
 
-  return [...notFound, ...suspect, ...orphan];
+  return [...notFound, ...suspect, ...orphan, ...unverified];
 }

@@ -9,7 +9,7 @@ import type { AcademicWork } from '../types.js';
  * internal `VerificationStatus`. In particular, `'suspect'` here maps to the
  * internal status `'suspicious'`. The mapping happens in `priorityList.ts`.
  */
-export type PriorityCategory = 'not_found' | 'suspect' | 'orphan';
+export type PriorityCategory = 'not_found' | 'suspect' | 'orphan' | 'unverified';
 
 /** A single row in the "Things to check" priority list. */
 export interface PriorityItem {
