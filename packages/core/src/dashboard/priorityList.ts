@@ -34,6 +34,8 @@ export function gatherPriorityItems(
         reason: v.flags.includes('grey_literature')
           ? 'Looks like an organisational/web source; academic databases do not index these. Check its URL or publisher — absence here is expected, not evidence of fabrication.'
           : 'Crossref, Semantic Scholar, OpenAlex, and arXiv returned no match.',
+        citedUrl: v.reference.url,
+        matchCategory: v.matchCategory,
       });
     } else if (v.status === 'suspicious') {
       const reason =
@@ -48,6 +50,8 @@ export function gatherPriorityItems(
         headline: v.reference.raw,
         sourceText: v.reference.raw,
         reason,
+        citedUrl: v.reference.url,
+        matchCategory: v.matchCategory,
         matched: v.matchedWork
           ? {
               title: v.matchedWork.title,

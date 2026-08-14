@@ -16,6 +16,10 @@ function scholarSearchUrl(text: string): string {
   return `https://scholar.google.com/scholar?q=${encodeURIComponent(text)}`;
 }
 
+function webSearchUrl(text: string): string {
+  return `https://www.google.com/search?q=${encodeURIComponent(text)}`;
+}
+
 export function PriorityListRow({ item, onDismiss }: Props) {
   const [expanded, setExpanded] = useState(false);
 
@@ -52,14 +56,59 @@ export function PriorityListRow({ item, onDismiss }: Props) {
           )}
 
           <div className="priority-row-actions">
-            <a
-              className="priority-action priority-action-search"
-              href={scholarSearchUrl(item.headline)}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Search Scholar
-            </a>
+            {/* Escape hatches, ordered by what fits the source: grey literature
+                (not_indexed_expected) leads with its own URL and a general web
+                search — Scholar is the wrong surface for it, which is usually
+                why it was flagged at all. Academic rows lead with Scholar. */}
+            {item.citedUrl && (
+              <a
+                className="priority-action priority-action-search"
+                href={item.citedUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open cited URL
+              </a>
+            )}
+            {item.matchCategory === 'not_indexed_expected' ? (
+              <>
+                <a
+                  className="priority-action priority-action-search"
+                  href={webSearchUrl(item.headline)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Search web
+                </a>
+                <a
+                  className="priority-action priority-action-search"
+                  href={scholarSearchUrl(item.headline)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Search Scholar
+                </a>
+              </>
+            ) : (
+              <>
+                <a
+                  className="priority-action priority-action-search"
+                  href={scholarSearchUrl(item.headline)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Search Scholar
+                </a>
+                <a
+                  className="priority-action priority-action-search"
+                  href={webSearchUrl(item.headline)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Search web
+                </a>
+              </>
+            )}
             <button
               type="button"
               className="priority-action priority-action-dismiss"

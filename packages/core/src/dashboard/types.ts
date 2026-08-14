@@ -23,6 +23,11 @@ export interface PriorityItem {
   sourceText: string;
   /** Optional human-readable reason (e.g. "Crossref returned no match"). */
   reason?: string;
+  /** The URL the reference itself cites, when present — drives "Open cited URL". */
+  citedUrl?: string;
+  /** The verification's match category — lets the UI order its escape-hatch
+   *  actions (web search before Scholar for grey literature, etc.). */
+  matchCategory?: string;
   /**
    * Metadata of the work a verification API returned, when the parser's
    * reference looked suspicious enough to surface but a match existed.
