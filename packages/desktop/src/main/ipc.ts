@@ -7,7 +7,7 @@ import { join, extname, basename, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import type { ProcessingOptions, AnalysisResult } from '@michaelborck/cite-sight-core';
 
-const SUPPORTED_EXTENSIONS = new Set(['.pdf', '.docx', '.txt', '.md']);
+const SUPPORTED_EXTENSIONS = new Set(['.pdf', '.docx', '.txt', '.md', '.qmd']);
 
 // Screenshots are the only files the renderer may read back, and they live in
 // the OS temp dir with this prefix (see screenshot.ts). Anything else is a
@@ -134,7 +134,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
       filters: [
         {
           name: 'Documents',
-          extensions: ['pdf', 'docx', 'txt', 'md'],
+          extensions: ['pdf', 'docx', 'txt', 'md', 'qmd'],
         },
         { name: 'PDF Files', extensions: ['pdf'] },
         { name: 'Word Documents', extensions: ['docx'] },

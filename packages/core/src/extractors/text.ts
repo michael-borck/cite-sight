@@ -2,7 +2,7 @@ import type { ExtractedDocument } from '../types.js';
 import { assertInputSize, clampText } from './limits.js';
 
 /** File extensions that this extractor handles. */
-export const TEXT_EXTENSIONS = new Set(['.txt', '.md', '.json']);
+export const TEXT_EXTENSIONS = new Set(['.txt', '.md', '.qmd', '.json']);
 
 /**
  * Decode a plain-text, Markdown, or JSON file from its raw bytes.

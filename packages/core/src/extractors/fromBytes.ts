@@ -29,6 +29,8 @@ function extensionOf(fileName: string): string {
  *   .docx — Word documents (mammoth)
  *   .txt  — Plain text
  *   .md   — Markdown
+ *   .qmd  — Quarto markdown (verifies only if the file contains a rendered
+ *           reference list; citekey-only sources have nothing to check)
  *   .json — JSON
  *
  * @param bytes    The document's raw bytes.
@@ -56,6 +58,6 @@ export async function extractFromBytes(
 
   throw new Error(
     `Unsupported file type "${ext}" for file "${fileName}". ` +
-      `Supported types: .pdf, .docx, .txt, .md, .json`,
+      `Supported types: .pdf, .docx, .txt, .md, .qmd, .json`,
   );
 }
