@@ -1,5 +1,5 @@
 import { ipcMain, dialog, BrowserWindow, app } from 'electron';
-import { analyzePipeline } from '@michaelborck/cite-sight-core';
+import { analyzePipeline, verifyReferences } from '@michaelborck/cite-sight-core';
 import { takeScreenshot } from './screenshot.js';
 import { readdirSync, readFileSync, existsSync, realpathSync } from 'node:fs';
 import { join, extname, basename, resolve } from 'node:path';
@@ -83,6 +83,24 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
       }
 
       return result;
+    },
+  );
+
+  // Re-verify a single reference — the recovery path for 'unverified'
+  // verdicts (rate-limit/timeout during the batch run). Same options as the
+  // original analysis, including the env-var Semantic Scholar key.
+  ipcMain.handle(
+    'cite-sight:reverify',
+    async (_event, ref: unknown, options: ProcessingOptions) => {
+      const [verification] = await verifyReferences(
+        [ref as never],
+        {
+          mailto: options.contactEmail,
+          citationStyle: options.citationStyle as unknown as import('@michaelborck/cite-sight-core').CitationStyle,
+          semanticScholarApiKey: options.semanticScholarApiKey ?? process.env.SEMANTIC_SCHOLAR_API_KEY,
+        },
+      );
+      return verification ?? null;
     },
   );
 

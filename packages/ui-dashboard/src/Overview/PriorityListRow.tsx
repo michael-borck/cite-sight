@@ -5,6 +5,8 @@ import { ScreenshotThumbnail } from '../Screenshot';
 interface Props {
   item: PriorityItem;
   onDismiss: (itemKey: string, type: 'dismiss' | 'fabricated') => void;
+  onReverify?: (idx: number) => Promise<void>;
+  rechecking?: Set<number>;
 }
 
 const CATEGORY_LABEL: Record<PriorityItem['category'], string> = {
@@ -22,7 +24,10 @@ function webSearchUrl(text: string): string {
   return `https://www.google.com/search?q=${encodeURIComponent(text)}`;
 }
 
-export function PriorityListRow({ item, onDismiss }: Props) {
+export function PriorityListRow({ item, onDismiss, onReverify, rechecking }: Props) {
+  // Priority keys are `ref:<idx>` for reference rows; re-check applies there.
+  const refIdx = item.itemKey.startsWith('ref:') ? Number(item.itemKey.slice(4)) : null;
+  const isRechecking = refIdx !== null && (rechecking?.has(refIdx) ?? false);
   const [expanded, setExpanded] = useState(false);
   const [showSnapshot, setShowSnapshot] = useState(false);
 
@@ -111,6 +116,16 @@ export function PriorityListRow({ item, onDismiss }: Props) {
                   Search web
                 </a>
               </>
+            )}
+            {item.category === 'unverified' && onReverify && refIdx !== null && (
+              <button
+                type="button"
+                className="priority-action priority-action-search"
+                onClick={() => onReverify(refIdx)}
+                disabled={isRechecking}
+              >
+                {isRechecking ? 'Re-checking…' : 'Re-check'}
+              </button>
             )}
             {item.screenshotPath && (
               <button

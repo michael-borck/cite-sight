@@ -5,6 +5,8 @@ import { PriorityListRow } from './PriorityListRow';
 interface Props {
   items: PriorityItem[];
   onDismiss: (itemKey: string, type: 'dismiss' | 'fabricated') => void;
+  onReverify?: (idx: number) => Promise<void>;
+  rechecking?: Set<number>;
 }
 
 const CHIP_DEFS: { category: PriorityCategory; label: string; className: string }[] = [
@@ -14,7 +16,7 @@ const CHIP_DEFS: { category: PriorityCategory; label: string; className: string 
   { category: 'unverified', label: 'Unverified', className: 'chip-unverified' },
 ];
 
-export function ThingsToCheckHero({ items, onDismiss }: Props) {
+export function ThingsToCheckHero({ items, onDismiss, onReverify, rechecking }: Props) {
   const [hiddenCategories, setHiddenCategories] = useState<Set<PriorityCategory>>(new Set());
 
   const counts = CHIP_DEFS.reduce<Record<PriorityCategory, number>>(
@@ -63,7 +65,7 @@ export function ThingsToCheckHero({ items, onDismiss }: Props) {
       ) : (
         <div className="priority-list">
           {visibleItems.map((item) => (
-            <PriorityListRow key={item.itemKey} item={item} onDismiss={onDismiss} />
+            <PriorityListRow key={item.itemKey} item={item} onDismiss={onDismiss}  onReverify={onReverify} rechecking={rechecking} />
           ))}
         </div>
       )}

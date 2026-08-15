@@ -2,6 +2,7 @@ import { Fragment, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type {
   AnalysisResult,
+  ParsedReference,
   ReferenceVerification,
   VerificationStatus,
 } from '@michaelborck/cite-sight-core';
@@ -20,6 +21,13 @@ export interface ResultsDashboardProps {
    * this keeps the shared component free of any Electron/global coupling.
    */
   readScreenshot?: (path: string) => Promise<string | null>;
+  /**
+   * Optional single-reference re-verifier — the recovery path for
+   * 'unverified' verdicts (transient rate-limit/timeout). Hosts that supply
+   * it get per-row "Re-check" buttons and a bulk re-check in the strip;
+   * hosts that don't render neither.
+   */
+  reverify?: (ref: ParsedReference) => Promise<ReferenceVerification | null>;
 }
 
 // ─── screenshot capability (context) ──────────────────────────────────────────
@@ -74,9 +82,11 @@ interface ReferenceRowProps {
   index: number;
   isDismissed: boolean;
   onToggleDismiss: (index: number) => void;
+  onReverify?: (idx: number) => Promise<void>;
+  isRechecking?: boolean;
 }
 
-function ReferenceRow({ v, index, isDismissed, onToggleDismiss }: ReferenceRowProps) {
+function ReferenceRow({ v, index, isDismissed, onToggleDismiss, onReverify, isRechecking }: ReferenceRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [showSnapshot, setShowSnapshot] = useState(false);
   const ref = v.reference;
@@ -156,6 +166,16 @@ function ReferenceRow({ v, index, isDismissed, onToggleDismiss }: ReferenceRowPr
                 <a className="priority-action priority-action-search" href={webSearchUrl(ref.raw)} target="_blank" rel="noreferrer">
                   Search web
                 </a>
+                {v.status === 'unverified' && onReverify && (
+                  <button
+                    type="button"
+                    className="priority-action priority-action-search"
+                    onClick={() => onReverify(index)}
+                    disabled={isRechecking}
+                  >
+                    {isRechecking ? 'Re-checking…' : 'Re-check'}
+                  </button>
+                )}
                 {v.urlCheck?.screenshotPath && (
                   <button
                     type="button"
@@ -192,9 +212,11 @@ interface PanelProps {
 
 type SortKey = 'index' | 'title' | 'status' | 'doi' | 'url' | 'confidence';
 
-function ReferencesPanel({ results, dismissed, onDismissedChange }: PanelProps & {
+function ReferencesPanel({ results, dismissed, onDismissedChange, onReverify, rechecking }: PanelProps & {
   dismissed: Set<string>;
   onDismissedChange: (next: Set<string>) => void;
+  onReverify?: (idx: number) => Promise<void>;
+  rechecking: Set<number>;
 }) {
   const { references } = results;
   const live = (status: string) =>
@@ -302,6 +324,8 @@ function ReferencesPanel({ results, dismissed, onDismissedChange }: PanelProps &
                     index={idx}
                     isDismissed={dismissed.has(`ref:${idx}`)}
                     onToggleDismiss={toggleDismiss}
+                    onReverify={onReverify}
+                    isRechecking={rechecking.has(idx)}
                   />
                 ))}
               </tbody>
@@ -379,14 +403,54 @@ const SECTIONS = [
 
 // ─── main component ───────────────────────────────────────────────────────────
 
-export function ResultsDashboard({ results, readScreenshot }: ResultsDashboardProps) {
+export function ResultsDashboard({ results, readScreenshot, reverify }: ResultsDashboardProps) {
   const [activeSection, setActiveSection] = useState('overview');
+  // Re-verified rows override the original run's verdicts in place.
+  const [overrides, setOverrides] = useState<Map<number, ReferenceVerification>>(new Map());
+  const [rechecking, setRechecking] = useState<Set<number>>(new Set());
+
+  const effectiveResults = useMemo(() => {
+    if (overrides.size === 0) return results;
+    const verifications = results.references.verifications.map((v, i) => overrides.get(i) ?? v);
+    return { ...results, references: { ...results.references, verifications } };
+  }, [results, overrides]);
+
+  const handleReverify = async (idx: number) => {
+    if (!reverify || rechecking.has(idx)) return;
+    const v = effectiveResults.references.verifications[idx];
+    if (!v) return;
+    setRechecking((prev) => new Set(prev).add(idx));
+    try {
+      const fresh = await reverify(v.reference);
+      if (fresh) {
+        setOverrides((prev) => new Map(prev).set(idx, fresh));
+      }
+    } finally {
+      setRechecking((prev) => {
+        const next = new Set(prev);
+        next.delete(idx);
+        return next;
+      });
+    }
+  };
+
+  const unverifiedIdx = effectiveResults.references.verifications
+    .map((v, i) => (v.status === 'unverified' ? i : -1))
+    .filter((i) => i >= 0);
+
+  const handleReverifyAll = async () => {
+    // Sequential on purpose: the whole point is recovering from rate limits.
+    for (const idx of unverifiedIdx) {
+      // eslint-disable-next-line no-await-in-loop
+      await handleReverify(idx);
+    }
+  };
   // Dismissal state lives HERE (not in the Overview) so every surface that
   // shows counts — summary strip, sidebar badges, per-panel chips — reflects
   // a dismissal the moment it happens. Item keys mirror the priority list
   // (`ref:<idx>`, `intext:<idx>`). Session-only, like before.
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
-  const refs = results.references;
+  const refs = effectiveResults.references;
 
   const adjusted = useMemo(() => {
     let suspicious = 0;
@@ -446,7 +510,7 @@ export function ResultsDashboard({ results, readScreenshot }: ResultsDashboardPr
             <span className="label">References</span>
           </div>
           <div className="summary-stat">
-            <span className="value">{refs.verifiedCount}</span>
+            <span className="value">{refs.verifications.filter((v) => v.status === 'verified' || v.status === 'likely_valid').length}</span>
             <span className="label">Verified</span>
           </div>
           <div className="summary-stat amber">
@@ -464,9 +528,14 @@ export function ResultsDashboard({ results, readScreenshot }: ResultsDashboardPr
             </div>
           )}
           <div className="summary-stat muted">
-            <span className="value">{refs.unverifiedCount}</span>
+            <span className="value">{unverifiedIdx.length}</span>
             <span className="label">Unverified</span>
           </div>
+          {reverify && unverifiedIdx.length > 0 && (
+            <button type="button" className="summary-recheck" onClick={handleReverifyAll} disabled={rechecking.size > 0}>
+              {rechecking.size > 0 ? `Re-checking… (${rechecking.size})` : `Re-check ${unverifiedIdx.length} unverified`}
+            </button>
+          )}
           <div className="summary-stat muted">
             <span className="value">{crossRefCount}</span>
             <span className="label">Orphaned</span>
@@ -474,12 +543,24 @@ export function ResultsDashboard({ results, readScreenshot }: ResultsDashboardPr
         </div>
 
         {activeSection === 'overview'    && (
-          <OverviewPanel results={results} dismissed={dismissed} onDismissedChange={setDismissed} />
+          <OverviewPanel
+            results={effectiveResults}
+            dismissed={dismissed}
+            onDismissedChange={setDismissed}
+            onReverify={reverify ? handleReverify : undefined}
+            rechecking={rechecking}
+          />
         )}
         {activeSection === 'references'  && (
-          <ReferencesPanel results={results} dismissed={dismissed} onDismissedChange={setDismissed} />
+          <ReferencesPanel
+            results={effectiveResults}
+            dismissed={dismissed}
+            onDismissedChange={setDismissed}
+            onReverify={reverify ? handleReverify : undefined}
+            rechecking={rechecking}
+          />
         )}
-        {activeSection === 'crossrefs'   && <CrossReferencesPanel results={results} />}
+        {activeSection === 'crossrefs'   && <CrossReferencesPanel results={effectiveResults} />}
 
         <p className="results-disclaimer">{DISCLAIMER}</p>
       </main>

@@ -6,6 +6,10 @@ contextBridge.exposeInMainWorld('citeSight', {
     return ipcRenderer.invoke('cite-sight:analyze', filePath, options) as Promise<AnalysisResult>;
   },
 
+  reverifyReference: (ref: unknown, options: ProcessingOptions): Promise<ReferenceVerification | null> => {
+    return ipcRenderer.invoke('cite-sight:reverify', ref, options) as Promise<ReferenceVerification | null>;
+  },
+
   selectFiles: (): Promise<string[]> => {
     return ipcRenderer.invoke('cite-sight:select-files') as Promise<string[]>;
   },

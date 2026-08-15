@@ -13,6 +13,22 @@ import type { PriorityItem } from './types.js';
  * Dismissed items (by itemKey) are filtered out so the hero only shows
  * what the user still needs to look at.
  */
+/**
+ * Collapsed-row headline. The raw string starts with the author block, and a
+ * many-author reference (60 names is real) truncates before the title ever
+ * appears — the one thing that identifies the work. Prefer
+ * "Title — FirstAuthor et al., Year", falling back to raw when parsing gave
+ * no title. This string also seeds the Scholar/web search actions, where
+ * title + first author outperforms a wall of initials.
+ */
+function headlineFor(ref: { raw: string; title: string; authors: string[]; year: number | null }): string {
+  if (!ref.title) return ref.raw;
+  const first = (ref.authors[0] ?? '').split(',')[0].trim();
+  const who = first ? `${first}${ref.authors.length > 1 ? ' et al.' : ''}` : '';
+  const tail = [who, ref.year ? String(ref.year) : ''].filter(Boolean).join(', ');
+  return tail ? `${ref.title} — ${tail}` : ref.title;
+}
+
 export function gatherPriorityItems(
   refs: ReferenceAnalysisResult,
   dismissed: ReadonlySet<string>,
@@ -29,7 +45,7 @@ export function gatherPriorityItems(
       notFound.push({
         itemKey,
         category: 'not_found',
-        headline: v.reference.raw,
+        headline: headlineFor(v.reference),
         sourceText: v.reference.raw,
         reason: v.flags.includes('grey_literature')
           ? 'Looks like an organisational/web source; academic databases do not index these. Check its URL or publisher — absence here is expected, not evidence of fabrication.'
@@ -48,7 +64,7 @@ export function gatherPriorityItems(
       suspect.push({
         itemKey,
         category: 'suspect',
-        headline: v.reference.raw,
+        headline: headlineFor(v.reference),
         sourceText: v.reference.raw,
         reason,
         citedUrl: v.reference.url,
@@ -74,7 +90,7 @@ export function gatherPriorityItems(
       unverified.push({
         itemKey,
         category: 'unverified',
-        headline: v.reference.raw,
+        headline: headlineFor(v.reference),
         sourceText: v.reference.raw,
         reason: v.unavailable
           ? `Could not check: ${v.unavailable.reason.replace('_', '-')} on ${v.unavailable.service.replace('_', ' ')}. This is not a judgement on the citation — re-run to retry.`

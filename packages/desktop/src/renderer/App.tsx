@@ -267,6 +267,7 @@ export function App() {
                 <ResultsDashboard
                   results={currentResult}
                   readScreenshot={(path) => window.citeSight?.readScreenshot(path) ?? Promise.resolve(null)}
+                  reverify={(ref) => window.citeSight?.reverifyReference(ref, options) ?? Promise.resolve(null)}
                 />
               )}
             </>

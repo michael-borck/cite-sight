@@ -12,6 +12,8 @@ interface Props {
    *  (summary strip, sidebar badges, panel chips) update together. */
   dismissed: Set<string>;
   onDismissedChange: (next: Set<string>) => void;
+  onReverify?: (idx: number) => Promise<void>;
+  rechecking?: Set<number>;
 }
 
 interface PendingDismissal {
@@ -20,7 +22,7 @@ interface PendingDismissal {
   headline: string;
 }
 
-export function OverviewPanel({ results, dismissed, onDismissedChange }: Props) {
+export function OverviewPanel({ results, dismissed, onDismissedChange, onReverify, rechecking }: Props) {
   const [pending, setPending] = useState<PendingDismissal | null>(null);
 
   const verdict = useMemo(() => computeVerdict(results.references, dismissed), [results.references, dismissed]);
@@ -55,7 +57,7 @@ export function OverviewPanel({ results, dismissed, onDismissedChange }: Props) 
         processingTimeMs={results.processingTime}
         verdict={verdict}
       />
-      <ThingsToCheckHero items={items} onDismiss={handleDismiss} />
+      <ThingsToCheckHero items={items} onDismiss={handleDismiss} onReverify={onReverify} rechecking={rechecking} />
 
       {pending && (
         <UndoToast

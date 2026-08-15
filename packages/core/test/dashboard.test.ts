@@ -158,7 +158,9 @@ describe('gatherPriorityItems', () => {
     expect(items[0]).toMatchObject({
       itemKey: 'ref:0',
       category: 'not_found',
-      headline: 'Smith, J. (2024). The lost paper.',
+      // Headline is title-first ("Title — Author, Year") so many-author
+      // references don't truncate before the title; source keeps the raw.
+      headline: 'The lost paper — Smith, 2024',
       sourceText: 'Smith, J. (2024). The lost paper.',
     });
   });
