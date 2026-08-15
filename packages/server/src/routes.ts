@@ -184,6 +184,9 @@ router.post(
       checkDoi,
       checkInText,
       screenshotUrls: false,
+      // S2 licence: a personal key covers the key-holder and their authorised users
+      // only. Set this env var on PRIVATE deployments only — never on a public
+      // instance, where it would serve anonymous visitors on one person's key.
       semanticScholarApiKey: process.env.SEMANTIC_SCHOLAR_API_KEY,
     };
 
@@ -351,7 +354,10 @@ router.post('/analyse', fileCleanup, upload.single('file'), async (req, res, nex
     checkDoi: body['checkDoi'] !== 'false',
     checkInText: body['checkInText'] !== 'false',
     screenshotUrls: false,
-    semanticScholarApiKey: process.env.SEMANTIC_SCHOLAR_API_KEY,
+    // S2 licence: a personal key covers the key-holder and their authorised users
+      // only. Set this env var on PRIVATE deployments only — never on a public
+      // instance, where it would serve anonymous visitors on one person's key.
+      semanticScholarApiKey: process.env.SEMANTIC_SCHOLAR_API_KEY,
   };
 
   try {

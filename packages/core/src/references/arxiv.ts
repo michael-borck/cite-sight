@@ -1,11 +1,15 @@
 import type { AcademicWork } from '../types.js';
-import { throttle } from './rateLimiter.js';
+import { throttle, setServiceInterval } from './rateLimiter.js';
 import { getCached, setCached, cacheKey } from './lookupCache.js';
 import { LookupError, reasonFromStatus, reasonFromFetchError } from './lookupError.js';
 import { httpFetch } from '../httpClient.js';
 
 /** Hard timeout for a single external API request. */
 const API_TIMEOUT_MS = 10_000;
+
+// arXiv's API Terms of Use ask for no more than one request every three
+// seconds — slower than the 1 req/s default the other services use.
+setServiceInterval('arxiv', 3_100);
 
 // ============================================================
 // arXiv lookup

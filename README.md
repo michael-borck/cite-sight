@@ -248,7 +248,35 @@ Pushing a `v*` tag triggers:
 - **Web**: React 19, Vite
 - **Server**: Express, multer, BullMQ (optional)
 - **CLI**: Commander.js, chalk
-- **APIs**: Crossref, Semantic Scholar, OpenAlex (all free tier)
+- **APIs**: Crossref, Semantic Scholar, OpenAlex, arXiv, DataCite (all free tier)
+
+## Data sources & attribution
+
+CiteSight verifies references against open bibliographic services. With thanks:
+
+- **[Semantic Scholar](https://www.semanticscholar.org)** — bibliographic data provided by
+  Semantic Scholar, a free AI-powered research tool from the
+  [Allen Institute for AI](https://allenai.org), used under the
+  [Semantic Scholar API License Agreement](https://www.semanticscholar.org/product/api/license).
+  API keys are **bring-your-own**: each user supplies their own key; no shared or
+  embedded key ships with CiteSight. If you publish results produced with this data,
+  cite *The Semantic Scholar Open Data Platform* (Kinney et al., 2023).
+- **[Crossref](https://www.crossref.org)** — open scholarly metadata; requests join the
+  polite pool via your contact email.
+- **[OpenAlex](https://openalex.org)** — open catalogue of scholarly works (CC0). For
+  scholarly use, cite Priem, Piwowar & Orr (2022), *OpenAlex: A fully-open index of
+  scholarly works, authors, venues, institutions, and concepts*.
+- **arXiv** — thank you to [arXiv](https://arxiv.org) for use of its open access
+  interoperability. Requests are paced to arXiv's API guidance (one request per
+  three seconds).
+- **[DataCite](https://datacite.org)** and **[Open Library](https://openlibrary.org)** —
+  open metadata used for DOI resolution and book lookups.
+
+**Hosted deployments:** do **not** set `SEMANTIC_SCHOLAR_API_KEY` on a publicly
+accessible server. A personal key covers the key-holder's own use (and their
+organisation's authorised users) under the S2 licence — it must not serve anonymous
+visitors' requests. Leave public instances keyless; users get their own free key at
+[semanticscholar.org/product/api](https://www.semanticscholar.org/product/api).
 
 ## Licence
 
