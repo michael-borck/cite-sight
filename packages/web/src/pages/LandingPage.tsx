@@ -212,6 +212,12 @@ export function LandingPage({ onNavigate }: Props) {
 
   const downloadUrl = matchAsset(assets, selectedPlatform) ?? FALLBACK_URL;
   const label = `Download for ${PLATFORM_LABELS[selectedPlatform]}`;
+  // The primary button auto-detects; visitors on the "wrong" machine (or
+  // fetching for a colleague) get a one-line escape hatch instead of having
+  // to discover the platform selector at the bottom of the page.
+  const otherPlatforms = (['mac', 'windows', 'linux'] as Platform[]).filter(
+    (p) => p !== selectedPlatform,
+  );
 
   return (
     <div className="landing">
@@ -236,6 +242,16 @@ export function LandingPage({ onNavigate }: Props) {
                 {label}
               </a>
             </div>
+            <p className="hero-note hero-alt-platforms">
+              Also for{' '}
+              {otherPlatforms.map((p, i) => (
+                <span key={p}>
+                  {i > 0 && ' and '}
+                  <a href={matchAsset(assets, p) ?? FALLBACK_URL}>{PLATFORM_LABELS[p]}</a>
+                </span>
+              ))}
+              .
+            </p>
             <p className="hero-note">
               PDF · DOCX · TXT — verified against Crossref, Semantic Scholar &amp; OpenAlex.
             </p>

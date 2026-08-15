@@ -622,3 +622,7 @@
     padding: var(--sp-10) var(--sp-5);
   }
 }
+
+.hero-alt-platforms { margin-top: 6px; }
+.hero-alt-platforms a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.hero-alt-platforms a:hover { opacity: 0.75; }
