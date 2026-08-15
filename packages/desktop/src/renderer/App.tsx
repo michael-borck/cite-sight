@@ -7,6 +7,7 @@ import { ResultsDashboard, StreamingResults } from '@michaelborck/cite-sight-ui'
 import { UpdateNotification } from './components/UpdateNotification';
 import { downloadPdfReport } from './utils/generatePdfReport';
 import { downloadCsvReport } from './utils/generateCsvReport';
+import { exportBibtex } from '@michaelborck/cite-sight-core/browser';
 import { DISCLAIMER } from '@michaelborck/cite-sight-core/disclaimer';
 import { useStore } from './store';
 import './App.css';
@@ -254,6 +255,21 @@ export function App() {
                     onClick={() => downloadCsvReport(results)}
                   >
                     Export CSV
+                  </button>
+                  <button
+                    className="btn btn-secondary"
+                    title="Verified references only, as registry records (with DOIs)"
+                    onClick={() => {
+                      const bib = exportBibtex(results.flatMap((r) => r.references.verifications));
+                      const blob = new Blob([bib], { type: 'text/plain' });
+                      const a = document.createElement('a');
+                      a.href = URL.createObjectURL(blob);
+                      a.download = 'verified-references.bib';
+                      a.click();
+                      URL.revokeObjectURL(a.href);
+                    }}
+                  >
+                    Export .bib
                   </button>
                   <button onClick={handleReset} className="btn btn-primary">
                     New Analysis

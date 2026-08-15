@@ -24,6 +24,7 @@ export {
   setPdfWorkerSrc,
 } from './extractors/index.js';
 export { extractReferences } from './references/extractor.js';
+export { exportBibtex } from './references/bibtexExport.js';
 export { validateFormat } from './references/formatValidator.js';
 export { searchCrossref, lookupDoi } from './references/crossref.js';
 export { searchSemanticScholar } from './references/semanticScholar.js';

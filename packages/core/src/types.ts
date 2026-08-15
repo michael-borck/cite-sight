@@ -62,6 +62,9 @@ export interface AcademicWork {
   year: number | null;
   doi?: string;
   journal?: string;
+  volume?: string;
+  issue?: string;
+  pages?: string;
   source: 'crossref' | 'datacite' | 'semantic_scholar' | 'openalex' | 'arxiv' | 'youtube' | 'vimeo' | 'open_library' | 'web_metadata';
   url?: string;
   citationCount?: number;

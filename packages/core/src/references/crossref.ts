@@ -58,6 +58,9 @@ function itemToAcademicWork(item: CrossrefItem): AcademicWork {
     doi: item.DOI,
     url: item.URL,
     journal: item['container-title']?.[0],
+    volume: item.volume,
+    issue: item.issue,
+    pages: item.page,
     source: 'crossref',
     citationCount: item['is-referenced-by-count'],
   };

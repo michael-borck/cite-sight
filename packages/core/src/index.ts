@@ -27,6 +27,7 @@ export { resolveDoi } from './references/doiResolver.js';
 export { checkUrl } from './references/urlChecker.js';
 export { verifyReferences } from './references/verifier.js';
 export { exportLookupCache, hydrateLookupCache } from './references/lookupCache.js';
+export { exportBibtex } from './references/bibtexExport.js';
 export type { PersistedLookupCache } from './references/lookupCache.js';
 export { explainVerification } from './references/explain.js';
 export type { FlagExplanation } from './references/explain.js';
