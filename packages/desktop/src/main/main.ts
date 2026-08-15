@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { registerIpcHandlers } from './ipc.js';
+import { loadLookupCache } from './cacheStore.js';
 import { initAutoUpdater } from './updater.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -65,6 +66,7 @@ function createWindow(): BrowserWindow {
 }
 
 app.whenReady().then(() => {
+  loadLookupCache();
   const mainWindow = createWindow();
   registerIpcHandlers(mainWindow);
   initAutoUpdater(mainWindow);

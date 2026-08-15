@@ -1,6 +1,7 @@
 import { ipcMain, dialog, BrowserWindow, app } from 'electron';
 import { analyzePipeline, verifyReferences } from '@michaelborck/cite-sight-core';
 import { takeScreenshot } from './screenshot.js';
+import { saveLookupCache } from './cacheStore.js';
 import { readdirSync, readFileSync, existsSync, realpathSync } from 'node:fs';
 import { join, extname, basename, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -82,6 +83,10 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         }
       }
 
+      // Persist the lookup cache so the next run (or the next app version)
+      // starts warm instead of re-spending API quota.
+      saveLookupCache();
+
       return result;
     },
   );
@@ -100,6 +105,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
           semanticScholarApiKey: options.semanticScholarApiKey ?? process.env.SEMANTIC_SCHOLAR_API_KEY,
         },
       );
+      saveLookupCache();
       return verification ?? null;
     },
   );
