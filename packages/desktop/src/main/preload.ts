@@ -10,6 +10,14 @@ contextBridge.exposeInMainWorld('citeSight', {
     return ipcRenderer.invoke('cite-sight:reverify', ref, options) as Promise<ReferenceVerification | null>;
   },
 
+  loadDismissals: (): Promise<string[]> => {
+    return ipcRenderer.invoke('cite-sight:load-dismissals') as Promise<string[]>;
+  },
+
+  setDismissal: (contentKey: string, dismissed: boolean): Promise<void> => {
+    return ipcRenderer.invoke('cite-sight:set-dismissal', contentKey, dismissed) as Promise<void>;
+  },
+
   selectFiles: (): Promise<string[]> => {
     return ipcRenderer.invoke('cite-sight:select-files') as Promise<string[]>;
   },

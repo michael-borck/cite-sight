@@ -7,6 +7,7 @@ import type {
   VerificationStatus,
 } from '@michaelborck/cite-sight-core';
 import { ATTRIBUTION, DISCLAIMER } from '@michaelborck/cite-sight-core/disclaimer';
+import { referenceContentKey } from '@michaelborck/cite-sight-core/dashboard';
 import { OverviewPanel } from './Overview';
 import { ScreenshotContext, ScreenshotThumbnail } from './Screenshot';
 import './ResultsDashboard.css';
@@ -28,6 +29,14 @@ export interface ResultsDashboardProps {
    * hosts that don't render neither.
    */
   reverify?: (ref: ParsedReference) => Promise<ReferenceVerification | null>;
+  /**
+   * Previously persisted dismissal content-keys (see referenceContentKey).
+   * Rows whose reference matches a key start dismissed, so triage decisions
+   * survive re-scans and app restarts.
+   */
+  persistedDismissals?: string[];
+  /** Called per change so a host can persist triage decisions. */
+  onDismissalChange?: (contentKey: string, dismissed: boolean) => void;
 }
 
 // ─── screenshot capability (context) ──────────────────────────────────────────
@@ -403,7 +412,7 @@ const SECTIONS = [
 
 // ─── main component ───────────────────────────────────────────────────────────
 
-export function ResultsDashboard({ results, readScreenshot, reverify }: ResultsDashboardProps) {
+export function ResultsDashboard({ results, readScreenshot, reverify, persistedDismissals, onDismissalChange }: ResultsDashboardProps) {
   const [activeSection, setActiveSection] = useState('overview');
   // Re-verified rows override the original run's verdicts in place.
   const [overrides, setOverrides] = useState<Map<number, ReferenceVerification>>(new Map());
@@ -449,7 +458,34 @@ export function ResultsDashboard({ results, readScreenshot, reverify }: ResultsD
   // shows counts — summary strip, sidebar badges, per-panel chips — reflects
   // a dismissal the moment it happens. Item keys mirror the priority list
   // (`ref:<idx>`, `intext:<idx>`). Session-only, like before.
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  // Rows matching a persisted content-key start dismissed (triage decisions
+  // are about WHAT is cited, not which row it landed in this run's order).
+  const [dismissed, setDismissedRaw] = useState<Set<string>>(() => {
+    const init = new Set<string>();
+    if (persistedDismissals?.length) {
+      const persisted = new Set(persistedDismissals);
+      results.references.verifications.forEach((v, idx) => {
+        if (persisted.has(referenceContentKey(v.reference.raw))) init.add(`ref:${idx}`);
+      });
+    }
+    return init;
+  });
+  // Diff each change against the previous set and report per-reference
+  // deltas to the host for persistence.
+  const setDismissed = (next: Set<string>) => {
+    if (onDismissalChange) {
+      const all = new Set([...dismissed, ...next]);
+      for (const key of all) {
+        const was = dismissed.has(key);
+        const is = next.has(key);
+        if (was === is || !key.startsWith('ref:')) continue;
+        const idx = Number(key.slice(4));
+        const v = results.references.verifications[idx];
+        if (v) onDismissalChange(referenceContentKey(v.reference.raw), is);
+      }
+    }
+    setDismissedRaw(next);
+  };
   const refs = effectiveResults.references;
 
   const adjusted = useMemo(() => {

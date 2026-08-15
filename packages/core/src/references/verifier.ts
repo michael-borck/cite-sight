@@ -492,6 +492,23 @@ async function verifySingleReference(
     status = assessment.status;
     confidenceScore = assessment.confidence;
     flags.push(...assessment.flags);
+    // Degraded evidence: if part of the cascade FAILED (rate-limit/timeout)
+    // and the surviving candidate is uncorroborated, the "suspicious" verdict
+    // may be an artefact of the good source being down — the right record was
+    // never seen. An accusation must not rest on a partial lookup; report it
+    // as unverified (retry) instead. A corroborated match, or one reached via
+    // DOI, stands on its own regardless of other sources failing.
+    if (
+      status === 'suspicious' &&
+      apiErrored &&
+      !doiResolved &&
+      !matchedCorroborated
+    ) {
+      status = 'unverified';
+      confidenceScore = 0;
+      flags.push('verification_unavailable', 'degraded_lookup');
+      if (failure) flags.push(`${failure.reason}:${failure.service}`);
+    }
   } else if (apiErrored) {
     // Nothing matched, but a lookup failed (rate-limit / timeout / network).
     // This is NOT a confident "not found" — the reference may well exist; we

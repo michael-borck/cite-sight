@@ -40,3 +40,38 @@ export function saveLookupCache(): void {
     console.warn('[cache] could not save lookup cache:', err);
   }
 }
+
+// ============================================================
+// Persistent dismissals — the user's triage decisions, keyed by reference
+// CONTENT (referenceContentKey), so "dismiss Ericsson's book-review flag"
+// holds across re-scans, app updates, and any document citing it the same
+// way. Stored separately from the lookup cache: one is API data with TTLs,
+// the other is human judgement that only the human un-makes.
+// ============================================================
+
+const DISMISSALS_FILE = (): string => join(app.getPath('userData'), 'dismissals.json');
+
+export function loadDismissals(): string[] {
+  try {
+    const file = DISMISSALS_FILE();
+    if (!existsSync(file)) return [];
+    const data = JSON.parse(readFileSync(file, 'utf8')) as { version: 1; keys: string[] };
+    return data.version === 1 && Array.isArray(data.keys) ? data.keys.filter((k) => typeof k === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+export function setDismissal(contentKey: string, dismissed: boolean): void {
+  try {
+    const keys = new Set(loadDismissals());
+    if (dismissed) keys.add(contentKey);
+    else keys.delete(contentKey);
+    const file = DISMISSALS_FILE();
+    const tmp = `${file}.tmp`;
+    writeFileSync(tmp, JSON.stringify({ version: 1, keys: [...keys] }), 'utf8');
+    renameSync(tmp, file);
+  } catch (err) {
+    console.warn('[dismissals] could not persist:', err);
+  }
+}

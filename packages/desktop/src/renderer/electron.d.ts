@@ -5,6 +5,8 @@ declare global {
     citeSight: {
       analyzeFile: (filePath: string, options: ProcessingOptions) => Promise<AnalysisResult>;
       reverifyReference: (ref: unknown, options: ProcessingOptions) => Promise<ReferenceVerification | null>;
+      loadDismissals: () => Promise<string[]>;
+      setDismissal: (contentKey: string, dismissed: boolean) => Promise<void>;
       selectFiles: () => Promise<string[]>;
       selectFolder: () => Promise<string[]>;
       onProgress: (callback: (update: ProgressUpdate) => void) => void;

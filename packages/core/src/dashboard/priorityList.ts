@@ -1,4 +1,20 @@
 // packages/core/src/dashboard/priorityList.ts
+
+/**
+ * Stable content key for a reference — dismissals persist against WHAT was
+ * cited, not where it sat in one run's row order, so a triage decision made
+ * once holds across re-scans, app restarts, and other documents citing the
+ * same work identically. djb2 over the normalised raw string: collision odds
+ * are irrelevant at bibliography scale and it runs in the browser.
+ */
+export function referenceContentKey(raw: string): string {
+  const norm = raw.toLowerCase().replace(/\s+/g, ' ').trim();
+  let h = 5381;
+  for (let i = 0; i < norm.length; i++) {
+    h = ((h << 5) + h + norm.charCodeAt(i)) >>> 0;
+  }
+  return `refkey:${h.toString(36)}:${norm.length}`;
+}
 import type { ReferenceAnalysisResult } from '../types.js';
 import type { PriorityItem } from './types.js';
 

@@ -1,7 +1,7 @@
 import { ipcMain, dialog, BrowserWindow, app } from 'electron';
 import { analyzePipeline, verifyReferences } from '@michaelborck/cite-sight-core';
 import { takeScreenshot } from './screenshot.js';
-import { saveLookupCache } from './cacheStore.js';
+import { saveLookupCache, loadDismissals, setDismissal } from './cacheStore.js';
 import { readdirSync, readFileSync, existsSync, realpathSync } from 'node:fs';
 import { join, extname, basename, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -109,6 +109,14 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
       return verification ?? null;
     },
   );
+
+  // Persistent triage decisions (dismissals), keyed by reference content.
+  ipcMain.handle('cite-sight:load-dismissals', () => loadDismissals());
+  ipcMain.handle('cite-sight:set-dismissal', (_event, contentKey: string, dismissed: boolean) => {
+    if (typeof contentKey === 'string' && contentKey.startsWith('refkey:')) {
+      setDismissal(contentKey, Boolean(dismissed));
+    }
+  });
 
   // Handle native file dialog
   ipcMain.handle('cite-sight:select-files', async () => {

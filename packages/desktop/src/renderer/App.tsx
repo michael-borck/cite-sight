@@ -38,6 +38,11 @@ export function App() {
   } = useStore();
 
   const [version, setVersion] = useState('');
+  // Persisted triage decisions, loaded once; the dashboard reports deltas.
+  const [persistedDismissals, setPersistedDismissals] = useState<string[]>([]);
+  useEffect(() => {
+    window.citeSight?.loadDismissals().then(setPersistedDismissals).catch(() => {});
+  }, []);
   const [streamElapsed, setStreamElapsed] = useState(0);
   const cancelRef = useRef(false);
 
@@ -265,9 +270,17 @@ export function App() {
 
               {currentResult && (
                 <ResultsDashboard
+                  key={currentResultIndex}
                   results={currentResult}
                   readScreenshot={(path) => window.citeSight?.readScreenshot(path) ?? Promise.resolve(null)}
                   reverify={(ref) => window.citeSight?.reverifyReference(ref, options) ?? Promise.resolve(null)}
+                  persistedDismissals={persistedDismissals}
+                  onDismissalChange={(contentKey, dismissed) => {
+                    setPersistedDismissals((prev) =>
+                      dismissed ? [...new Set([...prev, contentKey])] : prev.filter((k) => k !== contentKey),
+                    );
+                    void window.citeSight?.setDismissal(contentKey, dismissed);
+                  }}
                 />
               )}
             </>
