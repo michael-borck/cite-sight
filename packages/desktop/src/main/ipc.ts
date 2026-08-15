@@ -1,7 +1,7 @@
-import { ipcMain, dialog, BrowserWindow, app } from 'electron';
+import { ipcMain, dialog, BrowserWindow, app, shell } from 'electron';
 import { analyzePipeline, verifyReferences } from '@michaelborck/cite-sight-core';
 import { takeScreenshot } from './screenshot.js';
-import { saveLookupCache, loadDismissals, setDismissal } from './cacheStore.js';
+import { saveLookupCache, loadDismissals, setDismissal, cacheInfo, clearCacheFile, clearDismissalsFile } from './cacheStore.js';
 import { readdirSync, readFileSync, existsSync, realpathSync } from 'node:fs';
 import { join, extname, basename, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -116,6 +116,14 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     if (typeof contentKey === 'string' && contentKey.startsWith('refkey:')) {
       setDismissal(contentKey, Boolean(dismissed));
     }
+  });
+
+  // Data & privacy: cache stewardship
+  ipcMain.handle('cite-sight:cache-info', () => cacheInfo());
+  ipcMain.handle('cite-sight:clear-cache', () => clearCacheFile());
+  ipcMain.handle('cite-sight:clear-dismissals', () => clearDismissalsFile());
+  ipcMain.handle('cite-sight:reveal-data-dir', () => {
+    shell.showItemInFolder(cacheInfo().cacheFile);
   });
 
   // Handle native file dialog

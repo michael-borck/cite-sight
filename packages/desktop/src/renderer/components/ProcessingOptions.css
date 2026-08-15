@@ -103,3 +103,26 @@
   color: var(--ink-faint);
   font-family: var(--font-mono);
 }
+
+/* Data & privacy panel */
+.data-path {
+  display: block;
+  font-size: 0.78rem;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+  word-break: break-all;
+  margin-bottom: 4px;
+}
+.data-actions { display: flex; gap: 8px; margin: 10px 0 6px; flex-wrap: wrap; }
+.data-action {
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  background: transparent;
+  cursor: pointer;
+}
+.data-action.danger { border-color: #b4530966; color: #b45309; }
+.data-action:hover { background: rgba(0, 0, 0, 0.04); }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { FileUpload } from './components/FileUpload';
 import { ProcessingOptions } from './components/ProcessingOptions';
+import { DataPrivacyPanel } from './components/DataPrivacyPanel';
 import { ProcessingProgress } from './components/ProcessingProgress';
 import { ResultsDashboard, StreamingResults } from '@michaelborck/cite-sight-ui';
 import { UpdateNotification } from './components/UpdateNotification';
@@ -168,6 +169,7 @@ export function App() {
                     {filePaths.length > 0 && (
                       <>
                         <ProcessingOptions />
+              <DataPrivacyPanel onDismissalsCleared={() => setPersistedDismissals([])} />
                         <div className="action-buttons">
                           <button
                             onClick={() => void handleAnalyze()}

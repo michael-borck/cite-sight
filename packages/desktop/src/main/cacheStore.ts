@@ -1,7 +1,7 @@
 import { app } from 'electron';
-import { readFileSync, writeFileSync, renameSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, renameSync, existsSync, statSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { exportLookupCache, hydrateLookupCache } from '@michaelborck/cite-sight-core';
+import { exportLookupCache, hydrateLookupCache, clearLookupCache } from '@michaelborck/cite-sight-core';
 
 // ============================================================
 // Persistent lookup cache (desktop only).
@@ -73,5 +73,45 @@ export function setDismissal(contentKey: string, dismissed: boolean): void {
     renameSync(tmp, file);
   } catch (err) {
     console.warn('[dismissals] could not persist:', err);
+  }
+}
+
+// ============================================================
+// Data & privacy panel support
+// ============================================================
+
+export interface CacheInfo {
+  directory: string;
+  cacheFile: string;
+  cacheEntries: number;
+  cacheBytes: number;
+  dismissalsCount: number;
+}
+
+export function cacheInfo(): CacheInfo {
+  const file = CACHE_FILE();
+  let bytes = 0;
+  try { if (existsSync(file)) bytes = statSync(file).size; } catch { /* stat is cosmetic */ }
+  return {
+    directory: app.getPath('userData'),
+    cacheFile: file,
+    cacheEntries: exportLookupCache().entries.length,
+    cacheBytes: bytes,
+    dismissalsCount: loadDismissals().length,
+  };
+}
+
+/** Clear the lookup cache — memory and disk together, so a "cleared" state
+ *  can't resurrect from either side on next launch. */
+export function clearCacheFile(): void {
+  clearLookupCache();
+  try { rmSync(CACHE_FILE(), { force: true }); } catch (err) {
+    console.warn('[cache] could not remove cache file:', err);
+  }
+}
+
+export function clearDismissalsFile(): void {
+  try { rmSync(DISMISSALS_FILE(), { force: true }); } catch (err) {
+    console.warn('[dismissals] could not remove file:', err);
   }
 }

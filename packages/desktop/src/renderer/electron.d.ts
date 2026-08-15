@@ -5,6 +5,10 @@ declare global {
     citeSight: {
       analyzeFile: (filePath: string, options: ProcessingOptions) => Promise<AnalysisResult>;
       reverifyReference: (ref: unknown, options: ProcessingOptions) => Promise<ReferenceVerification | null>;
+      cacheInfo: () => Promise<{ directory: string; cacheFile: string; cacheEntries: number; cacheBytes: number; dismissalsCount: number }>;
+      clearCache: () => Promise<void>;
+      clearDismissals: () => Promise<void>;
+      revealDataDir: () => Promise<void>;
       loadDismissals: () => Promise<string[]>;
       setDismissal: (contentKey: string, dismissed: boolean) => Promise<void>;
       selectFiles: () => Promise<string[]>;
