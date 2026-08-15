@@ -254,3 +254,10 @@
   .sr-conf-bar { width: 40px; }
   .sr-ref-title { white-space: normal; }
 }
+
+.sr-pacing-note {
+  font-size: 0.75rem;
+  color: var(--ink-faint, #9aa1ac);
+  margin: 6px 0 0;
+  font-style: italic;
+}

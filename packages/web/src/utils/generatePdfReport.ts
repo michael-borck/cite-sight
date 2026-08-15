@@ -4,7 +4,7 @@ import type {
   ReferenceVerification,
   VerificationStatus,
 } from '../types';
-import { DISCLAIMER } from '../disclaimer';
+import { ATTRIBUTION, DISCLAIMER } from '../disclaimer';
 
 // ── Colours ──────────────────────────────────────────────────────────────────
 
@@ -111,6 +111,10 @@ function drawDisclaimer(doc: jsPDF, y: number, margin: number, contentW: number)
   y += 4;
   doc.setFont('helvetica', 'italic');
   y = printWrapped(doc, DISCLAIMER, margin, y, contentW, 3.6, margin);
+  y += 2;
+  // Exported reports are "published materials" under the S2 API licence —
+  // the attribution ships inside the artefact, not just the app chrome.
+  y = printWrapped(doc, ATTRIBUTION, margin, y, contentW, 3.6, margin);
   doc.setFont('helvetica', 'normal');
   return y + 4;
 }

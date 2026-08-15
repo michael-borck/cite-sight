@@ -24,6 +24,27 @@ export const DISCLAIMER_SHORT =
   'incomplete, so results are a guide, not a guarantee — always verify anything important against the original source.';
 
 // ---------------------------------------------------------------------------
+// Data-source attribution + pacing
+//
+// The S2 API licence asks for attribution wherever S2 data is displayed; the
+// other providers request (arXiv) or appreciate (Crossref, OpenAlex) credit.
+// One line, shown beside the disclaimer under results and on about screens.
+// The pacing note renders on the processing screen — the moment users wonder
+// why verification is slow is the moment to say it is deliberate.
+// ---------------------------------------------------------------------------
+
+/** One-line data-source credit — render wherever results are displayed. */
+export const ATTRIBUTION =
+  'Bibliographic data from Crossref, OpenAlex, Semantic Scholar (Allen Institute for AI), ' +
+  'arXiv, DataCite, and Open Library. Thank you to arXiv for use of its open access interoperability.';
+
+/** Why verification takes time — shown while checks run. */
+export const PACING_NOTE =
+  'Checks are deliberately paced to each database\u2019s requested rate limits (arXiv, for ' +
+  'example, asks for one request every three seconds), so long reference lists take a few ' +
+  'minutes. Slow here means polite to the free services that make the checking possible.';
+
+// ---------------------------------------------------------------------------
 // Hosted-demo notice
 //
 // The public web app queries the citation databases anonymously, on lookups

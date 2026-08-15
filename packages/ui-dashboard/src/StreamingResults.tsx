@@ -1,4 +1,5 @@
 import type { ReferenceVerification, VerificationStatus } from '@michaelborck/cite-sight-core';
+import { PACING_NOTE } from '@michaelborck/cite-sight-core/disclaimer';
 import './StreamingResults.css';
 
 export interface StreamingResultsProps {
@@ -73,6 +74,7 @@ export function StreamingResults({ verifications, total, stage, elapsedMs, fileN
           </span>
           <span>{seconds}s</span>
         </div>
+        {busy && <p className="sr-pacing-note">{PACING_NOTE}</p>}
       </div>
 
       <ul className="sr-rows">

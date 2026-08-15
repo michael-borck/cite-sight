@@ -2,7 +2,7 @@
 
 import { program, type Command } from 'commander';
 import chalk from 'chalk';
-import { analyzePipeline, MANIFEST, explainVerification, DISCLAIMER } from '@michaelborck/cite-sight-core';
+import { analyzePipeline, MANIFEST, explainVerification, DISCLAIMER, ATTRIBUTION } from '@michaelborck/cite-sight-core';
 import type { AnalysisResult, ProcessingOptions, ProgressCallback } from '@michaelborck/cite-sight-core';
 import { readFileSync } from 'node:fs';
 import { SUPPORTED_EXTENSIONS, collectInputs } from './inputs.js';
@@ -245,7 +245,7 @@ function printReport(result: AnalysisResult, minimal: boolean): void {
   // Accuracy disclaimer — always shown, even under --minimal, so a report is
   // never mistaken for a guarantee.
   printSectionHeader('Please note');
-  for (const line of wrapText(DISCLAIMER, 78)) {
+  for (const line of wrapText(DISCLAIMER + ' ' + ATTRIBUTION, 78)) {
     console.log(chalk.gray(`  ${line}`));
   }
 
@@ -455,6 +455,7 @@ async function runAnalysis(paths: string[], opts: AnalysisOpts): Promise<void> {
             files: outcomes.map((o) => (o.error ? { file: o.file, error: o.error } : { file: o.file, ...o.result })),
             summary,
             disclaimer: DISCLAIMER,
+            attribution: ATTRIBUTION,
           },
           null,
           2,

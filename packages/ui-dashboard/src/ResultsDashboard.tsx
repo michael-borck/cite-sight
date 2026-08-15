@@ -6,7 +6,7 @@ import type {
   ReferenceVerification,
   VerificationStatus,
 } from '@michaelborck/cite-sight-core';
-import { DISCLAIMER } from '@michaelborck/cite-sight-core/disclaimer';
+import { ATTRIBUTION, DISCLAIMER } from '@michaelborck/cite-sight-core/disclaimer';
 import { OverviewPanel } from './Overview';
 import { ScreenshotContext, ScreenshotThumbnail } from './Screenshot';
 import './ResultsDashboard.css';
@@ -563,6 +563,7 @@ export function ResultsDashboard({ results, readScreenshot, reverify }: ResultsD
         {activeSection === 'crossrefs'   && <CrossReferencesPanel results={effectiveResults} />}
 
         <p className="results-disclaimer">{DISCLAIMER}</p>
+        <p className="results-attribution">{ATTRIBUTION}</p>
       </main>
     </div>
   );

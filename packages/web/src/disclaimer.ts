@@ -8,6 +8,8 @@
 
 export {
   DISCLAIMER,
+  ATTRIBUTION,
+  PACING_NOTE,
   HOSTED_LIMITS_NOTICE,
   HOSTED_LIMITS_SHORT,
 } from '@michaelborck/cite-sight-core/disclaimer';

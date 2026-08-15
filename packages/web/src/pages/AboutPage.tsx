@@ -1,4 +1,4 @@
-import { DISCLAIMER } from '../disclaimer';
+import { ATTRIBUTION, DISCLAIMER } from '../disclaimer';
 import './AboutPage.css';
 
 export function AboutPage() {
@@ -19,6 +19,7 @@ export function AboutPage() {
         <section className="about-section">
           <h2>Accuracy &amp; Limitations</h2>
           <p className="about-disclaimer">{DISCLAIMER}</p>
+          <p className="about-disclaimer">{ATTRIBUTION}</p>
         </section>
 
         <section className="about-section">
