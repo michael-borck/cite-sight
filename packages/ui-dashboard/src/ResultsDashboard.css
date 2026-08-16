@@ -329,3 +329,5 @@ button.status-chip { border: none; cursor: pointer; font: inherit; }
   color: var(--ink-faint, #9aa1ac);
   margin-top: 4px;
 }
+
+.status-chip.dismissed-chip { background: var(--muted-bg, #f0f0f2); color: var(--muted, #6b7280); text-decoration: line-through; }

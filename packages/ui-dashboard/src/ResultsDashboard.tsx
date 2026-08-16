@@ -228,8 +228,14 @@ function ReferencesPanel({ results, dismissed, onDismissedChange, onReverify, re
   rechecking: Set<number>;
 }) {
   const { references } = results;
-  const live = (status: string) =>
-    references.verifications.filter((v, idx) => v.status === status && !dismissed.has(`ref:${idx}`)).length;
+  // A row's display kind: "dismissed" is an overlay that wins over status for
+  // counting and filtering — a dismissed needs-review row belongs to the
+  // Dismissed bucket, not the Needs-review one, so counts and pills agree
+  // with what the table shows.
+  const kindOf = (v: ReferenceVerification, idx: number): string =>
+    dismissed.has(`ref:${idx}`) ? 'dismissed' : v.status;
+  const live = (kind: string) =>
+    references.verifications.filter((v, idx) => kindOf(v, idx) === kind).length;
 
   // Chip filters: clicking a status chip toggles that status's rows.
   const [hiddenStatuses, setHiddenStatuses] = useState<Set<string>>(new Set());
@@ -253,7 +259,7 @@ function ReferencesPanel({ results, dismissed, onDismissedChange, onReverify, re
 
   const rows = useMemo(() => {
     const withIndex = references.verifications.map((v, idx) => ({ v, idx }));
-    const filtered = withIndex.filter(({ v }) => !hiddenStatuses.has(v.status));
+    const filtered = withIndex.filter(({ v, idx }) => !hiddenStatuses.has(kindOf(v, idx)));
     const keyOf = ({ v, idx }: { v: ReferenceVerification; idx: number }): string | number => {
       switch (sortKey) {
         case 'title':      return (v.reference.title || v.reference.raw).toLowerCase();
@@ -268,7 +274,7 @@ function ReferencesPanel({ results, dismissed, onDismissedChange, onReverify, re
       const ka = keyOf(a); const kb = keyOf(b);
       return (ka < kb ? -1 : ka > kb ? 1 : 0) * sortDir;
     });
-  }, [references.verifications, hiddenStatuses, sortKey, sortDir]);
+  }, [references.verifications, hiddenStatuses, sortKey, sortDir, dismissed]);
 
   const toggleDismiss = (idx: number) => {
     const key = `ref:${idx}`;
@@ -287,11 +293,12 @@ function ReferencesPanel({ results, dismissed, onDismissedChange, onReverify, re
       <div className="panel-body">
         <div className="status-summary">
           {([
-            ['verified', 'Verified', 'verified', references.verifications.filter(v => v.status === 'verified').length],
-            ['likely_valid', 'Likely Valid', 'likely', references.verifications.filter(v => v.status === 'likely_valid').length],
+            ['verified', 'Verified', 'verified', live('verified')],
+            ['likely_valid', 'Likely Valid', 'likely', live('likely_valid')],
             ['suspicious', 'Needs review', 'suspicious', live('suspicious')],
             ['not_found', 'Not Found', 'notfound', live('not_found')],
-            ['unverified', 'Unverified', 'unverified', references.unverifiedCount],
+            ['unverified', 'Unverified', 'unverified', live('unverified')],
+            ['dismissed', 'Dismissed', 'dismissed-chip', live('dismissed')],
           ] as const).map(([status, label, cls, count]) => (
             <button
               key={status}
@@ -308,7 +315,9 @@ function ReferencesPanel({ results, dismissed, onDismissedChange, onReverify, re
         <p className="status-legend">
           <strong>Not found</strong> = searched, no record &middot;{' '}
           <strong>Unverified</strong> = database unreachable, re-run to retry &middot;{' '}
-          <strong>Needs review</strong> = found but metadata disagrees
+          <strong>Needs review</strong> = found but metadata disagrees &middot;{' '}
+          <strong>struck-through</strong> = dismissed (you marked it reviewed) — expand the row and
+          use Restore to undo
         </p>
 
         {references.verifications.length > 0 ? (
