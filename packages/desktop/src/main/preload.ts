@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld('citeSight', {
     return ipcRenderer.invoke('cite-sight:reverify', ref, options) as Promise<ReferenceVerification | null>;
   },
 
+  checkForUpdates: (): Promise<{ updateAvailable: boolean; version?: string; error?: boolean }> =>
+    ipcRenderer.invoke('cite-sight:check-updates') as Promise<{ updateAvailable: boolean; version?: string; error?: boolean }>,
   cacheInfo: (): Promise<unknown> => ipcRenderer.invoke('cite-sight:cache-info'),
   clearCache: (): Promise<void> => ipcRenderer.invoke('cite-sight:clear-cache') as Promise<void>,
   clearDismissals: (): Promise<void> => ipcRenderer.invoke('cite-sight:clear-dismissals') as Promise<void>,

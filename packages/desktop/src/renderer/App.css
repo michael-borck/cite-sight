@@ -167,3 +167,6 @@
 .nav-arrow:disabled { opacity: 0.3; cursor: not-allowed; }
 
 .results-actions { display: flex; gap: var(--sp-2); align-items: center; }
+
+.version-check { background: none; border: none; cursor: pointer; font: inherit; padding: 0; }
+.version-check:hover { text-decoration: underline; }

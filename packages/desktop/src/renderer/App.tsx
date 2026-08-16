@@ -137,7 +137,24 @@ export function App() {
         <div className="header-inner">
           <div className="header-brand">
             <h1>CiteSight<span className="dot"></span></h1>
-            {version && <span className="version">v{version}</span>}
+            {version && (
+              <button
+                type="button"
+                className="version version-check"
+                title="Check for updates"
+                onClick={async () => {
+                  const r = await window.citeSight?.checkForUpdates();
+                  if (r && !r.updateAvailable) {
+                    // The update banner handles the "available" case; a manual
+                    // check that finds nothing still deserves an answer.
+                    setVersion(`${version.replace(/ — up to date$/, '')} — up to date`);
+                    setTimeout(() => setVersion((v) => v.replace(/ — up to date$/, '')), 4000);
+                  }
+                }}
+              >
+                v{version}
+              </button>
+            )}
           </div>
         </div>
       </header>

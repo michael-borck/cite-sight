@@ -47,10 +47,27 @@ export function initAutoUpdater(win: BrowserWindow): void {
     autoUpdater.quitAndInstall();
   });
 
-  // Check for updates after a short delay so the window is ready
-  setTimeout(() => {
+  // Manual "Check for updates" from the renderer. Returns whether a newer
+  // version was found so the UI can say "you're up to date" — the automatic
+  // path stays silent on no-update, but a click deserves an answer.
+  ipcMain.handle('cite-sight:check-updates', async () => {
+    try {
+      const result = await autoUpdater.checkForUpdates();
+      const latest = result?.updateInfo?.version;
+      return { updateAvailable: Boolean(latest && latest !== autoUpdater.currentVersion.version), version: latest };
+    } catch {
+      return { updateAvailable: false, error: true };
+    }
+  });
+
+  const check = () =>
     autoUpdater.checkForUpdates().catch(() => {
       // Silently fail — offline or no releases yet
     });
-  }, 3000);
+
+  // Check for updates after a short delay so the window is ready, then
+  // every four hours — long-running sessions (the app left open across a
+  // marking day) would otherwise never learn a release shipped.
+  setTimeout(check, 3000);
+  setInterval(check, 4 * 60 * 60 * 1000);
 }
