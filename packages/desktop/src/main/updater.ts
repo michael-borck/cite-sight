@@ -1,11 +1,15 @@
 import electronUpdater from 'electron-updater';
 const { autoUpdater } = electronUpdater;
 import type { BrowserWindow } from 'electron';
-import { ipcMain } from 'electron';
+import { app, ipcMain } from 'electron';
 
 export function initAutoUpdater(win: BrowserWindow): void {
-  // Don't check for updates during development
-  if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') return;
+  // Don't check for updates during development. NB: this must be
+  // app.isPackaged — packaged Electron apps do NOT set NODE_ENV, so the old
+  // `!process.env.NODE_ENV` guard returned early in every production build
+  // and the auto-updater never ran for anyone (found 2026-08-16 when a
+  // relaunch of 0.8.23 showed no banner despite newer published releases).
+  if (!app.isPackaged) return;
 
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
