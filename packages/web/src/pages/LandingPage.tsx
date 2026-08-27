@@ -257,6 +257,10 @@ export function LandingPage({ onNavigate }: Props) {
               ))}
               .
             </p>
+            <p className="hero-note hero-alt-platforms">
+              No install? <a href={standaloneUrl}>Get the standalone HTML</a> — one file,
+              double-click to run.
+            </p>
             <p className="hero-note">
               PDF · DOCX · TXT — verified against Crossref, Semantic Scholar &amp; OpenAlex.
             </p>
