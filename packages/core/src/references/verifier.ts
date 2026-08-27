@@ -303,9 +303,21 @@ function categorize(
 // Single-reference verification
 // ============================================================
 
+export interface VerifyOptions {
+  mailto?: string;
+  citationStyle: CitationStyle;
+  semanticScholarApiKey?: string;
+  /**
+   * Whether to HTTP-check referenced URLs (step 7). Defaults to true. Browser
+   * hosts pass false: cross-origin probes from a web page are blocked by CORS
+   * for nearly every publisher, so every check would come back 'error'.
+   */
+  checkUrls?: boolean;
+}
+
 async function verifySingleReference(
   ref: ParsedReference,
-  options: { mailto?: string; citationStyle: CitationStyle; semanticScholarApiKey?: string },
+  options: VerifyOptions,
 ): Promise<ReferenceVerification> {
   const effectiveStyle: CitationStyle =
     options.citationStyle === ('auto' as CitationStyle)
@@ -467,7 +479,7 @@ async function verifySingleReference(
 
   // --- Step 7: URL check ---
   let urlCheck = undefined;
-  if (ref.url) {
+  if (ref.url && options.checkUrls !== false) {
     urlCheck = await checkUrl(ref.url);
   }
 
@@ -597,7 +609,7 @@ async function verifySingleReference(
  */
 export async function verifyReferences(
   refs: ParsedReference[],
-  options: { mailto?: string; citationStyle: CitationStyle; semanticScholarApiKey?: string },
+  options: VerifyOptions,
   onVerified?: (verification: ReferenceVerification, index: number, total: number) => void,
 ): Promise<ReferenceVerification[]> {
   const results: ReferenceVerification[] = [];

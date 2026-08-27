@@ -68,3 +68,27 @@ export const HOSTED_LIMITS_NOTICE =
 export const HOSTED_LIMITS_SHORT =
   'Fewer references verified than you expected? The online checker shares one anonymous, rate-limited ' +
   'connection to the citation databases; adding your contact email in the desktop app lifts that limit.';
+
+// ---------------------------------------------------------------------------
+// Standalone (single-file) build notice
+//
+// The downloadable HTML file runs the whole analysis in the user's browser tab.
+// That is a privacy win — the document never leaves the machine — but a web
+// page cannot make cross-origin probes the way Node and Electron can, so two
+// checks behave differently. The wording here explains both, and points at the
+// manual escape hatches (opening the DOI/URL in a tab) that replace them.
+// ---------------------------------------------------------------------------
+
+/** Shown on the standalone build's upload screen — what changes in a browser. */
+export const STANDALONE_LIMITS_NOTICE =
+  'This standalone file runs entirely in your browser — your document never leaves this device. ' +
+  'Two checks work differently here: cited URLs are not probed automatically (browsers block ' +
+  'cross-site requests), and arXiv preprints can\u2019t be looked up (arXiv\u2019s API refuses ' +
+  'browser requests), so those references may come back \u201cunverified\u201d. Expand any row and ' +
+  'use the Open DOI / Open cited URL buttons to eyeball the source in a new tab — that manual ' +
+  'check is the right call for anything that matters anyway.';
+
+/** One-line version — shown under standalone results. */
+export const STANDALONE_LIMITS_SHORT =
+  'URLs were not probed and arXiv lookups are unavailable in a browser file — expand a row and ' +
+  'open the DOI or cited URL in a tab to check it yourself.';

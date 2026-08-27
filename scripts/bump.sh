@@ -11,6 +11,7 @@ WORKSPACES=(
   packages/server
   packages/web
   packages/ui-dashboard
+  packages/standalone
 )
 
 # --- helpers ----------------------------------------------------------------

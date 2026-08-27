@@ -164,6 +164,16 @@ function ReferenceRow({ v, index, isDismissed, onToggleDismiss, onReverify, isRe
                   legitimate manual-verification workflow. Dismiss only where
                   there is something to dismiss. */}
               <div className="priority-row-actions ref-detail-actions" onClick={(e) => e.stopPropagation()}>
+                {ref.doi && (
+                  <a
+                    className="priority-action priority-action-search"
+                    href={`https://doi.org/${encodeURIComponent(ref.doi)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open DOI
+                  </a>
+                )}
                 {ref.url && (
                   <a className="priority-action priority-action-search" href={ref.url} target="_blank" rel="noreferrer">
                     Open cited URL

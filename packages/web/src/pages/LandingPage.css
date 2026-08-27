@@ -510,6 +510,42 @@
   margin-top: var(--sp-2);
 }
 
+/* ── Standalone HTML offer (secondary to the desktop download) ─────────────── */
+
+.standalone-offer {
+  margin: var(--sp-8) auto 0;
+  padding: var(--sp-5) var(--sp-6);
+  max-width: 560px;
+  border: 1px solid rgba(26,35,50,0.1);
+  border-radius: var(--r-lg);
+  background: var(--white);
+  text-align: center;
+}
+
+.standalone-offer-text {
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+  line-height: 1.5;
+  margin: 0 0 var(--sp-3);
+}
+
+.standalone-offer-link {
+  display: inline-block;
+  padding: var(--sp-2) var(--sp-5);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+  border: 1.5px solid rgba(42,157,143,0.3);
+  border-radius: var(--r-md);
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.standalone-offer-link:hover {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
 /* ── Comparison columns ────────────────────────────────────────────────────── */
 
 .comparison {

@@ -1,0 +1,34 @@
+{
+  "name": "@michaelborck/cite-sight-standalone",
+  "version": "0.8.26",
+  "private": true,
+  "type": "module",
+  "description": "CiteSight Standalone - single-file HTML build of the academic integrity checker",
+  "author": "Michael Borck",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/michael-borck/cite-sight.git",
+    "directory": "packages/standalone"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build"
+  },
+  "dependencies": {
+    "@michaelborck/cite-sight-core": "*",
+    "@michaelborck/cite-sight-ui": "*",
+    "jspdf": "^4.2.1",
+    "pdfjs-dist": "^4.10.38",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-dropzone": "^14.3.8"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "~5.8.3",
+    "vite": "^7.1.2",
+    "vite-plugin-singlefile": "^2.2.0"
+  }
+}

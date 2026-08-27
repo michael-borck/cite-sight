@@ -9,7 +9,8 @@
     "packages/desktop",
     "packages/cli",
     "packages/server",
-    "packages/web"
+    "packages/web",
+    "packages/standalone"
   ],
   "scripts": {
     "build:core": "npm run build -w packages/core",
@@ -18,7 +19,8 @@
     "build:server": "npm run build -w packages/server",
     "build:web": "npm run build -w packages/web",
     "build:ui": "npm run build -w packages/ui-dashboard",
-    "build": "npm run build:core && npm run build:ui && npm run build:desktop && npm run build:cli && npm run build:server && npm run build:web",
+    "build:standalone": "npm run build -w packages/standalone",
+    "build": "npm run build:core && npm run build:ui && npm run build:desktop && npm run build:cli && npm run build:server && npm run build:web && npm run build:standalone",
     "dev:desktop": "npm run dev -w packages/desktop",
     "dev:web": "npm run dev -w packages/web",
     "dev:server": "npm run dev -w packages/server",

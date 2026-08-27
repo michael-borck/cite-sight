@@ -25,23 +25,35 @@ tool; run both for a full picture.
 
 ## Install
 
-Three ways to use CiteSight:
+Four ways to use CiteSight:
 
 | Method | Best for | Install |
 |--------|----------|---------|
 | **Desktop app** | Offline use, URL screenshots | [Download for your platform](https://github.com/michael-borck/cite-sight/releases/latest) |
+| **Standalone HTML** | No install — one file, double-click, runs on this device | [Download `cite-sight-standalone.html`](https://github.com/michael-borck/cite-sight/releases/latest) |
 | **CLI** | Automation, CI pipelines | `npm install -g cite-sight` |
 | **Docker** | VPS hosting, shared access | `docker pull michaelborck/cite-sight` |
 
 ### Platform Comparison
 
-| Feature | Web / Docker | Desktop | CLI |
-|---------|-------------|---------|-----|
-| File input | Single file | Multiple files | Single file |
-| File types | PDF, DOCX, TXT | PDF, DOCX, TXT, MD | PDF, DOCX, TXT, MD, JSON |
-| URL screenshots | — | Yes | — |
-| PDF/CSV export | Yes | — | — |
-| Output format | Browser dashboard | Desktop dashboard | Text or JSON (stdout) |
+| Feature | Web / Docker | Desktop | Standalone HTML | CLI |
+|---------|-------------|---------|-----------------|-----|
+| File input | Single file | Multiple files | Multiple files | Single file |
+| File types | PDF, DOCX, TXT | PDF, DOCX, TXT, MD | PDF, DOCX, TXT, MD | PDF, DOCX, TXT, MD, JSON |
+| URL screenshots | — | Yes | — | — |
+| URL liveness checks | Yes | Yes | Manual (open in tab) | Yes |
+| arXiv lookups | Yes | Yes | — (browser-blocked) | Yes |
+| PDF/CSV export | Yes | — | Yes | — |
+| Output format | Browser dashboard | Desktop dashboard | Browser dashboard | Text or JSON (stdout) |
+
+The standalone build is a single self-contained `.html` file — the whole analysis
+runs in your browser tab and the document never leaves your device. Two checks
+behave differently there (see the table): automatic URL probes and arXiv lookups
+are blocked by browser cross-origin rules, so affected references show as
+*unverified* and each result row has **Open DOI** / **Open cited URL** buttons to
+eyeball the source in a new tab. The version button in the header checks GitHub
+for a newer release on demand — it never auto-updates; you re-download the file
+when you want a newer one.
 
 ## Deploy on a VPS
 
@@ -147,6 +159,17 @@ cd packages/web && npx vite
 
 Open `http://localhost:5173` — Vite proxies API calls to the server.
 
+### Standalone HTML
+
+```bash
+npm run build:core
+npm run build:standalone
+# Single self-contained file at packages/standalone/dist/index.html — open it
+# in any browser (double-click works; no server needed).
+```
+
+For development: `npm run dev -w packages/standalone`.
+
 ### CLI
 
 ```bash
@@ -193,7 +216,9 @@ docker compose up --build
 cite-sight/
 ├── packages/
 │   ├── core/          # Shared analysis library
+│   ├── ui-dashboard/  # Shared results dashboard (source-only package)
 │   ├── desktop/       # Electron app
+│   ├── standalone/    # Single-file HTML build (runs from file://)
 │   ├── cli/           # CLI tool
 │   ├── server/        # Express API server
 │   └── web/           # Landing page + online tool
@@ -238,6 +263,7 @@ The script updates all 6 `package.json` files, commits, creates an annotated `vX
 
 Pushing a `v*` tag triggers:
 - **Electron installers** — macOS (DMG), Windows (NSIS), Linux (AppImage) with auto-update
+- **Standalone HTML** — `cite-sight-standalone.html` attached to the release
 - **npm publish** — `@michaelborck/cite-sight-core` + `cite-sight` CLI
 - **Docker images** — pushed to Docker Hub and GitHub Container Registry (amd64 + arm64)
 

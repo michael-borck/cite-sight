@@ -211,6 +211,11 @@ export function LandingPage({ onNavigate }: Props) {
   const { assets, version } = useReleaseAssets();
 
   const downloadUrl = matchAsset(assets, selectedPlatform) ?? FALLBACK_URL;
+  // Single-file build: matched by exact artifact name so it never collides
+  // with the platform matchers above. Falls back to the releases page until
+  // a release ships the artifact.
+  const standaloneUrl =
+    assets.find((a) => a.name === 'cite-sight-standalone.html')?.browser_download_url ?? FALLBACK_URL;
   const label = `Download for ${PLATFORM_LABELS[selectedPlatform]}`;
   // The primary button auto-detects; visitors on the "wrong" machine (or
   // fetching for a colleague) get a one-line escape hatch instead of having
@@ -352,6 +357,17 @@ export function LandingPage({ onNavigate }: Props) {
 
         {version && <p className="download-version">Latest: {version}</p>}
         <p className="download-fine">Free and open source</p>
+
+        <div className="standalone-offer">
+          <p className="standalone-offer-text">
+            Rather not install anything? The <strong>standalone HTML</strong> is a single file —
+            download it, double-click it, and the whole analysis runs in your browser tab with the
+            document never leaving your device.
+          </p>
+          <a className="standalone-offer-link" href={standaloneUrl}>
+            Download cite-sight-standalone.html
+          </a>
+        </div>
       </section>
     </div>
   );

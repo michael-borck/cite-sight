@@ -140,8 +140,44 @@ jobs:
           if-no-files-found: ignore
           retention-days: 5
 
+  # Single-file HTML build — one downloadable file, runs from file://.
+  standalone:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ui-dashboard ships source and resolves core via its dist build, so core
+      # must be built first; there is no separate ui-dashboard build step.
+      - name: Build core
+        run: npm run build:core
+
+      - name: Build standalone HTML
+        run: npm run build:standalone
+
+      - name: Upload standalone HTML to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          TAG="${GITHUB_REF#refs/tags/}"
+          cp packages/standalone/dist/index.html packages/standalone/dist/cite-sight-standalone.html
+          # The desktop matrix jobs may not have created the release yet.
+          gh release view "$TAG" >/dev/null 2>&1 \
+            || gh release create "$TAG" --draft --title "$TAG" --notes ""
+          gh release upload "$TAG" --clobber \
+            packages/standalone/dist/cite-sight-standalone.html
+
   publish-release:
-    needs: build
+    needs: [build, standalone]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

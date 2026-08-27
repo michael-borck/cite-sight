@@ -14,7 +14,12 @@
 // why that distinction matters.
 export { analyzeDocument } from './pipeline.js';
 export { MANIFEST } from './manifest.js';
-export { DISCLAIMER, DISCLAIMER_SHORT } from './disclaimer.js';
+export {
+  DISCLAIMER,
+  DISCLAIMER_SHORT,
+  STANDALONE_LIMITS_NOTICE,
+  STANDALONE_LIMITS_SHORT,
+} from './disclaimer.js';
 export {
   extractFromBytes,
   extractPdf,

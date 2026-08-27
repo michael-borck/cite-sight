@@ -107,6 +107,7 @@ export async function analyzeDocument(
         mailto: options.contactEmail,
         citationStyle: detectedStyle,
         semanticScholarApiKey: options.semanticScholarApiKey,
+        checkUrls: options.checkUrls,
       }, onReference)
     : [];
 
