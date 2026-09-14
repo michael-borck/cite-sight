@@ -6,6 +6,10 @@ import { analyzePipeline, MANIFEST, explainVerification, DISCLAIMER, ATTRIBUTION
 import type { AnalysisResult, ProcessingOptions, ProgressCallback } from '@michaelborck/cite-sight-core';
 import { readFileSync } from 'node:fs';
 import { SUPPORTED_EXTENSIONS, collectInputs } from './inputs.js';
+import { configPath, readConfig, resetConfig, updateConfig } from './config.js';
+import { isOutputDirectory, readReport, renderReport, writeReports, type FileOutcome, type ReportFormat } from './reports.js';
+import { retryOutcomes } from './retry.js';
+import { resolve, sep } from 'node:path';
 import {
   type FailOnLevel,
   type Findings,
@@ -277,11 +281,11 @@ function makeProgressCallback(verbose: boolean): ProgressCallback {
   return (update) => {
     if (verbose) {
       const pct = String(update.progress).padStart(3, ' ');
-      console.log(chalk.gray(`[${pct}%] ${update.message}`));
-    } else if (update.stage !== 'complete') {
-      process.stdout.write(chalk.gray(`\r  ${update.message.padEnd(55)}`));
-    } else {
-      process.stdout.write('\r' + ' '.repeat(60) + '\r');
+      process.stderr.write(chalk.gray(`[${pct}%] ${update.message}`) + '\n');
+    } else if (process.stderr.isTTY && update.stage !== 'complete') {
+      process.stderr.write(chalk.gray(`\r  ${update.message.padEnd(55)}`));
+    } else if (process.stderr.isTTY) {
+      process.stderr.write('\r' + ' '.repeat(60) + '\r');
     }
   };
 }
@@ -291,10 +295,10 @@ function makeProgressCallback(verbose: boolean): ProgressCallback {
 // -------------------------------------------------------
 
 interface AnalysisOpts {
-  style: string;
-  urls: boolean;
-  doi: boolean;
-  inText: boolean;
+  style?: string;
+  urls?: boolean;
+  doi?: boolean;
+  inText?: boolean;
   sourceList?: boolean;
   email?: string;
   s2Key?: string;
@@ -302,25 +306,38 @@ interface AnalysisOpts {
   verbose: boolean;
   minimal: boolean;
   failOn: string;
+  format?: ReportFormat;
+  output?: string;
+  only?: 'all' | 'failed' | 'unavailable';
 }
 
-/** A single file's outcome, as carried through a batch run. */
-interface FileOutcome {
-  file: string;
-  result?: AnalysisResult;
-  error?: string;
+function explicitOptions(opts: AnalysisOpts, command: Command): AnalysisOpts {
+  // The default command and subcommands share flags. Commander may consume a
+  // flag at the parent, so child defaults must not hide explicitly supplied ones.
+  const chain: Command[] = [];
+  for (let current: Command | null = command; current; current = current.parent) chain.unshift(current);
+  const explicit: Record<string, unknown> = {};
+  for (const current of chain) for (const [key, value] of Object.entries(current.opts())) {
+    if (current.getOptionValueSource(key) === 'cli') explicit[key] = value;
+  }
+  return { ...opts, ...explicit, urls: explicit.urls as boolean | undefined,
+    doi: explicit.doi as boolean | undefined, inText: explicit.inText as boolean | undefined };
 }
 
-function toProcessingOptions(opts: AnalysisOpts): ProcessingOptions {
+function toProcessingOptions(opts: AnalysisOpts, defaults: Partial<ProcessingOptions> = {}): ProcessingOptions {
+  const saved = readConfig();
+  const style = opts.style ?? defaults.citationStyle ?? saved.style ?? 'auto';
+  if (!['auto', 'apa', 'mla', 'chicago'].includes(style)) throw new Error('Citation style must be auto, apa, mla or chicago.');
   return {
-    citationStyle: opts.style as ProcessingOptions['citationStyle'],
-    checkUrls: opts.urls,
-    checkDoi: opts.doi,
+    citationStyle: style as ProcessingOptions['citationStyle'],
+    documentType: opts.sourceList ? 'reference-list' : defaults.documentType,
+    checkUrls: opts.urls ?? defaults.checkUrls ?? true,
+    checkDoi: opts.doi ?? defaults.checkDoi ?? true,
     // --source-list forces the in-text cross-reference off: a bare source list
     // / bibliography has no manuscript body to cross-reference against.
-    checkInText: opts.inText && !opts.sourceList,
+    checkInText: (opts.inText ?? defaults.checkInText ?? true) && !opts.sourceList,
     screenshotUrls: false,
-    contactEmail: opts.email,
+    contactEmail: opts.email ?? process.env.CITESIGHT_EMAIL ?? saved.email,
     semanticScholarApiKey: opts.s2Key ?? process.env.SEMANTIC_SCHOLAR_API_KEY,
   };
 }
@@ -383,6 +400,10 @@ function printAggregate(outcomes: FileOutcome[], level: FailOnLevel): void {
   for (const o of errored) {
     console.log(`    ${chalk.red('✗')} ${o.file} ${chalk.gray(`— ${o.error}`)}`);
   }
+  if (errored.length || analysed.some((outcome) => outcome.result!.references.unverifiedCount > 0)) {
+    console.log('  Retry saved results with: cite-sight retry reports/results.json --only failed|unavailable');
+    console.log('  Use --format json --output results.json to save a retryable report.');
+  }
 
   if (level !== 'none') {
     const tripped = analysed.some((o) => meetsThreshold(fileFindings(o.result!), level));
@@ -402,8 +423,9 @@ function printAggregate(outcomes: FileOutcome[], level: FailOnLevel): void {
  * print reports, and exit with a code reflecting findings and errors.
  */
 async function runAnalysis(paths: string[], opts: AnalysisOpts): Promise<void> {
-  const level = parseFailOn(opts.failOn);
-  const files = collectInputs(paths);
+  parseFailOn(opts.failOn);
+  const output = opts.output ? resolve(opts.output) : undefined;
+  const files = collectInputs(paths).filter((file) => !output || file !== output && !(isOutputDirectory(opts.output!) && file.startsWith(output + sep)));
 
   if (files.length === 0) {
     console.error(chalk.red(`Error: no supported documents found in: ${paths.join(', ')}`));
@@ -412,19 +434,19 @@ async function runAnalysis(paths: string[], opts: AnalysisOpts): Promise<void> {
   }
 
   const options = toProcessingOptions(opts);
-  const batch = files.length > 1;
   const outcomes: FileOutcome[] = [];
+  const human = outputFormat(opts) === 'text' && !opts.output;
 
   for (const file of files) {
-    if (!opts.json) {
+    if (human) {
       console.log(chalk.cyan(`\nAnalyzing: ${file}`));
     }
     // Live progress only in human mode; JSON stays clean for piping.
-    const onProgress = opts.json ? undefined : makeProgressCallback(opts.verbose);
+    const onProgress = human ? makeProgressCallback(opts.verbose) : undefined;
     const outcome = await analyzeOne(file, options, onProgress);
     outcomes.push(outcome);
 
-    if (!opts.json) {
+    if (human) {
       if (outcome.error) {
         console.error(chalk.red(`\nError: ${outcome.error}`));
       } else {
@@ -433,8 +455,29 @@ async function runAnalysis(paths: string[], opts: AnalysisOpts): Promise<void> {
     }
   }
 
+  finishAnalysis(outcomes, opts, options);
+}
+
+function outputFormat(opts: AnalysisOpts): ReportFormat {
+  if (opts.json && opts.format && opts.format !== 'json') throw new Error('--json cannot be combined with a different --format.');
+  return opts.format ?? (opts.json || opts.output?.endsWith('.json') ? 'json' : opts.output?.endsWith('.html') ? 'html' : 'text');
+}
+
+function finishAnalysis(outcomes: FileOutcome[], opts: AnalysisOpts, options: ProcessingOptions): void {
+  const level = parseFailOn(opts.failOn);
+  const batch = outcomes.length > 1;
+  const format = outputFormat(opts);
+
   // --- JSON output ---
-  if (opts.json) {
+  if (opts.output) {
+    const written = writeReports(outcomes, opts.output, format, options);
+    process.stderr.write(`Saved ${written.length} report file${written.length === 1 ? '' : 's'} to ${resolve(opts.output)}\n`);
+    const failures = outcomes.filter((outcome) => outcome.error);
+    for (const failure of failures) process.stderr.write(`Failed: ${failure.file}: ${failure.error}\n`);
+    if (isOutputDirectory(opts.output)) process.stderr.write(`Retry later: cite-sight retry "${resolve(opts.output, format === 'json' ? 'index.json' : 'results.json')}"\n`);
+  } else if (format === 'html') {
+    process.stdout.write(renderReport(outcomes, format, options));
+  } else if (format === 'json') {
     if (batch) {
       // Batch envelope: per-file results plus a roll-up. Distinct from the
       // single-file shape below, which is preserved for existing consumers.
@@ -480,6 +523,21 @@ async function runAnalysis(paths: string[], opts: AnalysisOpts): Promise<void> {
   process.exit(hadError ? EXIT_ERROR : tripped ? EXIT_FINDINGS : EXIT_OK);
 }
 
+async function runRetry(path: string, opts: AnalysisOpts): Promise<void> {
+  parseFailOn(opts.failOn);
+  outputFormat(opts);
+  const saved = readReport(path);
+  const options = toProcessingOptions(opts, saved.options);
+  const outcomes = await retryOutcomes(saved.outcomes, options, opts.only ?? 'all');
+  if (outputFormat(opts) === 'text' && !opts.output) {
+    for (const outcome of outcomes) {
+      if (outcome.result) printReport(outcome.result, opts.minimal);
+      else console.error(`Failed: ${outcome.file}: ${outcome.error}`);
+    }
+  }
+  finishAnalysis(outcomes, opts, options);
+}
+
 // -------------------------------------------------------
 // CLI definition
 // -------------------------------------------------------
@@ -496,7 +554,7 @@ program
  */
 function addAnalysisOptions(cmd: Command): Command {
   return cmd
-    .option('--style <style>', 'Citation style (auto|apa|mla|chicago)', 'auto')
+    .option('--style <style>', 'Citation style (auto|apa|mla|chicago); defaults to saved style or auto')
     .option('--no-urls', 'Skip URL checking')
     .option('--no-doi', 'Skip DOI verification')
     .option('--no-in-text', 'Skip in-text citation cross-referencing')
@@ -505,6 +563,11 @@ function addAnalysisOptions(cmd: Command): Command {
     .option('--s2-key <key>', 'Semantic Scholar API key (or set SEMANTIC_SCHOLAR_API_KEY) to avoid rate-limiting')
     .option('--fail-on <level>', `Exit ${EXIT_FINDINGS} when findings are present — for CI (none|suspicious|broken-url|any)`, 'none')
     .option('--json', 'Output result as JSON', false)
+    .option('--format <format>', 'Report format: text, json or html', (value: string) => {
+      if (!['text', 'json', 'html'].includes(value)) throw new Error('Format must be text, json or html.');
+      return value;
+    })
+    .option('--output <path>', 'Save to a report file or directory; directories include a retryable JSON report')
     .option('--verbose', 'Log progress line by line', false)
     .option('--minimal', 'Condensed report: summary and verdicts only, no per-issue detail', false);
 }
@@ -524,26 +587,42 @@ addAnalysisOptions(
         '  cite-sight ./submissions --fail-on suspicious\n' +
         "  cite-sight 'essays/**/*.docx' --minimal --json",
     ),
-).action(async (paths: string[], opts: AnalysisOpts) => {
+).action(async (paths: string[], opts: AnalysisOpts, command: Command) => {
   if (!paths || paths.length === 0) {
     program.help();
     return;
   }
-  await runAnalysis(paths, opts);
+  await runAnalysis(paths, explicitOptions(opts, command));
 });
 
 // Explicit sub-command: cite-sight check <paths...>
 addAnalysisOptions(
   program
     .command('check [paths...]')
-    .description('Check documents (files, folders, or globs) for citation and writing pattern issues'),
-).action(async (paths: string[], opts: AnalysisOpts) => {
+    .description('Check documents, folders or globs for citation integrity issues')
+    .addHelpText('after', '\nExamples:\n  cite-sight check paper.pdf\n  cite-sight check papers/ --format html --output reports/\n  cite-sight check sources.md --source-list\n  cite-sight check papers/ --fail-on suspicious --json\n  cite-sight config set email lecturer@example.edu\n\nExit codes: 0 success, 1 execution error, 2 findings met --fail-on.\n'),
+).action(async (paths: string[], opts: AnalysisOpts, command: Command) => {
   if (!paths || paths.length === 0) {
     console.error(chalk.red('Error: provide at least one file, folder, or glob to check.'));
     process.exit(EXIT_ERROR);
   }
-  await runAnalysis(paths, opts);
+  await runAnalysis(paths, explicitOptions(opts, command));
 });
+
+addAnalysisOptions(program.command('retry <report>').description('Retry failed files or unavailable lookups from a saved JSON report'))
+  .option('--only <kind>', 'Retry all, failed files, or unavailable lookups', (value: string) => {
+    if (!['all', 'failed', 'unavailable'].includes(value)) throw new Error('--only must be all, failed or unavailable.');
+    return value;
+  }, 'all')
+  .addHelpText('after', '\nExamples:\n  cite-sight retry reports/results.json --only failed --output retry.json\n  cite-sight retry results.json --only unavailable --format html --output retried.html\n')
+  .action(async (path: string, opts: AnalysisOpts, command: Command) => runRetry(path, explicitOptions(opts, command)));
+
+const config = program.command('config').description('Save contact email and default citation style on this device');
+config.command('set <key> <value>').description('Set email or style').action((key: string, value: string) => { updateConfig(key, value); console.log(`Saved ${key}.`); });
+config.command('unset <key>').description('Remove a saved setting').action((key: string) => { updateConfig(key); console.log(`Removed ${key}.`); });
+config.command('list').description('Show saved settings').action(() => console.log(JSON.stringify(readConfig(), null, 2)));
+config.command('path').description('Show the settings file location').action(() => console.log(configPath()));
+config.command('reset').description('Remove saved settings').action(() => { resetConfig(); console.log('Settings reset.'); });
 
 // Family contract: cite-sight manifest
 program

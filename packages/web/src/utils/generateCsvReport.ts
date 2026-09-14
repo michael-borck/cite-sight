@@ -1,9 +1,11 @@
 import type { AnalysisResult } from '../types';
 import { DISCLAIMER } from '../disclaimer';
+import { REVIEW_LABELS, reviewKey } from '@michaelborck/cite-sight-core/review';
 
 /** Escape a value for CSV (RFC 4180). */
 function csvEscape(value: string): string {
-  if (value.includes('"') || value.includes(',') || value.includes('\n')) {
+  if (/^[=+\-@\t\r]/.test(value)) value = "'" + value;
+  if (/[",\r\n]/.test(value)) {
     return '"' + value.replace(/"/g, '""') + '"';
   }
   return value;
@@ -27,12 +29,13 @@ export function downloadCsvReport(result: AnalysisResult): void {
   lines.push('');
 
   // Column headers
-  lines.push('Ref,Title,Authors,Year,DOI,URL,Status,Confidence,URL Status,Flags');
+  lines.push('Ref,Title,Authors,Year,DOI,URL,Status,Confidence,URL Status,Flags,Review decision,Reviewed at');
 
   // Data rows
   for (let i = 0; i < ref.verifications.length; i++) {
     const v = ref.verifications[i];
     const r = v.reference;
+    const review = result.reviews?.[reviewKey(result, `ref:${i}`)];
     const row = [
       String(i + 1),
       csvEscape(r.title || ''),
@@ -44,6 +47,8 @@ export function downloadCsvReport(result: AnalysisResult): void {
       v.confidenceScore.toFixed(2),
       v.urlCheck?.status ?? 'no_url',
       csvEscape(v.flags.join('; ')),
+      csvEscape(review ? REVIEW_LABELS[review.decision] : ''),
+      csvEscape(review?.reviewedAt ?? ''),
     ];
     lines.push(row.join(','));
   }

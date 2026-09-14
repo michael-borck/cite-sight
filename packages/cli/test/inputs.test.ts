@@ -17,6 +17,7 @@ beforeAll(() => {
   root = mkdtempSync(join(tmpdir(), 'cite-sight-cli-'));
   writeFileSync(join(root, 'a.md'), '# a');
   writeFileSync(join(root, 'b.txt'), 'b');
+  writeFileSync(join(root, 'quarto.qmd'), '# A rendered Quarto reference list');
   writeFileSync(join(root, 'notes.xyz'), 'x');
   writeFileSync(join(root, '.hidden.md'), 'h');
   mkdirSync(join(root, 'nested'));
@@ -46,14 +47,14 @@ describe('looksLikeGlob', () => {
 });
 
 describe('SUPPORTED_EXTENSIONS', () => {
-  it('covers the four document types and nothing else', () => {
-    expect([...SUPPORTED_EXTENSIONS].sort()).toEqual(['.docx', '.md', '.pdf', '.txt']);
+  it('covers document and markdown formats for folder batches', () => {
+    expect([...SUPPORTED_EXTENSIONS].sort()).toEqual(['.docx', '.md', '.pdf', '.qmd', '.txt']);
   });
 });
 
 describe('collectInputs — directory recursion', () => {
   it('recurses, keeps supported extensions, skips dotfiles/dot-dirs and unsupported types', () => {
-    expect(names(collectInputs([root]))).toEqual(['a.md', 'b.txt', 'c.pdf']);
+    expect(names(collectInputs([root]))).toEqual(['a.md', 'b.txt', 'c.pdf', 'quarto.qmd']);
   });
 
   it('returns absolute, sorted, de-duplicated paths', () => {
@@ -77,7 +78,7 @@ describe('collectInputs — explicit files', () => {
 
   it('merges and de-duplicates across multiple arguments', () => {
     const out = collectInputs([join(root, 'a.md'), root]); // a.md named + found via dir
-    expect(names(out)).toEqual(['a.md', 'b.txt', 'c.pdf']); // a.md appears once
+    expect(names(out)).toEqual(['a.md', 'b.txt', 'c.pdf', 'quarto.qmd']); // a.md appears once
   });
 });
 
@@ -88,6 +89,7 @@ describe('collectInputs — globs', () => {
       process.chdir(root);
       expect(names(collectInputs(['**/*.md']))).toEqual(['a.md']); // .hidden.md and .git/d.md excluded by glob's dotfile rules
       expect(names(collectInputs(['**/*.pdf']))).toEqual(['c.pdf']);
+      expect(names(collectInputs(['**/*.qmd']))).toEqual(['quarto.qmd']);
     } finally {
       process.chdir(cwd);
     }

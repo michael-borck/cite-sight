@@ -313,6 +313,7 @@ export interface VerifyOptions {
    * for nearly every publisher, so every check would come back 'error'.
    */
   checkUrls?: boolean;
+  checkDoi?: boolean;
 }
 
 async function verifySingleReference(
@@ -379,7 +380,7 @@ async function verifySingleReference(
   };
 
   // --- Step 2: DOI resolution ---
-  if (ref.doi) {
+  if (ref.doi && options.checkDoi !== false) {
     try {
       const resolved = await resolveDoi(ref.doi, options.mailto);
       if (resolved) {

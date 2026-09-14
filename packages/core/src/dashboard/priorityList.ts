@@ -131,5 +131,13 @@ export function gatherPriorityItems(
     });
   });
 
+  refs.crossReference.unmatchedBibliography.forEach((reference, idx) => {
+    const itemKey = `biblio:${idx}`;
+    if (!dismissed.has(itemKey)) orphan.push({ itemKey, category: 'orphan', headline: headlineFor(reference),
+      sourceText: reference.raw, citedUrl: reference.url,
+      reason: 'This bibliography entry has no matching citation in the document body.',
+    });
+  });
+
   return [...notFound, ...suspect, ...orphan, ...unverified];
 }

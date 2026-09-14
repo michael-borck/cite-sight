@@ -3,6 +3,11 @@
 // This barrel reaches node:fs — via `extract` and `analyzePipeline`, both of
 // which take paths. Bundled hosts (browser, webview) must import
 // '@michaelborck/cite-sight-core/browser' instead; see ./browser.ts.
+import { setDefaultFetch } from './httpClient.js';
+import { nodeFetch } from './nodeHttp.js';
+
+setDefaultFetch(nodeFetch);
+
 export { analyzePipeline } from './pipelineFromFile.js';
 export { analyzeDocument } from './pipeline.js';
 export { MANIFEST } from './manifest.js';
@@ -37,6 +42,8 @@ export { isPrivateUrl } from './references/ssrf.js';
 
 // Re-export all types
 export type * from './types.js';
+export type { ReviewSession, SessionFile } from './session.js';
+export { REVIEW_LABELS, withVerifications, reviewKey, reviewCount, isReviewed } from './review.js';
 
 // Dashboard module — pure functions + types for the new Overview UI
 export * from './dashboard/index.js';

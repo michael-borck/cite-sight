@@ -20,7 +20,7 @@ export function FileUpload() {
     (acceptedFiles: File[]) => {
       // In Electron, File objects from the renderer have a `path` property
       const paths = acceptedFiles
-        .map((f) => (f as File & { path?: string }).path)
+        .map((f) => window.citeSight.getPathForFile(f))
         .filter((p): p is string => typeof p === 'string' && p.length > 0);
       if (paths.length > 0) {
         addFiles(paths);

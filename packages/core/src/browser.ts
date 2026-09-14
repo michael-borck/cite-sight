@@ -47,6 +47,7 @@ export type { FetchLike } from './httpClient.js';
 
 // Re-export all types
 export type * from './types.js';
+export { REVIEW_LABELS, withVerifications, reviewKey, reviewCount, isReviewed } from './review.js';
 
 // Dashboard module — pure functions + types for the new Overview UI
 export * from './dashboard/index.js';

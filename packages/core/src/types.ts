@@ -5,6 +5,7 @@
 // --- Processing Options ---
 
 export interface ProcessingOptions {
+  documentType?: 'assignment' | 'reference-list';
   citationStyle: 'auto' | 'apa' | 'mla' | 'chicago';
   checkUrls: boolean;
   checkDoi: boolean;
@@ -32,6 +33,7 @@ export interface ParsedReference {
   authors: string[];
   title: string;
   year: number | null;
+  yearSuffix?: string;
   journal?: string;
   volume?: string;
   issue?: string;
@@ -45,6 +47,7 @@ export interface InTextCitation {
   raw: string;
   authors: string[];
   year: number | null;
+  yearSuffix?: string;
   pageNumbers?: string;
   position: number; // character offset in text
 }
@@ -139,6 +142,7 @@ export interface CrossReferenceResult {
 }
 
 export interface ReferenceAnalysisResult {
+  inTextCheckSkipped?: boolean;
   references: ParsedReference[];
   inTextCitations: InTextCitation[];
   verifications: ReferenceVerification[];
@@ -163,7 +167,10 @@ export interface AnalysisResult {
   extractedText: string;
   references: ReferenceAnalysisResult;
   processingTime: number;
+  reviews?: Record<string, { decision: ReviewDecision; reviewedAt: string }>;
 }
+
+export type ReviewDecision = 'reviewed' | 'citation_error' | 'acceptable_variation' | 'unresolved' | 'suspected_fabrication';
 
 // --- Progress Reporting ---
 

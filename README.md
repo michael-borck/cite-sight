@@ -38,12 +38,12 @@ Four ways to use CiteSight:
 
 | Feature | Web / Docker | Desktop | Standalone HTML | CLI |
 |---------|-------------|---------|-----------------|-----|
-| File input | Single file | Multiple files | Multiple files | Single file |
-| File types | PDF, DOCX, TXT | PDF, DOCX, TXT, MD | PDF, DOCX, TXT, MD | PDF, DOCX, TXT, MD, JSON |
+| File input | Single file or pasted references | Files or folders | Multiple files | Files, folders or globs |
+| File types | PDF, DOCX, TXT, MD, QMD, JSON | PDF, DOCX, TXT, MD, QMD | PDF, DOCX, TXT, MD, QMD | PDF, DOCX, TXT, MD, QMD, JSON |
 | URL screenshots | — | Yes | — | — |
 | URL liveness checks | Yes | Yes | Manual (open in tab) | Yes |
 | arXiv lookups | Yes | Yes | — (browser-blocked) | Yes |
-| PDF/CSV export | Yes | — | Yes | — |
+| Report exports | PDF, CSV | PDF, CSV, BibTeX | PDF, CSV, BibTeX | HTML, JSON, text |
 | Output format | Browser dashboard | Desktop dashboard | Browser dashboard | Text or JSON (stdout) |
 
 The standalone build is a single self-contained `.html` file — the whole analysis
@@ -54,6 +54,78 @@ are blocked by browser cross-origin rules, so affected references show as
 eyeball the source in a new tab. The version button in the header checks GitHub
 for a newer release on demand — it never auto-updates; you re-download the file
 when you want a newer one.
+
+## Review workflow
+
+### Web and desktop
+
+1. Add a document and choose **Assignment** or **Reference list**. Assignments
+   include in-text matching; reference lists check the sources themselves.
+2. Leave citation style on **Auto-detect**, or select the style you require.
+   URL/DOI checks, screenshots and connection settings are under **Advanced options**.
+3. Start with **Review findings**. Unavailable database checks have a separate
+   retry action, so an outage does not look like a confirmed citation error.
+4. Compare the cited text with the matched record. Record a review decision or
+   mark the item reviewed. Decisions do not overwrite the database verdict and
+   can be undone. PDF exports include the review log; reference CSV rows include
+   the decision and review time.
+
+The web tool also has a **Paste references** tab. Put one reference per paragraph;
+there is no need to create a file first. Uploads support PDF, DOCX, TXT, MD, QMD
+and JSON, up to 10 MB. Pasted lists are limited to 100,000 characters.
+
+On desktop, the batch list stays visible while checks run. One failed document
+does not stop the batch. Retry individual failures or all failed files. **Stop
+after this document** finishes the active file and leaves the rest waiting.
+Check settings are remembered on the device; cache controls are in **Settings**.
+
+### Save and resume
+
+- **Desktop:** use **Save review session** and **Open review session**, or
+  Ctrl/Cmd+S and Ctrl/Cmd+O. Session JSON files contain citation results, review
+  decisions and source file paths. They exclude API keys, contact email, full
+  document text and temporary screenshots. Reopening a session does not require
+  the original files just to review completed results. Retrying failed or waiting
+  documents requires those files to remain at their saved paths.
+- **Web:** refreshing the same tab reconnects to a queued check or restores the
+  completed report and review decisions. This uses browser session storage and
+  excludes full document text. The page shows when refresh recovery expires.
+  Download the report to keep it beyond that time. A new tab or a browser that
+  blocks storage cannot recover the check automatically.
+
+### CLI settings and report files
+
+```bash
+# Save recurring preferences. Explicit command options override them.
+cite-sight config set email lecturer@example.edu
+cite-sight config set style apa
+cite-sight config list
+cite-sight config path
+
+# A shareable, self-contained HTML report per file, plus an index and retry JSON.
+cite-sight check papers/ --format html --output reports/
+
+# A single JSON report containing every file's outcome.
+cite-sight check papers/ --output results.json
+
+# Retry failed files without rechecking successful ones.
+cite-sight retry results.json --only failed --output retried.json
+
+# Retry unavailable references using the saved reference data, without rereading documents.
+cite-sight retry results.json --only unavailable --format html --output retried.html
+```
+
+`--format` accepts `text`, `json` and `html`. `--output` accepts a file or
+directory. Directory output includes a JSON report for later retries. Without
+`--output`, reports go to stdout; progress goes to stderr. The existing `--json`
+output and exit codes remain available for scripts and CI.
+
+Retries reuse the saved check settings unless command options override them.
+Connection credentials come from the current command or environment. API keys
+are not saved in configuration or exported reports; use `--s2-key` or
+`SEMANTIC_SCHOLAR_API_KEY`. `CITESIGHT_EMAIL` overrides the saved email, and
+`CITESIGHT_CONFIG_HOME` selects a different configuration directory.
+Use `config unset email`, `config unset style`, or `config reset` to remove settings.
 
 ## Deploy on a VPS
 
@@ -188,7 +260,8 @@ cite-sight check paper.pdf --minimal
 # For a bare source list / annotated bibliography (e.g. a deep-research export)
 # rather than a manuscript, use --source-list to skip the in-text
 # cross-reference check (otherwise every entry is reported as "uncited").
-# CiteSight also auto-skips that check when no reference is cited at all.
+# CiteSight also auto-skips that check for lists of at least three references
+# when no in-text citations are detected. Orphaned citations are still reported.
 cite-sight check sources.md --source-list
 ```
 
@@ -275,6 +348,23 @@ Pushing a `v*` tag triggers:
 - **Server**: Express, multer, BullMQ (optional)
 - **CLI**: Commander.js, chalk
 - **APIs**: Crossref, Semantic Scholar, OpenAlex, arXiv, DataCite (all free tier)
+
+## Hosted data retention
+
+Uploaded files are deleted after analysis, on upload/validation failure, or when
+a waiting job is cancelled. Cancelling an analysis that has already started
+does not interrupt it; its upload is deleted when processing finishes.
+
+With Redis enabled, citation reports and failure messages expire after one hour
+using Redis key expiry. Reports contain reference text and citation results, but
+not the full extracted document text. The server buffers streaming events in
+memory during analysis and for 60 seconds after completion. BullMQ removes
+terminal jobs immediately instead of storing another copy of the report.
+
+On startup, completed and failed jobs left by older versions are removed because
+those jobs could contain full document text without a strict expiry. Waiting
+and active jobs are preserved. Redis backups, if configured by the operator,
+have their own retention policy.
 
 ## Data sources & attribution
 

@@ -1,7 +1,10 @@
-import { contextBridge, ipcRenderer } from 'electron';
-import type { ProcessingOptions, AnalysisResult, ProgressUpdate, ReferenceVerification } from '@michaelborck/cite-sight-core';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
+import type { ProcessingOptions, AnalysisResult, ProgressUpdate, ReferenceVerification, ReviewSession } from '@michaelborck/cite-sight-core';
 
 contextBridge.exposeInMainWorld('citeSight', {
+  saveSession: (session: ReviewSession): Promise<string | null> => ipcRenderer.invoke('cite-sight:save-session', session),
+  openSession: (): Promise<ReviewSession | null> => ipcRenderer.invoke('cite-sight:open-session'),
+  getPathForFile: (file: File): string => webUtils.getPathForFile(file),
   analyzeFile: (filePath: string, options: ProcessingOptions): Promise<AnalysisResult> => {
     return ipcRenderer.invoke('cite-sight:analyze', filePath, options) as Promise<AnalysisResult>;
   },
@@ -33,16 +36,16 @@ contextBridge.exposeInMainWorld('citeSight', {
     return ipcRenderer.invoke('cite-sight:select-folder') as Promise<string[]>;
   },
 
-  onProgress: (callback: (update: ProgressUpdate) => void): void => {
-    ipcRenderer.on('cite-sight:progress', (_event, update: ProgressUpdate) => {
-      callback(update);
-    });
+  onProgress: (callback: (update: ProgressUpdate) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, update: ProgressUpdate) => callback(update);
+    ipcRenderer.on('cite-sight:progress', listener);
+    return () => ipcRenderer.removeListener('cite-sight:progress', listener);
   },
 
-  onReference: (callback: (data: { verification: ReferenceVerification; index: number; total: number }) => void): void => {
-    ipcRenderer.on('cite-sight:reference', (_event, data) => {
-      callback(data);
-    });
+  onReference: (callback: (data: { verification: ReferenceVerification; index: number; total: number }) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, data: { verification: ReferenceVerification; index: number; total: number }) => callback(data);
+    ipcRenderer.on('cite-sight:reference', listener);
+    return () => ipcRenderer.removeListener('cite-sight:reference', listener);
   },
 
   // Auto-update API

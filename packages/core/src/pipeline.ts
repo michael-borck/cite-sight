@@ -3,6 +3,7 @@
 import { extractFromBytes } from './extractors/fromBytes.js';
 import { extractReferences } from './references/extractor.js';
 import { verifyReferences } from './references/verifier.js';
+import { crossReferenceCheck } from './references/crossReference.js';
 import type {
   AnalysisResult,
   ProcessingOptions,
@@ -11,57 +12,7 @@ import type {
   ReferenceVerification,
   CitationStyle,
   ParsedReference,
-  InTextCitation,
-  CrossReferenceResult,
 } from './types.js';
-
-function crossReferenceCheck(
-  references: ParsedReference[],
-  inTextCitations: InTextCitation[],
-): CrossReferenceResult {
-  const unmatchedBibliography: ParsedReference[] = [];
-  const unmatchedInText: InTextCitation[] = [];
-
-  // Compare surnames stripped to bare letters: PDF extraction can leave
-  // kerning splits ("Baidoo - Anu" vs bibliography "Baidoo-Anu") and the
-  // substring test should still match them.
-  const surnameKey = (a: string): string =>
-    (a.split(/[,\s]+/)[0] ?? '').toLowerCase().replace(/[^\p{L}]/gu, '');
-  const citeKey = (a: string): string => a.toLowerCase().replace(/[^\p{L}]/gu, '');
-
-  for (const ref of references) {
-    const authorLastNames = ref.authors.map(surnameKey).filter(Boolean);
-
-    const matched = inTextCitations.some(cite => {
-      const citeAuthors = cite.authors.map(citeKey);
-      return authorLastNames.some(name =>
-        citeAuthors.some(ca => ca.includes(name) || name.includes(ca))
-      );
-    });
-
-    if (!matched) {
-      unmatchedBibliography.push(ref);
-    }
-  }
-
-  for (const cite of inTextCitations) {
-    const citeAuthors = cite.authors.map(citeKey);
-
-    const matched = references.some(ref => {
-      const authorLastNames = ref.authors.map(surnameKey).filter(Boolean);
-
-      return citeAuthors.some(ca =>
-        authorLastNames.some(name => ca.includes(name) || name.includes(ca))
-      );
-    });
-
-    if (!matched) {
-      unmatchedInText.push(cite);
-    }
-  }
-
-  return { unmatchedBibliography, unmatchedInText };
-}
 
 /**
  * Analyse a document supplied as raw bytes.
@@ -109,28 +60,29 @@ export async function analyzeDocument(
         citationStyle: detectedStyle,
         semanticScholarApiKey: options.semanticScholarApiKey,
         checkUrls: options.checkUrls,
+        checkDoi: options.checkDoi,
       }, onReference)
     : [];
 
   // Stage 8: Cross-reference check
   onProgress?.({ stage: 'cross_referencing', progress: 90, message: 'Cross-referencing citations...' });
-  let crossReference = options.checkInText
+  let crossReference = options.checkInText && options.documentType !== 'reference-list'
     ? crossReferenceCheck(references, inTextCitations)
     : { unmatchedBibliography: [], unmatchedInText: [] };
 
-  // Source-list detection: if EVERY reference is uncited, the document is a bare
-  // source list / annotated bibliography (e.g. a deep-research export), not a
-  // manuscript — so the cross-reference check is meaningless and flagging all N
-  // entries as "uncited" is pure noise. Suppress it and record why. Requires a
-  // few references so a one- or two-entry snippet doesn't trip it.
+  // A source list has no in-text citations. Failed matches alone are not
+  // evidence of one: a manuscript may contain only orphaned citations.
   const sourceListLikely =
+    options.checkInText &&
+    !options.documentType &&
     references.length >= 3 &&
-    crossReference.unmatchedBibliography.length === references.length;
+    inTextCitations.length === 0;
   if (sourceListLikely) {
     crossReference = { unmatchedBibliography: [], unmatchedInText: [] };
   }
 
   const referenceResult: ReferenceAnalysisResult = {
+    inTextCheckSkipped: !options.checkInText || options.documentType === 'reference-list' || sourceListLikely,
     references,
     inTextCitations,
     verifications,

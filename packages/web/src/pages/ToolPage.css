@@ -464,3 +464,7 @@
     text-align: center;
   }
 }
+.input-tabs { display: flex; gap: .5rem; margin: 1rem 0; }
+.input-tabs button { border: 1px solid #cbd5e1; border-radius: 6px; padding: .65rem 1rem; background: white; color: #172b3a; font: inherit; cursor: pointer; }
+.input-tabs button[aria-selected=true] { background: #0f766e; color: white; border-color: #0f766e; }
+.paste-references { display: block; width: 100%; box-sizing: border-box; margin-top: .6rem; border: 1px solid #cbd5e1; border-radius: 8px; padding: .9rem; font: inherit; resize: vertical; }

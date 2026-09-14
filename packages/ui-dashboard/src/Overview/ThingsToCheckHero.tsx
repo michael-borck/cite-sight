@@ -4,7 +4,6 @@ import { PriorityListRow } from './PriorityListRow';
 
 interface Props {
   items: PriorityItem[];
-  onDismiss: (itemKey: string, type: 'dismiss' | 'fabricated') => void;
   onReverify?: (idx: number) => Promise<void>;
   rechecking?: Set<number>;
 }
@@ -16,7 +15,7 @@ const CHIP_DEFS: { category: PriorityCategory; label: string; className: string 
   { category: 'unverified', label: 'Unverified', className: 'chip-unverified' },
 ];
 
-export function ThingsToCheckHero({ items, onDismiss, onReverify, rechecking }: Props) {
+export function ThingsToCheckHero({ items, onReverify, rechecking }: Props) {
   const [hiddenCategories, setHiddenCategories] = useState<Set<PriorityCategory>>(new Set());
 
   const counts = CHIP_DEFS.reduce<Record<PriorityCategory, number>>(
@@ -59,13 +58,13 @@ export function ThingsToCheckHero({ items, onDismiss, onReverify, rechecking }: 
       {visibleItems.length === 0 ? (
         <div className="priority-empty">
           {items.length === 0
-            ? 'Nothing flagged \u2014 every reference verified and every in-text citation matched.'
+             ? 'No outstanding items in this review list. Reviewed items remain available below.'
             : 'All flagged items are filtered out. Click a chip to show them.'}
         </div>
       ) : (
         <div className="priority-list">
           {visibleItems.map((item) => (
-            <PriorityListRow key={item.itemKey} item={item} onDismiss={onDismiss}  onReverify={onReverify} rechecking={rechecking} />
+            <PriorityListRow key={item.itemKey} item={item} onReverify={onReverify} rechecking={rechecking} />
           ))}
         </div>
       )}

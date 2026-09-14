@@ -1,9 +1,11 @@
 import type { AnalysisResult } from '@michaelborck/cite-sight-core';
 import { referenceContentKey } from '@michaelborck/cite-sight-core/dashboard';
 import { DISCLAIMER } from '@michaelborck/cite-sight-core/disclaimer';
+import { REVIEW_LABELS, reviewKey } from '@michaelborck/cite-sight-core/review';
 
 function csvEscape(value: string): string {
-  if (value.includes('"') || value.includes(',') || value.includes('\n')) {
+  if (/^[=+\-@\t\r]/.test(value)) value = "'" + value;
+  if (/[",\r\n]/.test(value)) {
     return '"' + value.replace(/"/g, '""') + '"';
   }
   return value;
@@ -24,6 +26,7 @@ function buildCsvLines(
   for (let i = 0; i < ref.verifications.length; i++) {
     const v = ref.verifications[i];
     const r = v.reference;
+    const review = result.reviews?.[reviewKey(result, `ref:${i}`)];
     const row: string[] = [];
     if (includeFileColumn) row.push(csvEscape(result.fileName));
     row.push(
@@ -39,7 +42,9 @@ function buildCsvLines(
       csvEscape(v.flags.join('; ')),
       // Kept beside the raw status on purpose: Status stays what the databases
       // said, Dismissed records the reviewer's triage on top of it.
-      dismissedKeys?.has(referenceContentKey(r.raw)) ? 'yes' : 'no',
+      (review ? review.decision !== 'unresolved' : dismissedKeys?.has(referenceContentKey(r.raw))) ? 'yes' : 'no',
+      csvEscape(review ? REVIEW_LABELS[review.decision] : ''),
+      csvEscape(review?.reviewedAt ?? ''),
     );
     lines.push(row.join(','));
   }
@@ -62,8 +67,8 @@ export function downloadCsvReport(results: AnalysisResult[], dismissedKeys?: Rea
 
   // Column headers
   const headers = isBatch
-    ? 'File,Ref,Title,Authors,Year,DOI,URL,Status,Confidence,URL Status,Flags,Dismissed'
-    : 'Ref,Title,Authors,Year,DOI,URL,Status,Confidence,URL Status,Flags,Dismissed';
+    ? 'File,Ref,Title,Authors,Year,DOI,URL,Status,Confidence,URL Status,Flags,Dismissed,Review decision,Reviewed at'
+    : 'Ref,Title,Authors,Year,DOI,URL,Status,Confidence,URL Status,Flags,Dismissed,Review decision,Reviewed at';
   lines.push(headers);
 
   for (const result of results) {

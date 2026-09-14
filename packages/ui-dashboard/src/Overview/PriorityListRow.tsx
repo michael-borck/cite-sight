@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import type { PriorityItem } from '@michaelborck/cite-sight-core';
 import { ScreenshotThumbnail } from '../Screenshot';
+import { ReviewActions } from '../ReviewActions';
 
 interface Props {
   item: PriorityItem;
-  onDismiss: (itemKey: string, type: 'dismiss' | 'fabricated') => void;
   onReverify?: (idx: number) => Promise<void>;
   rechecking?: Set<number>;
 }
@@ -24,7 +24,7 @@ function webSearchUrl(text: string): string {
   return `https://www.google.com/search?q=${encodeURIComponent(text)}`;
 }
 
-export function PriorityListRow({ item, onDismiss, onReverify, rechecking }: Props) {
+export function PriorityListRow({ item, onReverify, rechecking }: Props) {
   // Priority keys are `ref:<idx>` for reference rows; re-check applies there.
   const refIdx = item.itemKey.startsWith('ref:') ? Number(item.itemKey.slice(4)) : null;
   const isRechecking = refIdx !== null && (rechecking?.has(refIdx) ?? false);
@@ -48,20 +48,22 @@ export function PriorityListRow({ item, onDismiss, onReverify, rechecking }: Pro
         <div className="priority-row-detail">
           {item.reason && <div className="priority-row-reason">{item.reason}</div>}
 
-          <div className="priority-row-source-label">Source</div>
+          <div className="review-comparison"><div>
+          <h4>Your citation</h4>
           <blockquote className="priority-row-source">{item.sourceText}</blockquote>
-
+          </div>
           {item.matched && (
-            <>
-              <div className="priority-row-source-label">Database returned</div>
+            <div>
+              <h4>Matched record</h4>
               <div className="priority-row-matched">
                 <strong>{item.matched.title ?? '(no title)'}</strong>
                 {item.matched.year && <> ({item.matched.year})</>}
                 {item.matched.source && <>{' \u2014 '}{item.matched.source}</>}
                 {item.matched.doi && <>{' \u2014 DOI: '}{item.matched.doi}</>}
               </div>
-            </>
+            </div>
           )}
+          </div>
 
           <div className="priority-row-actions">
             {/* Escape hatches, ordered by what fits the source: grey literature
@@ -136,21 +138,8 @@ export function PriorityListRow({ item, onDismiss, onReverify, rechecking }: Pro
                 {showSnapshot ? 'Hide snapshot' : 'Page snapshot'}
               </button>
             )}
-            <button
-              type="button"
-              className="priority-action priority-action-dismiss"
-              onClick={() => onDismiss(item.itemKey, 'dismiss')}
-            >
-              Dismiss
-            </button>
-            <button
-              type="button"
-              className="priority-action priority-action-fabricated"
-              onClick={() => onDismiss(item.itemKey, 'fabricated')}
-            >
-              Mark as fabricated
-            </button>
           </div>
+          <ReviewActions itemKey={item.itemKey} />
           {showSnapshot && item.screenshotPath && (
             <ScreenshotThumbnail path={item.screenshotPath} />
           )}

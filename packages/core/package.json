@@ -1,6 +1,6 @@
 {
   "name": "@michaelborck/cite-sight-core",
-  "version": "0.8.31",
+  "version": "0.9.0",
   "description": "Core analysis library for CiteSight academic integrity checking",
   "type": "module",
   "license": "MIT",
@@ -23,6 +23,16 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
+    "./session": {
+      "types": "./dist/session.d.ts",
+      "import": "./dist/session.js",
+      "require": "./dist/session.js"
+    },
+    "./review": {
+      "types": "./dist/review.d.ts",
+      "import": "./dist/review.js",
+      "require": "./dist/review.js"
+    },
     ".": {
       "import": "./dist/index.js",
       "require": "./dist/index.js",
@@ -55,8 +65,10 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
+    "ipaddr.js": "^2.5.0",
     "mammoth": "^1.9.0",
-    "pdfjs-dist": "^4.10.38"
+    "pdfjs-dist": "^4.10.38",
+    "undici": "^7.29.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

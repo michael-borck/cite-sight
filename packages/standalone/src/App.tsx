@@ -514,6 +514,7 @@ export function App() {
                 <ResultsDashboard
                   key={currentResultIndex}
                   results={currentResult}
+                  onResultsChange={(result) => setResults((previous) => previous.map((item, index) => index === currentResultIndex ? result : item))}
                   reverify={reverify}
                   persistedDismissals={persistedDismissals}
                   onDismissalChange={(contentKey, dismissed) => {

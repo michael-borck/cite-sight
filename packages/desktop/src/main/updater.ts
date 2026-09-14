@@ -3,30 +3,39 @@ const { autoUpdater } = electronUpdater;
 import type { BrowserWindow } from 'electron';
 import { app, ipcMain } from 'electron';
 
-export function initAutoUpdater(win: BrowserWindow): void {
+let win: BrowserWindow | undefined;
+let initialized = false;
+
+function send(channel: string, ...args: unknown[]): void {
+  if (win && !win.isDestroyed()) win.webContents.send(channel, ...args);
+}
+
+export function initAutoUpdater(window: BrowserWindow): void {
+  win = window;
   // Don't check for updates during development. NB: this must be
   // app.isPackaged — packaged Electron apps do NOT set NODE_ENV, so the old
   // `!process.env.NODE_ENV` guard returned early in every production build
   // and the auto-updater never ran for anyone (found 2026-08-16 when a
   // relaunch of 0.8.23 showed no banner despite newer published releases).
-  if (!app.isPackaged) return;
+  if (!app.isPackaged || initialized) return;
+  initialized = true;
 
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
 
   autoUpdater.on('update-available', (info) => {
-    win.webContents.send('cite-sight:update-available', {
+    send('cite-sight:update-available', {
       version: info.version,
       releaseNotes: info.releaseNotes,
     });
   });
 
   autoUpdater.on('update-not-available', () => {
-    win.webContents.send('cite-sight:update-not-available');
+    send('cite-sight:update-not-available');
   });
 
   autoUpdater.on('download-progress', (progress) => {
-    win.webContents.send('cite-sight:update-progress', {
+    send('cite-sight:update-progress', {
       percent: progress.percent,
       bytesPerSecond: progress.bytesPerSecond,
       transferred: progress.transferred,
@@ -35,11 +44,11 @@ export function initAutoUpdater(win: BrowserWindow): void {
   });
 
   autoUpdater.on('update-downloaded', () => {
-    win.webContents.send('cite-sight:update-downloaded');
+    send('cite-sight:update-downloaded');
   });
 
   autoUpdater.on('error', (err) => {
-    win.webContents.send('cite-sight:update-error', err.message);
+    send('cite-sight:update-error', err.message);
   });
 
   // Renderer can request to download or install

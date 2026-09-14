@@ -5,6 +5,7 @@ import type {
   VerificationStatus,
 } from '../types';
 import { ATTRIBUTION, DISCLAIMER } from '../disclaimer';
+import { reviewEntries } from '@michaelborck/cite-sight-core/review';
 
 // ── Colours ──────────────────────────────────────────────────────────────────
 
@@ -348,6 +349,12 @@ export async function downloadPdfReport(result: AnalysisResult): Promise<void> {
   y = drawOverview(doc, result, y, margin, contentW);
   y = drawReferencesTable(doc, result.references.verifications, y, margin, contentW);
   y = drawCrossReferences(doc, result, y, margin, contentW);
+  const reviews = reviewEntries(result);
+  if (reviews.length) {
+    y = drawSectionTitle(doc, 'Review decisions', y, margin);
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal'); setColour(doc, BLACK);
+    for (const review of reviews) y = printWrapped(doc, `${review.label}: ${review.source}`, margin, y, contentW, 4.5, margin) + 3;
+  }
   drawFooter(doc);
 
   const safeName = result.fileName.replace(/[^a-zA-Z0-9._-]/g, '_');

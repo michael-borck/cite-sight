@@ -1,8 +1,12 @@
 import type { AnalysisResult, ProcessingOptions, ProgressUpdate, ReferenceVerification } from '@michaelborck/cite-sight-core';
+import type { ReviewSession } from '@michaelborck/cite-sight-core/session';
 
 declare global {
   interface Window {
     citeSight: {
+      saveSession: (session: ReviewSession) => Promise<string | null>;
+      openSession: () => Promise<ReviewSession | null>;
+      getPathForFile: (file: File) => string;
       analyzeFile: (filePath: string, options: ProcessingOptions) => Promise<AnalysisResult>;
       reverifyReference: (ref: unknown, options: ProcessingOptions) => Promise<ReferenceVerification | null>;
       checkForUpdates: () => Promise<{ updateAvailable: boolean; version?: string; error?: boolean }>;
@@ -14,8 +18,8 @@ declare global {
       setDismissal: (contentKey: string, dismissed: boolean) => Promise<void>;
       selectFiles: () => Promise<string[]>;
       selectFolder: () => Promise<string[]>;
-      onProgress: (callback: (update: ProgressUpdate) => void) => void;
-      onReference: (callback: (data: { verification: ReferenceVerification; index: number; total: number }) => void) => void;
+      onProgress: (callback: (update: ProgressUpdate) => void) => () => void;
+      onReference: (callback: (data: { verification: ReferenceVerification; index: number; total: number }) => void) => () => void;
       onUpdateAvailable: (callback: (info: { version: string; releaseNotes?: string }) => void) => void;
       onUpdateNotAvailable: (callback: () => void) => void;
       onUpdateProgress: (callback: (progress: { percent: number }) => void) => void;

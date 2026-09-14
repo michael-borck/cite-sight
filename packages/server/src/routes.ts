@@ -1,20 +1,21 @@
-import { Router } from 'express';
+import { Router, type RequestHandler } from 'express';
 import multer from 'multer';
 import { tmpdir } from 'os';
 import { rename, unlink, open } from 'fs/promises';
 import path from 'path';
-import { analyzePipeline, DISCLAIMER } from '@michaelborck/cite-sight-core';
+import { analyzePipeline, verifyReferences, DISCLAIMER } from '@michaelborck/cite-sight-core';
 import type { ProcessingOptions } from '@michaelborck/cite-sight-core';
 import { isQueueAvailable, addJob, getJob, cancelJob } from './queue.js';
-import { fileCleanup } from './middleware.js';
 import { subscribe, type StreamMessage } from './stream.js';
 import { MANIFEST } from './manifest.js';
+import { reverifyInput } from './reverify.js';
+import { REPORT_TTL_SECONDS } from './retention.js';
 
 // ---------------------------------------------------------------------------
 // Multer configuration
 // ---------------------------------------------------------------------------
 
-const ACCEPTED_EXTENSIONS = new Set(['.pdf', '.docx', '.txt', '.md', '.json']);
+const ACCEPTED_EXTENSIONS = new Set(['.pdf', '.docx', '.txt', '.md', '.qmd', '.json']);
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 
 // The MIME types a browser sends for each accepted extension. Used as a
@@ -31,12 +32,13 @@ const EXTENSION_MIME: Record<string, Set<string>> = {
   ]),
   '.txt': new Set(['text/plain', 'application/octet-stream']),
   '.md': new Set(['text/markdown', 'text/plain', 'text/x-markdown', 'application/octet-stream']),
+  '.qmd': new Set(['text/markdown', 'text/plain', 'application/octet-stream']),
   '.json': new Set(['application/json', 'text/plain', 'application/octet-stream']),
 };
 
 const upload = multer({
   dest: tmpdir(),
-  limits: { fileSize: MAX_FILE_SIZE_BYTES, files: 1 },
+  limits: { fileSize: MAX_FILE_SIZE_BYTES, files: 1, fields: 10, parts: 12, fieldSize: 1024 },
   fileFilter(_req, file, cb) {
     const ext = path.extname(file.originalname).toLowerCase();
     if (!ACCEPTED_EXTENSIONS.has(ext)) {
@@ -109,10 +111,8 @@ export const router = Router();
 
 // ---- POST /api/analyze -----------------------------------------------------
 
-router.post(
-  '/api/analyze',
-  fileCleanup,
-  (_req, res, next) => {
+function analyzeUpload(allowQueue: boolean): RequestHandler {
+  return async (req, res, next) => {
     if (activeUploads >= MAX_CONCURRENT_UPLOADS) {
       res.status(503).json({
         error: 'The server is busy processing other uploads. Please try again in a moment.',
@@ -120,88 +120,104 @@ router.post(
       return;
     }
     activeUploads++;
-    next();
-  },
-  upload.single('file'),
-  async (req, res, next) => {
-    if (!req.file) {
-      activeUploads--;
-      res.status(400).json({ error: 'No file uploaded. Use field name "file".' });
-      return;
-    }
-
-    // Multer saves temp files without an extension (e.g. /tmp/abc123).
-    // The core extractor relies on the extension to determine file type, so
-    // rename the temp file to preserve the original extension.
-    const ext = path.extname(req.file.originalname).toLowerCase();
-    const filePath = req.file.path + ext;
-    await rename(req.file.path, filePath);
-
+    let workerOwnsFile = false;
     try {
+      await new Promise<void>((resolve, reject) => {
+        const aborted = () => reject(Object.assign(new Error('Upload aborted'), { status: 400 }));
+        req.once('aborted', aborted);
+        upload.single('file')(req, res, (err) => {
+          req.off('aborted', aborted);
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+      if (!req.file) {
+        res.status(400).json({ error: 'No file uploaded. Use field name "file".' });
+        return;
+      }
+      if (req.aborted) return;
+
+      const ext = path.extname(req.file.originalname).toLowerCase();
+      const filePath = req.file.path + ext;
+      await rename(req.file.path, filePath);
+      req.file.path = filePath;
       await assertContentMatchesExtension(filePath, ext);
-    } catch (err) {
-      activeUploads--;
-      next(err);
-      return;
-    }
 
-    // Parse options from request body (all optional, with safe defaults)
-    const body = req.body as Record<string, string | undefined>;
+      // Parse options from request body (all optional, with safe defaults).
+      const body = req.body as Record<string, string | undefined>;
 
-    const citationStyle = (['auto', 'apa', 'mla', 'chicago'].includes(body['citationStyle'] ?? '')
-      ? body['citationStyle']
-      : 'auto') as ProcessingOptions['citationStyle'];
+      const citationStyle = (['auto', 'apa', 'mla', 'chicago'].includes(body['citationStyle'] ?? '')
+        ? body['citationStyle']
+        : 'auto') as ProcessingOptions['citationStyle'];
 
-    const checkUrls = body['checkUrls'] !== 'false';
-    const checkDoi = body['checkDoi'] !== 'false';
-    const checkInText = body['checkInText'] !== 'false';
+      const checkUrls = body['checkUrls'] !== 'false';
+      const checkDoi = body['checkDoi'] !== 'false';
+      const checkInText = body['checkInText'] !== 'false';
+      const documentType = ['assignment', 'reference-list'].includes(body['documentType'] ?? '')
+        ? body['documentType'] as ProcessingOptions['documentType'] : undefined;
 
-    // ---- Async path: BullMQ queue ------------------------------------------
-    if (isQueueAvailable()) {
-      try {
+      if (allowQueue && isQueueAvailable()) {
         const jobId = await addJob({
           filePath,
+          fileName: req.file.originalname,
           citationStyle,
           checkUrls,
           checkDoi,
           checkInText,
+          documentType,
         });
 
-        activeUploads--;
-        // File ownership transferred to the worker — do NOT delete here.
+        workerOwnsFile = true;
         res.status(202).json({ status: 'queued', jobId });
-      } catch (err) {
-        activeUploads--;
-        next(err);
+        return;
       }
-      return;
-    }
 
-    // ---- Synchronous path --------------------------------------------------
-    const options: ProcessingOptions = {
-      citationStyle,
-      checkUrls,
-      checkDoi,
-      checkInText,
-      screenshotUrls: false,
-      // S2 licence: a personal key covers the key-holder and their authorised users
-      // only. Set this env var on PRIVATE deployments only — never on a public
-      // instance, where it would serve anonymous visitors on one person's key.
-      semanticScholarApiKey: process.env.SEMANTIC_SCHOLAR_API_KEY,
-    };
+      const options: ProcessingOptions = {
+        citationStyle,
+        checkUrls,
+        checkDoi,
+        checkInText,
+        documentType,
+        screenshotUrls: false,
+        // Set a personal S2 key only on private deployments.
+        semanticScholarApiKey: process.env.SEMANTIC_SCHOLAR_API_KEY,
+      };
 
-    try {
       const result = await analyzePipeline(filePath, options);
-      res.json({ status: 'complete', result, disclaimer: DISCLAIMER });
+      result.fileName = req.file.originalname;
+      res.json(allowQueue
+        ? { status: 'complete', result, disclaimer: DISCLAIMER, expiresAt: new Date(Date.now() + REPORT_TTL_SECONDS * 1000).toISOString() }
+        : { ...result, disclaimer: DISCLAIMER });
     } catch (err) {
       next(err);
     } finally {
+      if (!workerOwnsFile && req.file) {
+        await unlink(req.file.path).catch(() => undefined);
+      }
       activeUploads--;
-      // Always clean up — even when response was already sent via next(err).
-      await unlink(filePath).catch(() => undefined);
     }
-  },
-);
+  };
+}
+
+router.post('/api/analyze', analyzeUpload(true));
+
+router.post('/api/reverify', async (req, res, next) => {
+  if (activeUploads >= MAX_CONCURRENT_UPLOADS) {
+    res.status(503).json({ error: 'The server is busy. Try this reference again shortly.' });
+    return;
+  }
+  activeUploads++;
+  try {
+    const { reference, options } = reverifyInput(req.body);
+    const [verification] = await verifyReferences([reference], {
+      citationStyle: options.citationStyle === 'auto' ? reference.detectedStyle : options.citationStyle,
+      checkUrls: options.checkUrls, checkDoi: options.checkDoi,
+      semanticScholarApiKey: process.env.SEMANTIC_SCHOLAR_API_KEY,
+    });
+    res.json({ verification });
+  } catch (error) { next(error); }
+  finally { activeUploads--; }
+});
 
 // ---- GET /api/job/:id ------------------------------------------------------
 
@@ -266,8 +282,19 @@ router.delete('/api/job/:id', async (req, res, next) => {
 // opens this right after POST /api/analyze returns a jobId; the BullMQ worker
 // (same process) emits references as it verifies them (queue.ts + stream.ts).
 
-router.get('/api/stream/:id', (req, res) => {
+router.get('/api/stream/:id', async (req, res, next) => {
   const jobId = req.params['id'] ?? '';
+  let job;
+  try {
+    job = await getJob(jobId);
+  } catch (err) {
+    next(err);
+    return;
+  }
+  if (!job) {
+    res.status(404).json({ error: 'Job not found or report expired.' });
+    return;
+  }
 
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
@@ -282,6 +309,16 @@ router.get('/api/stream/:id', (req, res) => {
     res.write(`data: ${JSON.stringify(msg)}\n\n`);
     return msg.type === 'complete' || msg.type === 'error';
   };
+
+  // Completed reports outlive the short in-process replay buffer. Reconnects
+  // must get the stored terminal result rather than an idle stream forever.
+  if (job.status === 'complete' || job.status === 'failed') {
+    send(job.status === 'complete'
+      ? { type: 'complete', jobId, result: job.result, expiresAt: job.expiresAt }
+      : { type: 'error', jobId, error: job.error, expiresAt: job.expiresAt });
+    res.end();
+    return;
+  }
 
   // subscribe() replays any buffered messages first (catch-up for a client that
   // connected after the first references were verified) then registers for live
@@ -326,49 +363,7 @@ router.get('/api/health', (_req, res) => {
 // like any other analyser. /analyse always runs synchronously (no job queue) and
 // returns the report directly (no envelope), per the family convention.
 
-router.post('/analyse', fileCleanup, upload.single('file'), async (req, res, next) => {
-  if (!req.file) {
-    res.status(400).json({ error: 'No file uploaded. Use field name "file".' });
-    return;
-  }
-
-  const ext = path.extname(req.file.originalname).toLowerCase();
-  const filePath = req.file.path + ext;
-  await rename(req.file.path, filePath);
-
-  try {
-    await assertContentMatchesExtension(filePath, ext);
-  } catch (err) {
-    next(err);
-    return;
-  }
-
-  const body = req.body as Record<string, string | undefined>;
-  const citationStyle = (['auto', 'apa', 'mla', 'chicago'].includes(body['citationStyle'] ?? '')
-    ? body['citationStyle']
-    : 'auto') as ProcessingOptions['citationStyle'];
-
-  const options: ProcessingOptions = {
-    citationStyle,
-    checkUrls: body['checkUrls'] !== 'false',
-    checkDoi: body['checkDoi'] !== 'false',
-    checkInText: body['checkInText'] !== 'false',
-    screenshotUrls: false,
-    // S2 licence: a personal key covers the key-holder and their authorised users
-      // only. Set this env var on PRIVATE deployments only — never on a public
-      // instance, where it would serve anonymous visitors on one person's key.
-      semanticScholarApiKey: process.env.SEMANTIC_SCHOLAR_API_KEY,
-  };
-
-  try {
-    const result = await analyzePipeline(filePath, options);
-    res.json({ ...result, disclaimer: DISCLAIMER });
-  } catch (err) {
-    next(err);
-  } finally {
-    await unlink(filePath).catch(() => undefined);
-  }
-});
+router.post('/analyse', analyzeUpload(false));
 
 router.get('/health', (_req, res) => {
   res.json({ status: 'ok', version: MANIFEST.version });

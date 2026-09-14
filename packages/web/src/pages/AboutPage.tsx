@@ -64,10 +64,12 @@ export function AboutPage() {
         <section className="about-section about-section-alt">
           <h2>Privacy</h2>
           <p>
-            CiteSight processes your documents locally in the desktop app — nothing leaves your machine.
-            When using the online tool, files are uploaded, processed immediately, and then deleted.
-            No document data is stored on our servers at any point. The source code is open and
-            available on GitHub for independent verification.
+            The desktop app reads documents locally and sends reference details to
+            external services for verification.
+            When using the online tool, files are uploaded and deleted after analysis,
+            or when cancelled while still queued. Queued citation reports, including
+            reference text but excluding the full document text, are retained for up to one hour.
+            The source code is available on GitHub for independent verification.
           </p>
         </section>
 

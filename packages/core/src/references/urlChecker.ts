@@ -46,6 +46,8 @@ export async function checkUrl(url: string): Promise<UrlCheckResult> {
 
     const statusCode = res.status;
     const finalUrl = res.url !== url ? res.url : undefined;
+    // A liveness check needs only headers, even when the target is a large PDF.
+    await res.body?.cancel();
 
     let status: UrlStatus;
     if (statusCode >= 200 && statusCode < 300) {

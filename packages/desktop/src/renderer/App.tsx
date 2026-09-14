@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FileUpload } from './components/FileUpload';
 import { ProcessingOptions } from './components/ProcessingOptions';
 import { DataPrivacyPanel } from './components/DataPrivacyPanel';
 import { ProcessingProgress } from './components/ProcessingProgress';
+import { BatchList } from './components/BatchList';
 import { ResultsDashboard, StreamingResults } from '@michaelborck/cite-sight-ui';
 import { UpdateNotification } from './components/UpdateNotification';
 import { downloadPdfReport } from './utils/generatePdfReport';
@@ -10,320 +11,155 @@ import { downloadCsvReport } from './utils/generateCsvReport';
 import { exportBibtex } from '@michaelborck/cite-sight-core/browser';
 import { DISCLAIMER } from '@michaelborck/cite-sight-core/disclaimer';
 import { useStore } from './store';
+import { runBatch } from './batch';
+import { makeReviewSession } from '@michaelborck/cite-sight-core/session';
 import './App.css';
 
 export function App() {
-  const {
-    filePaths,
-    options,
-    isProcessing,
-    cancelRequested,
-    progress,
-    streamingRefs,
-    streamingTotal,
-    batchIndex,
-    batchTotal,
-    results,
-    currentResultIndex,
-    error,
-    setProcessing,
-    requestCancel,
-    clearCancel,
-    setProgress,
-    addStreamingRef,
-    resetStreaming,
-    setBatch,
-    addResult,
-    setCurrentResultIndex,
-    setError,
-    reset,
-  } = useStore();
-
+  const state = useStore();
+  const { batch, filePaths, options, isProcessing, cancelRequested, selectedPath, activePath, progress, streamingRefs, streamingTotal, error } = state;
   const [version, setVersion] = useState('');
-  // Persisted triage decisions, loaded once; the dashboard reports deltas.
+  const [settings, setSettings] = useState(false);
   const [persistedDismissals, setPersistedDismissals] = useState<string[]>([]);
+  const [elapsed, setElapsed] = useState(0);
+  const [notice, setNotice] = useState('');
+  const results = useMemo(() => batch.flatMap((item) => item.result ? [item.result] : []), [batch]);
+  const selected = batch.find((item) => item.path === selectedPath);
+  const waiting = batch.filter((item) => item.status === 'waiting').map((item) => item.path);
+  const failed = batch.filter((item) => item.status === 'failed').map((item) => item.path);
+
   useEffect(() => {
-    window.citeSight?.loadDismissals().then(setPersistedDismissals).catch(() => {});
+    window.citeSight?.getVersion().then(setVersion).catch(() => undefined);
+    window.citeSight?.loadDismissals().then(setPersistedDismissals).catch(() => undefined);
+    const stopProgress = window.citeSight?.onProgress((update) => useStore.getState().setProgress(update));
+    const stopReferences = window.citeSight?.onReference(({ verification, total }) => useStore.getState().addStreamingRef(verification, total));
+    return () => { stopProgress?.(); stopReferences?.(); };
   }, []);
-  const [streamElapsed, setStreamElapsed] = useState(0);
-  const cancelRef = useRef(false);
-
-  // Keep ref in sync with store so the async loop can read it
-  cancelRef.current = cancelRequested;
-
-  // Fetch app version on mount
   useEffect(() => {
-    window.citeSight?.getVersion().then(v => setVersion(v));
-  }, []);
-
-  // Register progress listener once on mount
-  useEffect(() => {
-    window.citeSight?.onProgress((update) => {
-      setProgress(update);
-    });
-  }, [setProgress]);
-
-  // Stream per-reference verdicts for the file currently being analysed.
-  useEffect(() => {
-    window.citeSight?.onReference(({ verification, total }) => {
-      addStreamingRef(verification, total);
-    });
-  }, [addStreamingRef]);
-
-  // Elapsed timer for the streaming view.
-  useEffect(() => {
-    if (!isProcessing) {
-      setStreamElapsed(0);
-      return;
-    }
+    if (!activePath) { setElapsed(0); return; }
     const start = Date.now();
-    const id = setInterval(() => setStreamElapsed(Date.now() - start), 250);
-    return () => clearInterval(id);
-  }, [isProcessing]);
+    const timer = setInterval(() => setElapsed(Date.now() - start), 250);
+    return () => clearInterval(timer);
+  }, [activePath]);
 
-  const handleAnalyze = async () => {
-    if (filePaths.length === 0) {
-      setError('Please select at least one file to analyze.');
-      return;
-    }
-
-    setProcessing(true);
-    clearCancel();
-
+  async function check(paths: string[]) {
+    const store = useStore.getState();
+    if (store.isProcessing || !paths.length) return;
+    setNotice('');
+    store.setProcessing(true);
+    const runOptions = { ...store.options };
     try {
-      if (!window.citeSight) {
-        throw new Error('CiteSight API not available. Are you running inside Electron?');
-      }
+      await runBatch(paths, {
+        stopped: () => useStore.getState().cancelRequested,
+        started: (path) => useStore.getState().startFile(path, runOptions),
+        analyze: (path) => {
+          if (!window.citeSight) throw new Error('The desktop bridge is unavailable. Restart CiteSight and try again.');
+          return window.citeSight.analyzeFile(path, runOptions);
+        },
+        completed: (path, result) => useStore.getState().completeFile(path, result),
+        failed: (path, message) => useStore.getState().failFile(path, message),
+      });
+      if (useStore.getState().cancelRequested) setNotice('Stopped after the current document. Waiting documents can be checked later.');
+    } finally { useStore.getState().setProcessing(false); }
+  }
 
-      const total = filePaths.length;
-      for (let i = 0; i < total; i++) {
-        // Check cancel between files
-        if (cancelRef.current) {
-          clearCancel();
-          break;
-        }
+  async function addDocuments() {
+    try { state.addFiles(await window.citeSight.selectFiles()); }
+    catch (err) { state.setError(err instanceof Error ? err.message : 'Could not select documents.'); }
+  }
 
-        setBatch(i, total);
-        resetStreaming();
-        const result = await window.citeSight.analyzeFile(filePaths[i], options);
-        addResult(result);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred during analysis.');
-      return;
-    }
+  async function saveReview() {
+    try {
+      const latest = useStore.getState();
+      if (!latest.batch.length) return;
+      const path = await window.citeSight.saveSession(makeReviewSession(latest.batch, latest.options, latest.selectedPath));
+      if (path) setNotice(`Review session saved to ${path}`);
+    } catch (err) { state.setError(err instanceof Error ? err.message : 'Could not save this session.'); }
+  }
 
-    setProcessing(false);
-  };
+  async function openReview() {
+    if (useStore.getState().isProcessing) return;
+    try {
+      const session = await window.citeSight.openSession();
+      if (session) { state.restoreSession(session); setNotice('Review session opened. Waiting documents can be checked when you are ready.'); }
+    } catch (err) { state.setError(err instanceof Error ? err.message : 'Could not open this session.'); }
+  }
 
-  const handleCancel = () => {
-    requestCancel();
-    // Processing will stop after the current file completes
-  };
+  useEffect(() => {
+    const shortcut = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+      if (event.key.toLowerCase() === 's') { event.preventDefault(); void saveReview(); }
+      if (event.key.toLowerCase() === 'o') { event.preventDefault(); void openReview(); }
+    };
+    window.addEventListener('keydown', shortcut);
+    return () => window.removeEventListener('keydown', shortcut);
+  }, []);
 
-  const handleReset = () => {
-    reset();
-  };
-
-  const currentResult = results.length > 0 ? results[currentResultIndex] : null;
-
-  const getFileName = (path: string): string => {
-    return path.split(/[\\/]/).pop() ?? path;
-  };
-
-  return (
-    <div className="app">
-      <header className="app-header">
-        <div className="header-inner">
-          <div className="header-brand">
-            <h1>CiteSight<span className="dot"></span></h1>
-            {version && (
-              <button
-                type="button"
-                className="version version-check"
-                title="Check for updates"
-                onClick={async () => {
-                  const r = await window.citeSight?.checkForUpdates();
-                  if (r && !r.updateAvailable) {
-                    // The update banner handles the "available" case; a manual
-                    // check that finds nothing still deserves an answer.
-                    setVersion(`${version.replace(/ — up to date$/, '')} — up to date`);
-                    setTimeout(() => setVersion((v) => v.replace(/ — up to date$/, '')), 4000);
-                  }
-                }}
-              >
-                v{version}
-              </button>
-            )}
-          </div>
+  return <div className="app">
+    <header className="app-header"><div className="header-inner">
+      <div className="header-brand"><h1>CiteSight<span className="dot" /></h1>
+        <button type="button" className="version version-check" onClick={async () => {
+          const update = await window.citeSight?.checkForUpdates();
+          setNotice(update?.error ? 'Could not check for updates.' : update?.updateAvailable ? 'An update is available.' : 'CiteSight is up to date.');
+        }}>v{version}</button>
+      </div>
+      <div className="batch-toolbar">
+        <button type="button" className="btn btn-secondary" disabled={isProcessing} onClick={() => void openReview()}>Open review session</button>
+        <button type="button" className="btn btn-secondary" disabled={!batch.length} onClick={() => void saveReview()}>Save review session</button>
+        <button type="button" className="btn btn-secondary" aria-expanded={settings} onClick={() => setSettings(!settings)}>Settings</button>
+      </div>
+    </div></header>
+    <main className="app-main"><div className="container">
+      {settings && <section className="desktop-settings"><h2>Settings</h2><p>Check settings are remembered on this device.</p>
+        <p>Saved review sessions contain citation results, review decisions and file paths. Full document text and API keys are excluded.</p>
+        <ProcessingOptions /><DataPrivacyPanel onDismissalsCleared={() => setPersistedDismissals([])} />
+      </section>}
+      {notice && <p role="status">{notice}</p>}
+      {error && <p role="alert" className="error-message">{error}<button onClick={() => state.setError(null)} aria-label="Dismiss error">×</button></p>}
+      {!state.hasStarted ? <section className="upload-section">
+        <FileUpload />
+        {filePaths.length > 0 && <><ProcessingOptions /><div className="action-buttons">
+          <button className="btn btn-primary" disabled={isProcessing} onClick={() => void check(waiting)}>Check {filePaths.length === 1 ? 'citations' : `${filePaths.length} documents`}</button>
+          <button className="btn btn-secondary" disabled={isProcessing} onClick={state.reset}>Clear documents</button>
+        </div></>}
+        <p className="upload-disclaimer">{DISCLAIMER}</p>
+      </section> : <>
+        <div className="batch-toolbar">
+          <button className="btn btn-secondary" onClick={() => void addDocuments()} disabled={isProcessing}>Add documents</button>
+          {waiting.length > 0 && <button className="btn btn-primary" disabled={isProcessing} onClick={() => void check(waiting)}>Check {waiting.length} waiting documents</button>}
+          {failed.length > 0 && <button className="btn btn-secondary" disabled={isProcessing} onClick={() => void check(failed)}>Retry {failed.length} failed documents</button>}
+          {isProcessing && <button className="btn btn-secondary" disabled={cancelRequested} onClick={state.requestCancel}>{cancelRequested ? 'Stopping after this document…' : 'Stop after this document'}</button>}
+          <button className="btn btn-secondary" disabled={isProcessing} onClick={state.reset}>New batch</button>
+          {results.length > 0 && <>
+            <button className="btn btn-secondary" onClick={() => void downloadPdfReport(results, new Set(persistedDismissals))}>Export PDF</button>
+            <button className="btn btn-secondary" onClick={() => downloadCsvReport(results, new Set(persistedDismissals))}>Export CSV</button>
+            <button className="btn btn-secondary" onClick={() => {
+              const url = URL.createObjectURL(new Blob([exportBibtex(results.flatMap((result) => result.references.verifications))], { type: 'text/plain' }));
+              const link = document.createElement('a'); link.href = url; link.download = 'verified-references.bib'; link.click(); URL.revokeObjectURL(url);
+            }}>Export .bib</button>
+          </>}
         </div>
-      </header>
-
-      <main className="app-main">
-        <div className="container">
-          {results.length === 0 ? (
-            <>
-              {isProcessing && progress ? (
-                <>
-                  <ProcessingProgress
-                    progress={progress}
-                    batchIndex={batchIndex}
-                    batchTotal={batchTotal}
-                    currentFileName={getFileName(filePaths[batchIndex] ?? '')}
-                    onCancel={handleCancel}
-                  />
-                  <StreamingResults
-                    verifications={streamingRefs}
-                    total={streamingTotal}
-                    stage={progress.stage}
-                    elapsedMs={streamElapsed}
-                    fileName={getFileName(filePaths[batchIndex] ?? '')}
-                  />
-                </>
-              ) : (
-                <>
-                  <section className="upload-section">
-                    <FileUpload />
-                    {filePaths.length > 0 && (
-                      <>
-                        <ProcessingOptions />
-              <DataPrivacyPanel onDismissalsCleared={() => setPersistedDismissals([])} />
-                        <div className="action-buttons">
-                          <button
-                            onClick={() => void handleAnalyze()}
-                            disabled={isProcessing}
-                            className="btn btn-primary"
-                          >
-                            {isProcessing
-                              ? 'Processing...'
-                              : filePaths.length === 1
-                                ? 'Analyse Document'
-                                : `Analyse ${filePaths.length} Documents`}
-                          </button>
-                          <button
-                            onClick={handleReset}
-                            disabled={isProcessing}
-                            className="btn btn-secondary"
-                          >
-                            Reset
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </section>
-                  <p className="upload-disclaimer">{DISCLAIMER}</p>
-                </>
-              )}
-              {error && (
-                <div className="error-message">
-                  <span>&#9888; {error}</span>
-                  <button onClick={() => setError(null)} className="dismiss-btn">
-                    &#10005;
-                  </button>
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              <div className="results-header">
-                {results.length === 1 ? (
-                  <h2>Analysis Results: {results[0].fileName}</h2>
-                ) : (
-                  <div className="results-file-nav">
-                    <h2>Analysis Results</h2>
-                    <div className="file-selector">
-                      <button
-                        className="nav-arrow"
-                        disabled={currentResultIndex === 0}
-                        onClick={() => setCurrentResultIndex(currentResultIndex - 1)}
-                      >
-                        &#9664;
-                      </button>
-                      <select
-                        value={currentResultIndex}
-                        onChange={(e) => setCurrentResultIndex(Number(e.target.value))}
-                        className="file-select"
-                      >
-                        {results.map((r, i) => (
-                          <option key={i} value={i}>
-                            {getFileName(filePaths[i] ?? r.fileName)} ({i + 1}/{results.length})
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        className="nav-arrow"
-                        disabled={currentResultIndex === results.length - 1}
-                        onClick={() => setCurrentResultIndex(currentResultIndex + 1)}
-                      >
-                        &#9654;
-                      </button>
-                    </div>
-                  </div>
-                )}
-                <div className="results-actions">
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => void downloadPdfReport(results, new Set(persistedDismissals))}
-                  >
-                    Export PDF
-                  </button>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => downloadCsvReport(results, new Set(persistedDismissals))}
-                  >
-                    Export CSV
-                  </button>
-                  <button
-                    className="btn btn-secondary"
-                    title="Verified references only, as registry records (with DOIs)"
-                    onClick={() => {
-                      const bib = exportBibtex(results.flatMap((r) => r.references.verifications));
-                      const blob = new Blob([bib], { type: 'text/plain' });
-                      const a = document.createElement('a');
-                      a.href = URL.createObjectURL(blob);
-                      a.download = 'verified-references.bib';
-                      a.click();
-                      URL.revokeObjectURL(a.href);
-                    }}
-                  >
-                    Export .bib
-                  </button>
-                  <button onClick={handleReset} className="btn btn-primary">
-                    New Analysis
-                  </button>
-                </div>
-              </div>
-
-              {error && (
-                <div className="error-message">
-                  <span>&#9888; {error}</span>
-                  <button onClick={() => setError(null)} className="dismiss-btn">
-                    &#10005;
-                  </button>
-                </div>
-              )}
-
-              {currentResult && (
-                <ResultsDashboard
-                  key={currentResultIndex}
-                  results={currentResult}
-                  readScreenshot={(path) => window.citeSight?.readScreenshot(path) ?? Promise.resolve(null)}
-                  reverify={(ref) => window.citeSight?.reverifyReference(ref, options) ?? Promise.resolve(null)}
-                  persistedDismissals={persistedDismissals}
-                  onDismissalChange={(contentKey, dismissed) => {
-                    setPersistedDismissals((prev) =>
-                      dismissed ? [...new Set([...prev, contentKey])] : prev.filter((k) => k !== contentKey),
-                    );
-                    void window.citeSight?.setDismissal(contentKey, dismissed);
-                  }}
-                />
-              )}
-            </>
-          )}
-        </div>
-      </main>
-
-      <UpdateNotification />
-    </div>
-  );
+        <div className="batch-layout"><BatchList onRetry={(paths) => void check(paths)} /><div className="batch-detail">
+          {selected?.status === 'processing' ? <>
+            <ProcessingProgress progress={progress ?? { stage: 'extracting', progress: 0, message: 'Reading document…' }} batchIndex={batch.findIndex((item) => item.path === activePath)} batchTotal={batch.length} currentFileName={activePath.split(/[\\/]/).pop() ?? activePath} onCancel={state.requestCancel} stopping={cancelRequested} />
+            <StreamingResults verifications={streamingRefs} total={streamingTotal} stage={progress?.stage ?? 'extracting'} elapsedMs={elapsed} fileName={selected.path} />
+          </> : selected?.result ? <ResultsDashboard
+            key={`${state.sessionId}:${selected.path}`} results={selected.result}
+            onResultsChange={(result) => state.updateResult(selected.path, result)}
+            readScreenshot={(path) => window.citeSight.readScreenshot(path)}
+            reverify={isProcessing ? undefined : (reference) => window.citeSight.reverifyReference(reference, { ...options, ...selected.options })}
+            persistedDismissals={persistedDismissals}
+            onDismissalChange={(key, dismissed) => {
+              setPersistedDismissals((previous) => dismissed ? [...new Set([...previous, key])] : previous.filter((value) => value !== key));
+              void window.citeSight.setDismissal(key, dismissed);
+            }}
+          /> : <div className="batch-empty">
+            <h2>{selected?.status === 'failed' ? 'Could not check this document' : 'Waiting to check'}</h2>
+            <p>{selected?.error ?? 'Select a completed document to review it, or check the waiting documents.'}</p>
+            {selected?.status === 'failed' && <button className="btn btn-primary" disabled={isProcessing} onClick={() => void check([selected.path])}>Retry this document</button>}
+          </div>}
+        </div></div>
+      </>}
+    </div></main><UpdateNotification />
+  </div>;
 }

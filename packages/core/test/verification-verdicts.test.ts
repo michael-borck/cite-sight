@@ -109,6 +109,17 @@ vi.mock('../src/references/arxiv.js', () => ({
 
 // Import AFTER mocks are registered.
 const { verifyReferences } = await import('../src/references/verifier.js');
+const { resolveDoi } = await import('../src/references/doiResolver.js');
+
+it('honours checkDoi=false without disabling bibliographic searches', async () => {
+  vi.mocked(resolveDoi).mockClear();
+  const [result] = await verifyReferences([{
+    raw: 'Devlin, J. (2019). BERT.', authors: ['Devlin, J.'], title: DB.bert.title,
+    year: 2019, doi: DB.bert.doi, detectedStyle: 'apa',
+  }], { citationStyle: 'apa', checkDoi: false, checkUrls: false });
+  expect(resolveDoi).not.toHaveBeenCalled();
+  expect(result.status).toBe('verified');
+});
 
 const ref = (o: Partial<ParsedReference>): ParsedReference => ({
   raw: o.raw ?? '',

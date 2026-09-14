@@ -1,5 +1,6 @@
-import { BrowserWindow } from 'electron';
-import { isPrivateUrl } from '@michaelborck/cite-sight-core';
+import { BrowserWindow, session } from 'electron';
+import { isPrivateUrl, httpFetch } from '@michaelborck/cite-sight-core';
+import { randomUUID } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -15,6 +16,30 @@ export async function takeScreenshot(url: string): Promise<string> {
   }
 
   let win: BrowserWindow | null = null;
+  // Route documents and subresources through the same DNS-pinned transport as
+  // analysis. A separate, non-persistent session contains no user cookies.
+  const screenshotSession = session.fromPartition(`screenshot-${randomUUID()}`);
+  for (const scheme of ['http', 'https']) {
+    screenshotSession.protocol.handle(scheme, async (request) => {
+      try {
+        // Let Chromium follow redirects through these handlers so document
+        // URLs and relative assets retain their normal browser semantics.
+        const response = await httpFetch(request.url, { redirect: 'manual', signal: AbortSignal.timeout(10_000) });
+        const headers = new Headers(response.headers);
+        // fetch has already decompressed the body.
+        headers.delete('content-encoding');
+        headers.delete('content-length');
+        return new Response(response.body, { status: response.status, headers });
+      } catch {
+        return new Response('Resource unavailable', { status: 502 });
+      }
+    });
+  }
+  screenshotSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
+  screenshotSession.webRequest.onBeforeRequest((details, callback) => {
+    callback({ cancel: !/^(https?:|data:)/.test(details.url) });
+  });
+  let timer: ReturnType<typeof setTimeout> | undefined;
 
   try {
     win = new BrowserWindow({
@@ -25,9 +50,11 @@ export async function takeScreenshot(url: string): Promise<string> {
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: true,
-        javascript: true,
+        javascript: false,
+        session: screenshotSession,
       },
     });
+    win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
 
     await Promise.race([
       new Promise<void>((resolve, reject) => {
@@ -35,10 +62,10 @@ export async function takeScreenshot(url: string): Promise<string> {
         win!.webContents.once('did-fail-load', (_event, errorCode, errorDescription) => {
           reject(new Error(`Page load failed (${errorCode}): ${errorDescription}`));
         });
-        void win!.loadURL(url);
+        void win!.loadURL(url).catch(reject);
       }),
       new Promise<never>((_, reject) =>
-        setTimeout(
+        timer = setTimeout(
           () => reject(new Error(`Screenshot timed out after ${SCREENSHOT_TIMEOUT_MS / 1000}s for: ${url}`)),
           SCREENSHOT_TIMEOUT_MS,
         ),
@@ -59,8 +86,11 @@ export async function takeScreenshot(url: string): Promise<string> {
     await writeFile(filePath, png);
     return filePath;
   } finally {
+    clearTimeout(timer);
     if (win && !win.isDestroyed()) {
       win.close();
     }
+    for (const scheme of ['http', 'https']) screenshotSession.protocol.unhandle(scheme);
+    await screenshotSession.closeAllConnections();
   }
 }

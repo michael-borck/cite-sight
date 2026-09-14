@@ -6,6 +6,7 @@ import type {
 } from '@michaelborck/cite-sight-core';
 import { referenceContentKey } from '@michaelborck/cite-sight-core/dashboard';
 import { DISCLAIMER } from '@michaelborck/cite-sight-core/disclaimer';
+import { reviewEntries } from '@michaelborck/cite-sight-core/review';
 
 // ── Colours ──────────────────────────────────────────────────────────────────
 
@@ -172,6 +173,7 @@ function drawReferencesTable(
   margin: number,
   contentW: number,
   dismissedKeys?: ReadonlySet<string>,
+  reviews?: AnalysisResult['reviews'],
 ): number {
   y = drawSectionTitle(doc, 'References', y, margin);
 
@@ -222,7 +224,8 @@ function drawReferencesTable(
 
     // Reviewer triage: mirrors the dashboard's struck-through rows. The
     // database status pill stays as-is — the record keeps both facts.
-    const isDismissed = dismissedKeys?.has(referenceContentKey(ref.raw)) ?? false;
+    const decision = reviews?.[referenceContentKey(ref.raw)]?.decision;
+    const isDismissed = decision ? decision !== 'unresolved' : dismissedKeys?.has(referenceContentKey(ref.raw)) ?? false;
 
     y = ensureSpace(doc, y, rowH + (v.flags.length > 0 ? 10 : 0) + (isDismissed ? 5 : 0) + screenshotH, margin);
 
@@ -418,8 +421,14 @@ export async function downloadPdfReport(results: AnalysisResult[], dismissedKeys
       y = margin;
     }
     y = drawOverview(doc, result, y, margin, contentW);
-    y = drawReferencesTable(doc, result.references.verifications, screenshots, y, margin, contentW, dismissedKeys);
+    y = drawReferencesTable(doc, result.references.verifications, screenshots, y, margin, contentW, dismissedKeys, result.reviews);
     y = drawCrossReferences(doc, result, y, margin, contentW);
+    const reviews = reviewEntries(result);
+    if (reviews.length) {
+      y = drawSectionTitle(doc, 'Review decisions', y, margin);
+      doc.setFontSize(9); doc.setFont('helvetica', 'normal'); setColour(doc, BLACK);
+      for (const review of reviews) y = printWrapped(doc, `${review.label}: ${review.source}`, margin, y, contentW, 4.5, margin) + 3;
+    }
   }
 
   drawFooter(doc);

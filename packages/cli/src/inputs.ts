@@ -7,7 +7,7 @@ import { readdirSync, statSync, globSync } from 'node:fs';
 // Extensions collected when a directory or glob expands to a tree. Matches the
 // desktop app's set. Explicitly-named files bypass this filter — if you name a
 // file, we attempt it and let extraction report an unsupported type.
-export const SUPPORTED_EXTENSIONS = new Set(['.pdf', '.docx', '.txt', '.md']);
+export const SUPPORTED_EXTENSIONS = new Set(['.pdf', '.docx', '.txt', '.md', '.qmd']);
 
 /** True if a path string looks like a glob pattern rather than a literal path. */
 export function looksLikeGlob(p: string): boolean {

@@ -7,6 +7,7 @@ interface ProcessingProgressProps {
   batchTotal: number;
   currentFileName: string;
   onCancel: () => void;
+  stopping?: boolean;
 }
 
 const STAGES = [
@@ -20,7 +21,7 @@ const STAGES = [
   { label: 'Cross-ref',  threshold: 100 },
 ];
 
-export function ProcessingProgress({ progress, batchIndex, batchTotal, currentFileName, onCancel }: ProcessingProgressProps) {
+export function ProcessingProgress({ progress, batchIndex, batchTotal, currentFileName, onCancel, stopping }: ProcessingProgressProps) {
   const pct = Math.round(progress.progress);
   const isBatch = batchTotal > 1;
 
@@ -44,7 +45,7 @@ export function ProcessingProgress({ progress, batchIndex, batchTotal, currentFi
             {currentFileName}
             {isBatch && ` \u2014 File ${batchIndex + 1} of ${batchTotal}`}
           </span>
-          <button onClick={onCancel} className="btn btn-secondary cancel-btn">Cancel</button>
+          <button onClick={onCancel} disabled={stopping} className="btn btn-secondary cancel-btn">{stopping ? 'Stopping after this document…' : 'Stop after this document'}</button>
         </div>
 
         <div className="progress-stepper" style={{ '--progress-width': `${progressWidth}%` } as React.CSSProperties}>

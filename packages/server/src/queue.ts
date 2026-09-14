@@ -11,6 +11,7 @@ import { randomUUID } from 'crypto';
 import { analyzePipeline } from '@michaelborck/cite-sight-core';
 import type { AnalysisResult, ProcessingOptions } from '@michaelborck/cite-sight-core';
 import { emit } from './stream.js';
+import { loadOutcome, saveOutcome, reportWithoutDocument } from './retention.js';
 
 // BullMQ types — imported lazily so the module loads even without Redis.
 // We use `import type` here; the actual values are required() at runtime.
@@ -18,6 +19,8 @@ type BullQueue = import('bullmq').Queue;
 type BullWorker = import('bullmq').Worker;
 
 export interface AnalysisJobData {
+  fileName?: string;
+  documentType?: ProcessingOptions['documentType'];
   filePath: string;
   citationStyle: ProcessingOptions['citationStyle'];
   checkUrls: boolean;
@@ -51,19 +54,29 @@ async function init(): Promise<void> {
     const connection = { url: redisUrl };
 
     _queue = new Queue('analysis', { connection }) as BullQueue;
+    _queue.on('error', (err) => console.error('[queue] Redis error:', err.message));
+    await _queue.waitUntilReady();
 
-    _worker = new Worker<AnalysisJobData, AnalysisResult>(
+    // Remove legacy terminal jobs, which stored whole documents and used lazy
+    // age-based cleanup. Waiting/active uploads still belong to their workers.
+    for (const state of ['completed', 'failed'] as const) {
+      while ((await _queue.clean(0, 1000, state)).length === 1000) { /* next batch */ }
+    }
+
+    _worker = new Worker<AnalysisJobData, void>(
       'analysis',
       async (job) => {
-        const { filePath, citationStyle, checkUrls, checkDoi, checkInText } =
+        const { filePath, citationStyle, checkUrls, checkDoi, checkInText, documentType } =
           job.data;
 
         const options: ProcessingOptions = {
           citationStyle,
+          documentType,
           checkUrls,
           checkDoi,
           checkInText,
           screenshotUrls: false,
+          semanticScholarApiKey: process.env.SEMANTIC_SCHOLAR_API_KEY,
         };
 
         const jobId = job.id ?? '';
@@ -77,10 +90,15 @@ async function init(): Promise<void> {
             (verification, index, total) =>
               emit({ type: 'reference', jobId, verification, index, total }),
           );
-          emit({ type: 'complete', jobId, result });
-          return result;
+          const report = reportWithoutDocument(result);
+          report.fileName = job.data.fileName ?? report.fileName;
+          const expiresAt = await saveOutcome(await _queue!.client, jobId, { status: 'complete', result: report });
+          emit({ type: 'complete', jobId, result: report, expiresAt });
+          // BullMQ must not keep a second copy in its non-expiring job hash.
         } catch (err) {
-          emit({ type: 'error', jobId, error: err instanceof Error ? err.message : String(err) });
+          const error = err instanceof Error ? err.message : String(err);
+          const expiresAt = await saveOutcome(await _queue!.client, jobId, { status: 'failed', error });
+          emit({ type: 'error', jobId, error, expiresAt });
           throw err;
         } finally {
           await unlink(filePath).catch(() => undefined);
@@ -95,9 +113,10 @@ async function init(): Promise<void> {
     _worker.on('failed', (job, err) => {
       console.error(`[queue] Job ${job?.id ?? '?'} failed:`, err);
     });
+    _worker.on('error', (err) => console.error('[queue] Worker error:', err.message));
 
     _available = true;
-    console.log('[queue] BullMQ worker started (Redis:', redisUrl, ')');
+    console.log('[queue] BullMQ worker started');
   } catch (err) {
     console.warn('[queue] Failed to initialise BullMQ — running in synchronous mode:', err);
     _available = false;
@@ -133,8 +152,8 @@ export async function addJob(data: AnalysisJobData): Promise<string> {
     // sequential one would let anybody read — or cancel — a stranger's
     // analysis by counting upwards.
     jobId: randomUUID(),
-    removeOnComplete: { age: 3600 }, // keep results for 1 hour
-    removeOnFail: { age: 86400 },    // keep failures for 24 hours
+    removeOnComplete: true,
+    removeOnFail: true,
   });
 
   if (!job.id) {
@@ -152,6 +171,7 @@ export async function getJob(
   jobId: string,
 ): Promise<{
   status: 'queued' | 'processing' | 'complete' | 'failed';
+  expiresAt?: string;
   result?: AnalysisResult;
   error?: string;
 } | null> {
@@ -159,26 +179,25 @@ export async function getJob(
     return null;
   }
 
+  const outcome = await loadOutcome(await _queue.client, jobId);
+  if (outcome) return outcome;
+
   // Must be import(), not require(): this file is ESM, where require is not
   // defined — a require() here threw on every poll and returned a 500.
   const { Job } = await import('bullmq');
-  const job = await Job.fromId<AnalysisJobData, AnalysisResult>(_queue, jobId);
+  const job = await Job.fromId<AnalysisJobData, void>(_queue, jobId);
 
   if (!job) {
-    return null;
+    // It may have completed between the first outcome lookup and Job.fromId.
+    return loadOutcome(await _queue.client, jobId);
   }
 
   const state = await job.getState();
 
   switch (state) {
     case 'completed':
-      return { status: 'complete', result: job.returnvalue };
-
     case 'failed':
-      return {
-        status: 'failed',
-        error: job.failedReason ?? 'Unknown error',
-      };
+      return loadOutcome(await _queue.client, jobId);
 
     case 'active':
       return { status: 'processing' };
@@ -213,7 +232,7 @@ export async function cancelJob(
   const job = await Job.fromId<AnalysisJobData, AnalysisResult>(_queue, jobId);
 
   if (!job) {
-    return 'not_found';
+    return await loadOutcome(await _queue.client, jobId) ? 'finished' : 'not_found';
   }
 
   const state = await job.getState();

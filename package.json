@@ -1,7 +1,7 @@
 {
   "name": "cite-sight",
   "private": true,
-  "version": "0.8.31",
+  "version": "0.9.0",
   "description": "Academic integrity tool for checking student assignments",
   "workspaces": [
     "packages/core",
@@ -28,10 +28,18 @@
     "lint": "eslint packages/*/src/**/*.ts packages/*/src/**/*.tsx",
     "test:core": "npm test -w packages/core",
     "test:cli": "npm test -w packages/cli",
-    "test": "npm run test:core && npm run test:cli",
+    "test:server": "npm test -w packages/server",
+    "test:ui": "npm test -w packages/ui-dashboard",
+    "test:desktop": "npm test -w packages/desktop",
+    "test:web": "npm test -w packages/web",
+    "test": "npm run test:core && npm run test:cli && npm run test:server && npm run test:ui && npm run test:desktop && npm run test:web",
     "bump": "bash scripts/bump.sh"
   },
   "devDependencies": {
-    "typescript": "~5.8.3"
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
+    "jsdom": "^28.1.0",
+    "typescript": "~5.8.3",
+    "vitest": "^4.1.11"
   }
 }

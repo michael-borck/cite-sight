@@ -2,57 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { resolve } from 'node:path';
 import { extract } from '../src/extractors/fromFile.js';
 import { extractReferences } from '../src/references/extractor.js';
-// Import the pipeline's crossReferenceCheck indirectly by testing the full pipeline
-// or by reimplementing the logic inline. Since crossReferenceCheck is not exported,
-// we test it through the pipeline or replicate the matching logic.
+import { crossReferenceCheck } from '../src/references/crossReference.js';
 
 const FIXTURES = resolve(import.meta.dirname, 'fixtures');
-
-// Replicate the cross-reference logic from pipeline.ts for unit testing.
-// Keep in sync with pipeline.ts — including the punctuation-stripping
-// normalisation that lets kerning-split surnames ("Baidoo - Anu") match their
-// bibliography form ("Baidoo-Anu").
-function crossReferenceCheck(
-  references: { authors: string[] }[],
-  inTextCitations: { authors: string[] }[],
-) {
-  const unmatchedBibliography: number[] = [];
-  const unmatchedInText: number[] = [];
-
-  const surnameKey = (a: string): string =>
-    (a.split(/[,\s]+/)[0] ?? '').toLowerCase().replace(/[^\p{L}]/gu, '');
-  const citeKey = (a: string): string => a.toLowerCase().replace(/[^\p{L}]/gu, '');
-
-  for (let i = 0; i < references.length; i++) {
-    const ref = references[i];
-    const authorLastNames = ref.authors.map(surnameKey).filter(Boolean);
-
-    const matched = inTextCitations.some(cite => {
-      const citeAuthors = cite.authors.map(citeKey);
-      return authorLastNames.some(name =>
-        citeAuthors.some(ca => ca.includes(name) || name.includes(ca))
-      );
-    });
-
-    if (!matched) unmatchedBibliography.push(i);
-  }
-
-  for (let i = 0; i < inTextCitations.length; i++) {
-    const cite = inTextCitations[i];
-    const citeAuthors = cite.authors.map(citeKey);
-
-    const matched = references.some(ref => {
-      const authorLastNames = ref.authors.map(surnameKey).filter(Boolean);
-      return citeAuthors.some(ca =>
-        authorLastNames.some(name => ca.includes(name) || name.includes(ca))
-      );
-    });
-
-    if (!matched) unmatchedInText.push(i);
-  }
-
-  return { unmatchedBibliography, unmatchedInText };
-}
 
 describe('cross-reference matching', () => {
   it('matches all in-text citations to bibliography in APA sample', async () => {

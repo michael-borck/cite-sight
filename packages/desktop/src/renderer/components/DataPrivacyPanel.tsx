@@ -60,10 +60,11 @@ export function DataPrivacyPanel({ onDismissalsCleared }: Props) {
           <div className="option-label">Local data location</div>
           <code className="data-path">{info?.directory ?? '…'}</code>
           <span className="hint">
-            Everything CiteSight stores lives here, on this machine: the lookup cache
-            (results from the citation databases, so re-scans don&apos;t re-spend API
-            quota) and your dismissals (flags you marked as reviewed). Documents are
-            never stored.
+             The lookup cache and remembered review flags live here, on this machine. The cache contains
+             results from the citation databases, so re-scans don&apos;t re-spend API
+             quota. Documents are
+             not copied into saved review sessions. Session files contain citation results,
+             decisions and source file paths, and are saved wherever you choose.
           </span>
         </div>
 

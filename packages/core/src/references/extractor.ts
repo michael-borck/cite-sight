@@ -87,6 +87,7 @@ function parseReference(raw: string): ParsedReference {
     authors,
     title,
     year,
+    yearSuffix: yearMatch?.[0].match(/[a-z]$/)?.[0],
     journal,
     volume,
     issue,
@@ -485,19 +486,19 @@ function extractInTextCitations(text: string, style: CitationStyle = 'unknown'):
     /\((\p{Lu}[\p{L}\-']+(?:\s*-\s*\p{Lu}[\p{L}\-']+)?(?:\s*(?:&|and)\s*\p{Lu}[\p{L}\-']+(?:\s*-\s*\p{Lu}[\p{L}\-']+)?|\s+et\s+al\.)?),\s*((?:19|20)\d{2}[a-z]?(?:,\s*(?:19|20)\d{2}[a-z]?)*(?:;\s*\p{Lu}[^;)]+,\s*(?:19|20)\d{2}[a-z]?)*)\)/gu;
 
   for (const m of text.matchAll(apaParenRe)) {
-    const authorPart = m[1].trim();
-    const yearPart = m[2].trim();
-    const year = parseInt(yearPart.split(',')[0], 10);
-    const authors = authorPart
-      .split(/\s*(?:&|and)\s*/)
-      .map((a) => a.trim())
-      .filter(Boolean);
-    results.push({
-      raw: m[0],
-      authors,
-      year,
-      position: m.index ?? 0,
-    });
+    // Each work in a grouped citation needs its own author/year pairing.
+    for (const group of m[0].slice(1, -1).split(';')) {
+      const split = group.match(/^\s*(.+?),\s*((?:19|20)\d{2}[a-z]?(?:,\s*(?:19|20)\d{2}[a-z]?)*)\s*$/u);
+      if (!split) continue;
+      const authors = split[1].split(/\s*(?:&|\band\b)\s*/).map((a) => a.trim()).filter(Boolean);
+      for (const yearToken of split[2].split(/,\s*/)) {
+        results.push({
+          raw: m[0], authors, year: parseInt(yearToken, 10),
+          yearSuffix: yearToken.match(/[a-z]$/)?.[0],
+          position: m.index ?? 0,
+        });
+      }
+    }
   }
 
   // --- APA narrative: Smith (2020), Russell Group (2023), Mollick & Mollick (2023) ---
@@ -505,11 +506,11 @@ function extractInTextCitations(text: string, style: CitationStyle = 'unknown'):
   // is included so multi-word author/org surnames such as "Russell Group" or
   // "Artificial Intelligence Act" aren't truncated to their last word.
   const apaNarrativeRe =
-    /\b(\p{Lu}[\p{L}\-']+(?:\s*-\s*\p{Lu}[\p{L}\-']+)?(?:\s+\p{Lu}[\p{L}\-']+|\s+(?:&|and)\s+\p{Lu}[\p{L}\-']+|\s+et\s+al\.)*)\s+\(((?:19|20)\d{2})[a-z]?\)/gu;
+    /\b(\p{Lu}[\p{L}\-']+(?:\s*-\s*\p{Lu}[\p{L}\-']+)?(?:\s+\p{Lu}[\p{L}\-']+|\s+(?:&|and)\s+\p{Lu}[\p{L}\-']+|\s+et\s+al\.)*)\s+\(((?:19|20)\d{2})([a-z]?)\)/gu;
 
   for (const m of text.matchAll(apaNarrativeRe)) {
     const authors = m[1]
-      .split(/\s*(?:&|and)\s*/)
+      .split(/\s*(?:&|\band\b)\s*/)
       .map((a) => a.trim())
       .filter(Boolean);
     const year = parseInt(m[2], 10);
@@ -517,6 +518,7 @@ function extractInTextCitations(text: string, style: CitationStyle = 'unknown'):
       raw: m[0],
       authors,
       year,
+      yearSuffix: m[3] || undefined,
       position: m.index ?? 0,
     });
   }
@@ -556,10 +558,11 @@ function extractInTextCitations(text: string, style: CitationStyle = 'unknown'):
   }
 
   // Deduplicate by position (APA narrative can double-match parenthetical)
-  const seen = new Set<number>();
+  const seen = new Set<string>();
   return results.filter((r) => {
-    if (seen.has(r.position)) return false;
-    seen.add(r.position);
+    const key = JSON.stringify([r.position, r.authors, r.year, r.yearSuffix]);
+    if (seen.has(key)) return false;
+    seen.add(key);
     return true;
   });
 }
@@ -612,7 +615,13 @@ export function extractReferences(text: string): {
   // The bibliography's own style decides which in-text citation shapes are
   // plausible — so an APA paper isn't scanned for MLA "(Author page)" or
   // Chicago "[n]" markers that collide with ordinary prose.
-  const inTextCitations = extractInTextCitations(text, majorityStyle(references));
+  // Bibliography entries themselves are not in-text citations. Keep character
+  // offsets stable by blanking the section instead of removing it.
+  const sectionStart = section ? text.indexOf(section) : -1;
+  const body = section && sectionStart >= 0
+    ? text.slice(0, sectionStart) + section.replace(/[^\n]/g, ' ') + text.slice(sectionStart + section.length)
+    : text;
+  const inTextCitations = extractInTextCitations(body, majorityStyle(references));
 
   return { references, inTextCitations };
 }

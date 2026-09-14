@@ -11,6 +11,7 @@ import { EventEmitter } from 'events';
 import type { AnalysisResult, ReferenceVerification } from '@michaelborck/cite-sight-core';
 
 export interface StreamMessage {
+  expiresAt?: string;
   type: 'progress' | 'reference' | 'complete' | 'error';
   jobId: string;
   // progress

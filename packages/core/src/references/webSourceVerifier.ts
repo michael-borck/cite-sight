@@ -34,14 +34,11 @@ function extractIsbn(raw: string): string | null {
 /** Safe fetch wrapper with timeout. */
 async function safeFetch(url: string, timeoutMs = 8000): Promise<Response | null> {
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
     const res = await httpFetch(url, {
-      signal: controller.signal,
+      signal: AbortSignal.timeout(timeoutMs),
       headers: { 'User-Agent': 'CiteSight/1.0 (academic-reference-checker)' },
       redirect: 'follow',
     });
-    clearTimeout(timer);
     return res;
   } catch {
     return null;

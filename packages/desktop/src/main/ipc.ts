@@ -1,6 +1,7 @@
 import { ipcMain, dialog, BrowserWindow, app, shell } from 'electron';
 import { analyzePipeline, verifyReferences } from '@michaelborck/cite-sight-core';
 import { takeScreenshot } from './screenshot.js';
+import { saveSession, openSession } from './sessions.js';
 import { saveLookupCache, loadDismissals, setDismissal, cacheInfo, clearCacheFile, clearDismissalsFile } from './cacheStore.js';
 import { readdirSync, readFileSync, existsSync, realpathSync } from 'node:fs';
 import { join, extname, basename, resolve } from 'node:path';
@@ -42,7 +43,17 @@ function collectFiles(dir: string): string[] {
   return results;
 }
 
-export function registerIpcHandlers(mainWindow: BrowserWindow): void {
+let mainWindow: BrowserWindow;
+let handlersRegistered = false;
+
+export function registerIpcHandlers(window: BrowserWindow): void {
+  // macOS can reopen the window without restarting the process. Keep one set
+  // of handlers and point dialogs/progress at the current window.
+  mainWindow = window;
+  if (handlersRegistered) return;
+  handlersRegistered = true;
+  ipcMain.handle('cite-sight:save-session', (_event, session: unknown) => saveSession(mainWindow, session));
+  ipcMain.handle('cite-sight:open-session', () => openSession(mainWindow));
   ipcMain.handle('cite-sight:get-version', () => app.getVersion());
 
   // Handle document analysis (with optional post-analysis screenshots)
@@ -101,6 +112,8 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         [ref as never],
         {
           mailto: options.contactEmail,
+          checkUrls: options.checkUrls,
+          checkDoi: options.checkDoi,
           citationStyle: options.citationStyle as unknown as import('@michaelborck/cite-sight-core').CitationStyle,
           semanticScholarApiKey: options.semanticScholarApiKey ?? process.env.SEMANTIC_SCHOLAR_API_KEY,
         },

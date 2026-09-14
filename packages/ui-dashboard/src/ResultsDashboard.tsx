@@ -1,13 +1,16 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type {
   AnalysisResult,
   ParsedReference,
   ReferenceVerification,
   VerificationStatus,
+  ReviewDecision,
 } from '@michaelborck/cite-sight-core';
 import { ATTRIBUTION, DISCLAIMER } from '@michaelborck/cite-sight-core/disclaimer';
 import { referenceContentKey } from '@michaelborck/cite-sight-core/dashboard';
+import { REVIEW_LABELS, reviewKey, withVerifications } from '@michaelborck/cite-sight-core/review';
+import { ReviewActions, ReviewContext } from './ReviewActions';
 import { OverviewPanel } from './Overview';
 import { ScreenshotContext, ScreenshotThumbnail } from './Screenshot';
 import './ResultsDashboard.css';
@@ -37,6 +40,8 @@ export interface ResultsDashboardProps {
   persistedDismissals?: string[];
   /** Called per change so a host can persist triage decisions. */
   onDismissalChange?: (contentKey: string, dismissed: boolean) => void;
+  /** Keep host exports and saved sessions in sync with retries and reviews. */
+  onResultsChange?: (result: AnalysisResult) => void;
 }
 
 // ─── screenshot capability (context) ──────────────────────────────────────────
@@ -90,12 +95,11 @@ interface ReferenceRowProps {
   v: ReferenceVerification;
   index: number;
   isDismissed: boolean;
-  onToggleDismiss: (index: number) => void;
   onReverify?: (idx: number) => Promise<void>;
   isRechecking?: boolean;
 }
 
-function ReferenceRow({ v, index, isDismissed, onToggleDismiss, onReverify, isRechecking }: ReferenceRowProps) {
+function ReferenceRow({ v, index, isDismissed, onReverify, isRechecking }: ReferenceRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [showSnapshot, setShowSnapshot] = useState(false);
   const ref = v.reference;
@@ -106,6 +110,9 @@ function ReferenceRow({ v, index, isDismissed, onToggleDismiss, onReverify, isRe
       <tr
         className={`ref-row ${index % 2 === 0 ? 'even' : 'odd'} ${isDismissed ? 'dismissed' : ''}`}
         onClick={() => setExpanded((x) => !x)}
+        onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setExpanded((x) => !x); } }}
+        tabIndex={0}
+        aria-expanded={expanded}
       >
         <td className="ref-index">{index + 1}</td>
         <td className="ref-title" title={ref.raw}>{title}</td>
@@ -135,15 +142,16 @@ function ReferenceRow({ v, index, isDismissed, onToggleDismiss, onReverify, isRe
         <tr className="ref-detail-row">
           <td colSpan={7}>
             <div className="ref-detail">
-              <div className="ref-detail-raw"><strong>Raw:</strong> {ref.raw}</div>
+              <div className="review-comparison"><div><h4>Your citation</h4>{ref.raw}</div>
               {v.matchedWork && (
                 <div className="ref-detail-matched">
-                  <strong>Matched:</strong> {v.matchedWork.title}
+                  <h4>Matched record</h4> {v.matchedWork.title}
                   {v.matchedWork.year ? ` (${v.matchedWork.year})` : ''}
                   {' \u2014 '}<em>{v.matchedWork.source}</em>
                   {v.matchedWork.doi && <>{' \u2014 DOI: '}{v.matchedWork.doi}</>}
                 </div>
               )}
+              </div>
               {v.formatIssues.length > 0 && (
                 <div className="ref-detail-issues">
                   <strong>Format issues:</strong>
@@ -204,16 +212,8 @@ function ReferenceRow({ v, index, isDismissed, onToggleDismiss, onReverify, isRe
                     {showSnapshot ? 'Hide snapshot' : 'Page snapshot'}
                   </button>
                 )}
-                {(v.status === 'suspicious' || v.status === 'not_found' || v.status === 'unverified') && (
-                  <button
-                    type="button"
-                    className="priority-action priority-action-dismiss"
-                    onClick={() => onToggleDismiss(index)}
-                  >
-                    {isDismissed ? 'Restore' : 'Dismiss'}
-                  </button>
-                )}
               </div>
+              <ReviewActions itemKey={`ref:${index}`} />
               {showSnapshot && v.urlCheck?.screenshotPath && (
                 <ScreenshotThumbnail path={v.urlCheck.screenshotPath} />
               )}
@@ -231,9 +231,8 @@ interface PanelProps {
 
 type SortKey = 'index' | 'title' | 'status' | 'doi' | 'url' | 'confidence';
 
-function ReferencesPanel({ results, dismissed, onDismissedChange, onReverify, rechecking }: PanelProps & {
+function ReferencesPanel({ results, dismissed, onReverify, rechecking }: PanelProps & {
   dismissed: Set<string>;
-  onDismissedChange: (next: Set<string>) => void;
   onReverify?: (idx: number) => Promise<void>;
   rechecking: Set<number>;
 }) {
@@ -286,14 +285,6 @@ function ReferencesPanel({ results, dismissed, onDismissedChange, onReverify, re
     });
   }, [references.verifications, hiddenStatuses, sortKey, sortDir, dismissed]);
 
-  const toggleDismiss = (idx: number) => {
-    const key = `ref:${idx}`;
-    const next = new Set(dismissed);
-    if (next.has(key)) next.delete(key);
-    else next.add(key);
-    onDismissedChange(next);
-  };
-
   return (
     <div className="panel-card">
       <div className="panel-header">
@@ -308,7 +299,7 @@ function ReferencesPanel({ results, dismissed, onDismissedChange, onReverify, re
             ['suspicious', 'Needs review', 'suspicious', live('suspicious')],
             ['not_found', 'Not Found', 'notfound', live('not_found')],
             ['unverified', 'Unverified', 'unverified', live('unverified')],
-            ['dismissed', 'Dismissed', 'dismissed-chip', live('dismissed')],
+            ['dismissed', 'Reviewed', 'dismissed-chip', live('dismissed')],
           ] as const).map(([status, label, cls, count]) => (
             <button
               key={status}
@@ -326,8 +317,7 @@ function ReferencesPanel({ results, dismissed, onDismissedChange, onReverify, re
           <strong>Not found</strong> = searched, no record &middot;{' '}
           <strong>Unverified</strong> = database unreachable, re-run to retry &middot;{' '}
           <strong>Needs review</strong> = found but metadata disagrees &middot;{' '}
-          <strong>struck-through</strong> = dismissed (you marked it reviewed) — expand the row and
-          use Restore to undo
+          <strong>struck-through</strong> = reviewed. Expand the row to change or undo your decision.
         </p>
 
         {references.verifications.length > 0 ? (
@@ -351,7 +341,6 @@ function ReferencesPanel({ results, dismissed, onDismissedChange, onReverify, re
                     v={v}
                     index={idx}
                     isDismissed={dismissed.has(`ref:${idx}`)}
-                    onToggleDismiss={toggleDismiss}
                     onReverify={onReverify}
                     isRechecking={rechecking.has(idx)}
                   />
@@ -369,6 +358,9 @@ function ReferencesPanel({ results, dismissed, onDismissedChange, onReverify, re
 
 function CrossReferencesPanel({ results }: PanelProps) {
   const { crossReference } = results.references;
+  if (results.references.inTextCheckSkipped) return <div className="panel-card"><div className="panel-body">
+    <h3>In-text checking skipped</h3><p>This run checked the reference list only. Choose Assignment when checking a document with citations in its body.</p>
+  </div></div>;
 
   return (
     <div className="panel-card">
@@ -386,7 +378,7 @@ function CrossReferencesPanel({ results }: PanelProps) {
               {crossReference.unmatchedBibliography.map((ref, i) => (
                 <li key={i} className="cross-item cross-biblio">
                   <span className="cross-icon">B</span>
-                  <span>{ref.raw}</span>
+                  <span>{ref.raw}<ReviewActions itemKey={`biblio:${i}`} /></span>
                 </li>
               ))}
             </ul>
@@ -408,6 +400,7 @@ function CrossReferencesPanel({ results }: PanelProps) {
                   <span>
                     {cite.raw}
                     {cite.year ? ` (${cite.year})` : ''}
+                    <ReviewActions itemKey={`intext:${i}`} />
                   </span>
                 </li>
               ))}
@@ -431,28 +424,40 @@ const SECTIONS = [
 
 // ─── main component ───────────────────────────────────────────────────────────
 
-export function ResultsDashboard({ results, readScreenshot, reverify, persistedDismissals, onDismissalChange }: ResultsDashboardProps) {
+export function ResultsDashboard({ results, readScreenshot, reverify, persistedDismissals, onDismissalChange, onResultsChange }: ResultsDashboardProps) {
   const [activeSection, setActiveSection] = useState('overview');
   // Re-verified rows override the original run's verdicts in place.
   const [overrides, setOverrides] = useState<Map<number, ReferenceVerification>>(new Map());
   const [rechecking, setRechecking] = useState<Set<number>>(new Set());
+  const [retryError, setRetryError] = useState('');
+  const [reviews, setReviews] = useState(results.reviews ?? {});
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  useEffect(() => { setOverrides(new Map()); setReviews(results.reviews ?? {}); }, [results]);
 
   const effectiveResults = useMemo(() => {
-    if (overrides.size === 0) return results;
     const verifications = results.references.verifications.map((v, i) => overrides.get(i) ?? v);
-    return { ...results, references: { ...results.references, verifications } };
-  }, [results, overrides]);
+    return withVerifications({ ...results, reviews }, verifications);
+  }, [results, overrides, reviews]);
+  const current = useRef(effectiveResults);
+  current.current = effectiveResults;
 
   const handleReverify = async (idx: number) => {
     if (!reverify || rechecking.has(idx)) return;
     const v = effectiveResults.references.verifications[idx];
     if (!v) return;
     setRechecking((prev) => new Set(prev).add(idx));
+    setRetryError('');
     try {
       const fresh = await reverify(v.reference);
-      if (fresh) {
+      if (fresh && mounted.current) {
         setOverrides((prev) => new Map(prev).set(idx, fresh));
+        const next = withVerifications(current.current, current.current.references.verifications.map((row, i) => i === idx ? fresh : row));
+        current.current = next;
+        onResultsChange?.(next);
       }
+    } catch (error) {
+      if (mounted.current) setRetryError(error instanceof Error ? error.message : 'Could not retry this reference. Please try again.');
     } finally {
       setRechecking((prev) => {
         const next = new Set(prev);
@@ -469,6 +474,7 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
   const handleReverifyAll = async () => {
     // Sequential on purpose: the whole point is recovering from rate limits.
     for (const idx of unverifiedIdx) {
+      if (!mounted.current) break;
       // eslint-disable-next-line no-await-in-loop
       await handleReverify(idx);
     }
@@ -489,21 +495,35 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
     }
     return init;
   });
+  useEffect(() => {
+    const next = new Set<string>();
+    const persisted = new Set(persistedDismissals);
+    results.references.verifications.forEach((v, idx) => {
+      const decision = reviews[reviewKey(results, `ref:${idx}`)]?.decision;
+      if (decision ? decision !== 'unresolved' : persisted.has(referenceContentKey(v.reference.raw))) next.add(`ref:${idx}`);
+    });
+    results.references.crossReference.unmatchedInText.forEach((_v, idx) => {
+      const decision = reviews[reviewKey(results, `intext:${idx}`)]?.decision;
+      if (decision && decision !== 'unresolved') next.add(`intext:${idx}`);
+    });
+    results.references.crossReference.unmatchedBibliography.forEach((_v, idx) => {
+      const decision = reviews[reviewKey(results, `biblio:${idx}`)]?.decision;
+      if (decision && decision !== 'unresolved') next.add(`biblio:${idx}`);
+    });
+    setDismissedRaw(next);
+  }, [results, persistedDismissals, reviews]);
   // Diff each change against the previous set and report per-reference
   // deltas to the host for persistence.
-  const setDismissed = (next: Set<string>) => {
-    if (onDismissalChange) {
-      const all = new Set([...dismissed, ...next]);
-      for (const key of all) {
-        const was = dismissed.has(key);
-        const is = next.has(key);
-        if (was === is || !key.startsWith('ref:')) continue;
-        const idx = Number(key.slice(4));
-        const v = results.references.verifications[idx];
-        if (v) onDismissalChange(referenceContentKey(v.reference.raw), is);
-      }
-    }
-    setDismissedRaw(next);
+  const recordReview = (itemKey: string, decision?: ReviewDecision) => {
+    const key = reviewKey(current.current, itemKey);
+    const nextReviews = { ...current.current.reviews };
+    if (decision) nextReviews[key] = { decision, reviewedAt: new Date().toISOString() };
+    else delete nextReviews[key];
+    const next = { ...current.current, reviews: nextReviews };
+    current.current = next;
+    setReviews(nextReviews);
+    if (itemKey.startsWith('ref:')) onDismissalChange?.(key, !!decision && decision !== 'unresolved');
+    onResultsChange?.(next);
   };
   const refs = effectiveResults.references;
 
@@ -518,12 +538,14 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
     const orphanInText = refs.crossReference.unmatchedInText.filter(
       (_c, idx) => !dismissed.has(`intext:${idx}`),
     ).length;
-    return { suspicious, notFound, orphanInText };
+    const uncited = refs.crossReference.unmatchedBibliography.filter((_v, idx) => !dismissed.has(`biblio:${idx}`)).length;
+    return { suspicious, notFound, orphanInText, uncited };
   }, [refs, dismissed]);
 
   const crossRefCount =
-    refs.crossReference.unmatchedBibliography.length + adjusted.orphanInText;
+    adjusted.uncited + adjusted.orphanInText;
   const issueCount = adjusted.suspicious + adjusted.notFound;
+  const reviewTotal = issueCount + adjusted.orphanInText + adjusted.uncited;
 
   const getBadge = (id: string): { count: number | null; warn: boolean } => {
     switch (id) {
@@ -558,6 +580,19 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
       </aside>
 
       <main className="results-content">
+        <section className="review-summary" aria-label="Review summary">
+          <h2>{reviewTotal > 0 ? `${reviewTotal} ${reviewTotal === 1 ? 'item needs' : 'items need'} review` : 'No outstanding review items'}</h2>
+          <p>{refs.verifiedCount} verified or likely valid · {unverifiedIdx.length} couldn’t be checked · {dismissed.size} reviewed</p>
+          <div className="review-summary-actions">
+            <button className="review-primary" type="button" onClick={() => { setActiveSection('overview'); requestAnimationFrame(() => document.getElementById('review-items')?.focus()); }}>Review findings</button>
+            {reverify && unverifiedIdx.length > 0 && <button type="button" onClick={() => void handleReverifyAll()} disabled={rechecking.size > 0}>
+              {rechecking.size ? 'Retrying checks…' : `Retry ${unverifiedIdx.length} unavailable ${unverifiedIdx.length === 1 ? 'check' : 'checks'}`}
+            </button>}
+            {crossRefCount > 0 && <button type="button" onClick={() => setActiveSection('crossrefs')}>Check in-text matches ({crossRefCount})</button>}
+            <button type="button" onClick={() => setActiveSection('references')}>All references</button>
+          </div>
+        </section>
+        {retryError && <p role="alert" className="retry-error">{retryError}</p>}
         {/* Summary strip — always visible */}
         <div className="summary-strip">
           <div className="summary-stat teal">
@@ -566,7 +601,7 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
           </div>
           <div className="summary-stat">
             <span className="value">{refs.verifications.filter((v) => v.status === 'verified' || v.status === 'likely_valid').length}</span>
-            <span className="label">Verified</span>
+            <span className="label">Verified / likely valid</span>
           </div>
           <div className="summary-stat amber">
             <span className="value">{adjusted.suspicious}</span>
@@ -579,7 +614,7 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
           {dismissed.size > 0 && (
             <div className="summary-stat muted">
               <span className="value">{dismissed.size}</span>
-              <span className="label">Dismissed</span>
+              <span className="label">Reviewed</span>
             </div>
           )}
           <div className="summary-stat muted">
@@ -597,11 +632,11 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
           </div>
         </div>
 
+        <div id="review-items" tabIndex={-1}>
         {activeSection === 'overview'    && (
           <OverviewPanel
             results={effectiveResults}
             dismissed={dismissed}
-            onDismissedChange={setDismissed}
             onReverify={reverify ? handleReverify : undefined}
             rechecking={rechecking}
           />
@@ -610,12 +645,22 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
           <ReferencesPanel
             results={effectiveResults}
             dismissed={dismissed}
-            onDismissedChange={setDismissed}
             onReverify={reverify ? handleReverify : undefined}
             rechecking={rechecking}
           />
         )}
         {activeSection === 'crossrefs'   && <CrossReferencesPanel results={effectiveResults} />}
+        </div>
+        {Object.keys(reviews).length > 0 && <details className="review-log"><summary>Review decisions ({Object.keys(reviews).length})</summary>
+          {Object.entries(reviews).map(([key, entry]) => {
+            const idx = refs.verifications.findIndex((v) => referenceContentKey(v.reference.raw) === key);
+            const citeIdx = refs.crossReference.unmatchedInText.findIndex((_v, i) => reviewKey(effectiveResults, `intext:${i}`) === key);
+            const bibIdx = refs.crossReference.unmatchedBibliography.findIndex((_v, i) => reviewKey(effectiveResults, `biblio:${i}`) === key);
+            const itemKey = idx >= 0 ? `ref:${idx}` : citeIdx >= 0 ? `intext:${citeIdx}` : bibIdx >= 0 ? `biblio:${bibIdx}` : key;
+            const text = idx >= 0 ? refs.verifications[idx].reference.raw : citeIdx >= 0 ? refs.crossReference.unmatchedInText[citeIdx].raw : refs.crossReference.unmatchedBibliography[bibIdx]?.raw ?? key;
+            return <div key={key}><p><strong>{REVIEW_LABELS[entry.decision]}</strong>: {text}</p><ReviewActions itemKey={itemKey} /></div>;
+          })}
+        </details>}
 
         <p className="results-disclaimer">{DISCLAIMER}</p>
         <p className="results-attribution">{ATTRIBUTION}</p>
@@ -626,8 +671,10 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
   // Provide the screenshot capability once, at the top, so descendants can
   // read it via context without prop-drilling through every panel.
   return (
+    <ReviewContext.Provider value={{ result: effectiveResults, record: recordReview }}>
     <ScreenshotContext.Provider value={readScreenshot ?? noScreenshot}>
       {body}
     </ScreenshotContext.Provider>
+    </ReviewContext.Provider>
   );
 }

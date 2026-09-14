@@ -6,7 +6,15 @@ describe('SSRF guard (isPrivateUrl)', () => {
   it('blocks loopback, private, link-local, and metadata addresses', () => {
     for (const url of [
       'http://127.0.0.1/',
-      'http://localhost/', // not an IP literal, but scheme allowed — see below
+      'http://localhost/',
+      'http://localhost./',
+      'http://app.localhost/',
+      'http://redis/',
+      'http://[::ffff:127.0.0.1]/',
+      'http://[::ffff:169.254.169.254]/',
+      'http://[fe80::1]/',
+      'http://100.64.0.1/',
+      'http://0.1.2.3/',
       'http://10.0.0.5/admin',
       'http://172.16.3.4/',
       'http://192.168.1.1/',
@@ -14,9 +22,6 @@ describe('SSRF guard (isPrivateUrl)', () => {
       'http://0.0.0.0/',
       'http://[::1]/',
     ]) {
-      // localhost is a DNS name, not a literal IP — the guard only blocks
-      // literal private IPs, so assert the IP-literal cases specifically.
-      if (url.includes('localhost')) continue;
       expect(isPrivateUrl(url), url).toBe(true);
     }
   });
