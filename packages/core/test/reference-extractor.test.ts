@@ -116,6 +116,38 @@ This is the combined reference list from all articles.
     ]));
   });
 
+  it('finds an inline bibliography when PDF extraction splits the heading ("R eferences")', async () => {
+    // EDUPIJ PDFs render the References heading with the first glyph as a
+    // separate text item; pdf.ts joins items with spaces, so the section
+    // arrives as one continuous line containing "R eferences" rather than a
+    // "References" line. Literal-word heading detection missed this and
+    // reported the whole bibliography as orphaned in-text citations.
+    const continuous = `Body text citing the work (Adiguzel et al., 2023) and also (Baskara, 2023). R eferences Adiguzel, T., Kaya, M. H., & Cansu, F. K. (2023). Revolutionizing education with AI. Thinking Skills and Creativity, 47, 101356. https://doi.org/10.1016/j.tsc.2023.101356 Baskara, R. (2023). Exploring the implications of ChatGPT for language learning. Journal of AI Education, 1(2), 1-15. Nikolopoulou, K. (2024). Generative artificial intelligence in higher education. Education Sciences, 14(3), 297.`;
+    const { references } = extractReferences(continuous);
+    expect(references.length).toBeGreaterThanOrEqual(3);
+    const authors = references.map((r) => r.authors[0] ?? '');
+    expect(authors).toEqual(expect.arrayContaining([
+      expect.stringContaining('Adiguzel'),
+      expect.stringContaining('Baskara'),
+      expect.stringContaining('Nikolopoulou'),
+    ]));
+  });
+
+  it('splits entries at kerning-split hyphenated surnames following a DOI', async () => {
+    // EDUPIJ PDF: "Cong - Lem" splits at the hyphen and follows a DOI URL.
+    // Without hyphen tolerance in the boundary pattern, the Cong-Lem entry
+    // merges into the Chan entry and both verifications corrupt.
+    const continuous = `R eferences Chan, C. K. Y., & Lee, K. K. W. (2023). The AI generation gap. Smart Learning Environments, 10, 1-23. https://doi.org/10.1186/s40561-023-00269-3 Cong - Lem, N., & Tran, T. (2024). Academic integrity in the age of generative AI. Journal of University Teaching, 21(2), 45-60. Dempere, L. (2023). The emergence of ChatGPT. Journal of Applied Research, 8(1), 12-30.`;
+    const { references } = extractReferences(continuous);
+    expect(references.length).toBe(3);
+    const authors = references.map((r) => r.authors[0] ?? '');
+    expect(authors).toEqual(expect.arrayContaining([
+      expect.stringContaining('Chan'),
+      expect.stringContaining('Cong'),
+      expect.stringContaining('Dempere'),
+    ]));
+  });
+
   it('finds a paragraph-style APA bibliography with no heading and no bullets', async () => {
     // Real-world case (manuscript-draft.docx): the common APA hanging-indent
     // layout — one blank-line-separated paragraph per entry, no "References"

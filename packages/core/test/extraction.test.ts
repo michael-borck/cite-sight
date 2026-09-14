@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { extract } from '../src/extractors/fromFile.js';
 import { extractPdf, extractDocx } from '../src/extractors/index.js';
+import { repairSplitDois } from '../src/extractors/pdf.js';
 
 const FIXTURES = resolve(import.meta.dirname, 'fixtures');
 
@@ -65,5 +66,23 @@ describe('text extraction', () => {
       const { unlink } = await import('node:fs/promises');
       await unlink(tmpPath).catch(() => {});
     }
+  });
+});
+
+describe('repairSplitDois', () => {
+  it('rejoins DOIs split across PDF text items', () => {
+    // EDUPIJ PDF: the DOI arrives as "https://doi.org/1 0.1186/s40561 - 023 - 00269 - 3"
+    expect(
+      repairSplitDois('see https://doi.org/1 0.1186/s40561 - 023 - 00269 - 3 Cong - Lem, N. (2024)'),
+    ).toBe('see https://doi.org/10.1186/s40561-023-00269-3 Cong - Lem, N. (2024)');
+    expect(
+      repairSplitDois('doi: https://doi.org/10.1007/978 - 3 - 658 - 29297 - 3 Ennis, R. H.'),
+    ).toBe('doi: https://doi.org/10.1007/978-3-658-29297-3 Ennis, R. H.');
+  });
+
+  it('leaves intact DOIs and following prose untouched', () => {
+    expect(
+      repairSplitDois('https://doi.org/10.1016/j.tsc.2023.101356 Next, A. (2024)'),
+    ).toBe('https://doi.org/10.1016/j.tsc.2023.101356 Next, A. (2024)');
   });
 });

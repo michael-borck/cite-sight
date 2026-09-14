@@ -33,6 +33,30 @@ try {
 }
 
 /**
+ * pdfjs splits long DOIs across text items at arbitrary glyph runs, leaving
+ * spaces inside the address ("https://doi.org/1 0.1186/s40561 - 023 - ...").
+ * Rejoin the fragments: after "doi.org/", keep swallowing tokens while they
+ * look like DOI fragments (digits/dots/hyphens/slashes/letters and carrying a
+ * digit, or a bare hyphen) so the first real word after the DOI ends the
+ * repair. Exported for unit tests.
+ */
+export function repairSplitDois(text: string): string {
+  return text.replace(
+    /(https?:\/\/doi\.org\/)([\w.\-/]+)((?:\s+[\w.\-/]+)+)/g,
+    (_all, prefix: string, head: string, tail: string) => {
+      const frags = tail.trim().split(/\s+/);
+      const kept: string[] = [];
+      for (const frag of frags) {
+        if (frag === '-' || /\d/.test(frag)) kept.push(frag);
+        else break;
+      }
+      const rest = frags.slice(kept.length).join(' ');
+      return prefix + head + kept.join('') + (rest ? ` ${rest}` : '');
+    },
+  );
+}
+
+/**
  * Extract all text from a PDF file supplied as raw bytes.
  *
  * Pages are joined with a single newline character. Within each page, text
@@ -84,7 +108,7 @@ export async function extractPdf(
   }
 
   return {
-    text: clampText(pageTexts.join('\n')),
+    text: clampText(repairSplitDois(pageTexts.join('\n'))),
     fileName,
     fileType: 'pdf',
     pageCount: pdf.numPages,

@@ -22,14 +22,18 @@ function crossReferenceCheck(
   const unmatchedBibliography: ParsedReference[] = [];
   const unmatchedInText: InTextCitation[] = [];
 
+  // Compare surnames stripped to bare letters: PDF extraction can leave
+  // kerning splits ("Baidoo - Anu" vs bibliography "Baidoo-Anu") and the
+  // substring test should still match them.
+  const surnameKey = (a: string): string =>
+    (a.split(/[,\s]+/)[0] ?? '').toLowerCase().replace(/[^\p{L}]/gu, '');
+  const citeKey = (a: string): string => a.toLowerCase().replace(/[^\p{L}]/gu, '');
+
   for (const ref of references) {
-    const authorLastNames = ref.authors.map(a => {
-      const parts = a.split(/[,\s]+/);
-      return parts[0].toLowerCase();
-    }).filter(Boolean);
+    const authorLastNames = ref.authors.map(surnameKey).filter(Boolean);
 
     const matched = inTextCitations.some(cite => {
-      const citeAuthors = cite.authors.map(a => a.toLowerCase());
+      const citeAuthors = cite.authors.map(citeKey);
       return authorLastNames.some(name =>
         citeAuthors.some(ca => ca.includes(name) || name.includes(ca))
       );
@@ -41,13 +45,10 @@ function crossReferenceCheck(
   }
 
   for (const cite of inTextCitations) {
-    const citeAuthors = cite.authors.map(a => a.toLowerCase());
+    const citeAuthors = cite.authors.map(citeKey);
 
     const matched = references.some(ref => {
-      const authorLastNames = ref.authors.map(a => {
-        const parts = a.split(/[,\s]+/);
-        return parts[0].toLowerCase();
-      }).filter(Boolean);
+      const authorLastNames = ref.authors.map(surnameKey).filter(Boolean);
 
       return citeAuthors.some(ca =>
         authorLastNames.some(name => ca.includes(name) || name.includes(ca))

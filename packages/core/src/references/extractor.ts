@@ -13,8 +13,11 @@ const YEAR_STRICT_RE = /\b(19|20)\d{2}[a-z]?\b/;
 // Headings that indicate the start of a reference/bibliography section.
 // Allows optional markdown heading markers (e.g. "## References") and
 // trailing dashes/equals used as underline-style headings.
+// Heading words tolerate a single space after the first letter: pdfjs splits a
+// heading's first glyph into its own text item on some PDFs (observed as
+// "R eferences" in EDUPIJ articles), which a literal-word match would miss.
 const REF_SECTION_RE =
-  /^(?:#{1,6}\s+)?(references|bibliography|works\s+cited|literature\s+cited)\s*$/i;
+  /^(?:#{1,6}\s+)?(r\s?eferences|b\s?ibliography|w\s?orks\s+cited|l\s?iterature\s+cited)\s*$/i;
 
 // ============================================================
 // Style detection helpers
@@ -269,14 +272,16 @@ function findReferenceSection(text: string): string | null {
   }
 
   // Fallback for PDF extraction: the heading may appear inline within a long
-  // text block rather than on its own line. Search for common heading patterns
+  // text block rather than on its own line, and pdfjs can split the heading's
+  // first glyph off with a space ("R eferences") — hence the optional space
+  // after each heading's first letter. Search for common heading patterns
   // followed by a reference-like entry (e.g. "References Borck, M. (2026)...").
   // The lookahead ensures the next token looks like an author surname (capital
   // letter, more letters, comma) so headings like "## References by Document"
   // do NOT trip the fallback.
   if (startIdx < 0) {
     const inlineRe =
-      /(?:^|\s)(References|Bibliography|Works\s+Cited|Literature\s+Cited)\s+([A-Z])(?=[a-zA-Z\-']+,)/i;
+      /(?:^|\s)(R\s?eferences|B\s?ibliography|W\s?orks\s+Cited|L\s?iterature\s+Cited)\s+([A-Z])(?=[a-zA-Z\-']+,)/i;
     for (let i = 0; i < lines.length; i++) {
       const m = lines[i].match(inlineRe);
       if (m && m.index !== undefined) {
@@ -392,11 +397,18 @@ function splitByLines(block: string): string[] {
 }
 
 function splitContinuousText(block: string): string[] {
-  // Match boundaries where a new APA-style reference starts:
-  // Look for "Author, I." or "Organization Name." followed by "(Year)."
-  // preceded by sentence-ending punctuation or a URL.
+  // Boundaries, not full author lists: a new APA entry starts where a surname
+  // (tolerating a kerning-split hyphen: "Cong - Lem") is followed by initials
+  // and, within a few hundred chars, a "(Year)" — all guarded by a lookbehind
+  // for the previous entry's ending (sentence punctuation or a URL). The
+  // earlier consuming pattern insisted on "&/and" between authors, but some
+  // publishers' PDFs drop it ("Cong - Lem, N., Tran, T. N."), merging entries.
+  // An organisation-name alternative ("National Health and Medical Research
+  // Council. (2023)") covers author-less entries. Lookahead + initials anchor
+  // keeps journal names in parens ("Applied Sciences (Switzerland), 13(9)")
+  // from becoming false boundaries.
   const refStartRe =
-    /(?<=\.\s+|(?:https?:\/\/\S+)\s+)([A-Z][a-zA-Z\-']+(?:,\s*[A-Z]\.(?:\s*[A-Z]\.)*|(?:\s+[A-Z][a-zA-Z\-']+)+)(?:,?\s*(?:and|&)\s*[A-Z][a-zA-Z\-']+(?:,\s*[A-Z]\.(?:\s*[A-Z]\.)*)?)*\s*[.(])/g;
+    /(?<=\.\s+|(?:https?:\/\/\S+)\s+)(?=(?:[A-Z][a-zA-Z\-']+(?:\s*-\s*[A-Z][a-zA-Z\-']+)?,\s*[A-Z]\.[\s\S]{0,300}?\(\s*(?:19|20)\d{2}|[A-Z][a-zA-Z\-']+(?:\s+[A-Za-z&][a-zA-Z\-'.]*){0,6}\.\s*\(\s*(?:19|20)\d{2}))/g;
 
   const text = block.trim();
   const indices: number[] = [0];
@@ -468,8 +480,9 @@ function extractInTextCitations(text: string, style: CitationStyle = 'unknown'):
   // Author names use Unicode letter classes (\p{Lu}/\p{L}, `u` flag) so accented
   // surnames — Buçinca, Kovanović, Gašević — match, not just ASCII. Years allow a
   // trailing APA disambiguation letter (2026a) for same-author/same-year works.
+  // A surname may carry a kerning-split hyphenated second part ("Baidoo - Anu").
   const apaParenRe =
-    /\((\p{Lu}[\p{L}\-']+(?:\s*(?:&|and)\s*\p{Lu}[\p{L}\-']+|\s+et\s+al\.)?),\s*((?:19|20)\d{2}[a-z]?(?:,\s*(?:19|20)\d{2}[a-z]?)*(?:;\s*\p{Lu}[^;)]+,\s*(?:19|20)\d{2}[a-z]?)*)\)/gu;
+    /\((\p{Lu}[\p{L}\-']+(?:\s*-\s*\p{Lu}[\p{L}\-']+)?(?:\s*(?:&|and)\s*\p{Lu}[\p{L}\-']+(?:\s*-\s*\p{Lu}[\p{L}\-']+)?|\s+et\s+al\.)?),\s*((?:19|20)\d{2}[a-z]?(?:,\s*(?:19|20)\d{2}[a-z]?)*(?:;\s*\p{Lu}[^;)]+,\s*(?:19|20)\d{2}[a-z]?)*)\)/gu;
 
   for (const m of text.matchAll(apaParenRe)) {
     const authorPart = m[1].trim();
@@ -492,7 +505,7 @@ function extractInTextCitations(text: string, style: CitationStyle = 'unknown'):
   // is included so multi-word author/org surnames such as "Russell Group" or
   // "Artificial Intelligence Act" aren't truncated to their last word.
   const apaNarrativeRe =
-    /\b(\p{Lu}[\p{L}\-']+(?:\s+\p{Lu}[\p{L}\-']+|\s+(?:&|and)\s+\p{Lu}[\p{L}\-']+|\s+et\s+al\.)*)\s+\(((?:19|20)\d{2})[a-z]?\)/gu;
+    /\b(\p{Lu}[\p{L}\-']+(?:\s*-\s*\p{Lu}[\p{L}\-']+)?(?:\s+\p{Lu}[\p{L}\-']+|\s+(?:&|and)\s+\p{Lu}[\p{L}\-']+|\s+et\s+al\.)*)\s+\(((?:19|20)\d{2})[a-z]?\)/gu;
 
   for (const m of text.matchAll(apaNarrativeRe)) {
     const authors = m[1]

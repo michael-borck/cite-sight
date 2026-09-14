@@ -8,7 +8,10 @@ import { extractReferences } from '../src/references/extractor.js';
 
 const FIXTURES = resolve(import.meta.dirname, 'fixtures');
 
-// Replicate the cross-reference logic from pipeline.ts for unit testing
+// Replicate the cross-reference logic from pipeline.ts for unit testing.
+// Keep in sync with pipeline.ts — including the punctuation-stripping
+// normalisation that lets kerning-split surnames ("Baidoo - Anu") match their
+// bibliography form ("Baidoo-Anu").
 function crossReferenceCheck(
   references: { authors: string[] }[],
   inTextCitations: { authors: string[] }[],
@@ -16,14 +19,16 @@ function crossReferenceCheck(
   const unmatchedBibliography: number[] = [];
   const unmatchedInText: number[] = [];
 
+  const surnameKey = (a: string): string =>
+    (a.split(/[,\s]+/)[0] ?? '').toLowerCase().replace(/[^\p{L}]/gu, '');
+  const citeKey = (a: string): string => a.toLowerCase().replace(/[^\p{L}]/gu, '');
+
   for (let i = 0; i < references.length; i++) {
     const ref = references[i];
-    const authorLastNames = ref.authors
-      .map(a => a.split(/[,\s]+/)[0].toLowerCase())
-      .filter(Boolean);
+    const authorLastNames = ref.authors.map(surnameKey).filter(Boolean);
 
     const matched = inTextCitations.some(cite => {
-      const citeAuthors = cite.authors.map(a => a.toLowerCase());
+      const citeAuthors = cite.authors.map(citeKey);
       return authorLastNames.some(name =>
         citeAuthors.some(ca => ca.includes(name) || name.includes(ca))
       );
@@ -34,12 +39,10 @@ function crossReferenceCheck(
 
   for (let i = 0; i < inTextCitations.length; i++) {
     const cite = inTextCitations[i];
-    const citeAuthors = cite.authors.map(a => a.toLowerCase());
+    const citeAuthors = cite.authors.map(citeKey);
 
     const matched = references.some(ref => {
-      const authorLastNames = ref.authors
-        .map(a => a.split(/[,\s]+/)[0].toLowerCase())
-        .filter(Boolean);
+      const authorLastNames = ref.authors.map(surnameKey).filter(Boolean);
       return citeAuthors.some(ca =>
         authorLastNames.some(name => ca.includes(name) || name.includes(ca))
       );
@@ -69,6 +72,24 @@ describe('cross-reference matching', () => {
     const result = crossReferenceCheck(references, inTextCitations);
 
     // Every bibliography entry should be cited in-text
+    expect(result.unmatchedBibliography).toHaveLength(0);
+  });
+
+  it('matches kerning-split hyphenated surnames across text and bibliography', async () => {
+    // PDF extraction splits "Baidoo-Anu" into "Baidoo - Anu" in body text
+    // while the bibliography may carry either form; matching must strip
+    // spaces/punctuation before comparing surnames.
+    const text = `
+AI support helps academic writing (Baidoo - Anu & Ansah, 2023).
+
+## References
+
+Baidoo-Anu, D., & Ansah, L. O. (2023). Education in the era of generative AI. *Journal of AI, 1*(1), 1-10.
+`;
+    const { references, inTextCitations } = extractReferences(text);
+    const result = crossReferenceCheck(references, inTextCitations);
+    expect(references.length).toBe(1);
+    expect(result.unmatchedInText).toHaveLength(0);
     expect(result.unmatchedBibliography).toHaveLength(0);
   });
 
