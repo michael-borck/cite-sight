@@ -27,3 +27,4 @@ win:
   target: nsis
 linux:
   target: AppImage
+  executableName: cite-sight
