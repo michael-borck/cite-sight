@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>CiteSight — Verify Citations in Student Work</title>
+  <meta name="description" content="Demo deck: verifying citations in student assignments with the CiteSight desktop app">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
+  <style>
+    :root {
+      --cs-blue: #1a5fb4;
+      --cs-green: #26a269;
+      --cs-amber: #c64600;
+      --cs-rose: #c01c28;
+      --cs-gray: #5e5c64;
+    }
+    .reveal { font-size: 30px; }
+    .reveal h1 { font-size: 1.9em; }
+    .reveal h2 { font-size: 1.35em; color: var(--cs-blue); text-transform: none; }
+    .reveal h3 { font-size: 1.0em; text-transform: none; }
+    .reveal section { text-align: left; }
+    .reveal .slides section.title-slide { text-align: center; }
+    .reveal ul { margin-left: 0.4em; }
+    .reveal li { margin-bottom: 0.35em; }
+    .reveal small, .reveal .small { font-size: 0.62em; color: var(--cs-gray); }
+    .reveal code { background: #f0f0f2; padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.85em; }
+    .reveal pre { width: 100%; box-shadow: none; }
+    .reveal pre code { display: block; padding: 0.6em 0.9em; background: #241f31; color: #f6f5f4; text-align: left; font-size: 0.72em; line-height: 1.45; }
+    .badge { display: inline-block; padding: 0.08em 0.55em; border-radius: 999px; font-size: 0.55em; font-weight: 600; vertical-align: middle; }
+    .badge.green  { background: #daf5e7; color: #1b6d47; }
+    .badge.amber  { background: #ffe8d0; color: #8a3400; }
+    .badge.rose   { background: #fbdfe1; color: #96101b; }
+    .badge.gray   { background: #e8e8ec; color: #4d4a54; }
+    .badge.blue   { background: #dcebfd; color: #10407a; }
+    .cols { display: flex; gap: 1.4em; align-items: flex-start; }
+    .cols > div { flex: 1; }
+    .kicker { font-size: 0.6em; letter-spacing: 0.18em; text-transform: uppercase; color: var(--cs-gray); margin-bottom: 0.4em; }
+    .stepnum { display: inline-block; background: var(--cs-blue); color: #fff; border-radius: 50%; width: 1.15em; height: 1.15em; line-height: 1.15em; text-align: center; font-weight: 700; margin-right: 0.35em; }
+    .meter { display: inline-block; width: 7em; height: 0.45em; background: #e8e8ec; border-radius: 4px; vertical-align: middle; overflow: hidden; }
+    .meter i { display: block; height: 100%; background: var(--cs-green); }
+    .arrowflow { display: flex; align-items: center; gap: 0.5em; justify-content: center; font-size: 0.85em; margin: 0.6em 0 0.4em; }
+    .arrowflow .stage { background: #f0f4fa; border: 1px solid #cfdcf0; border-radius: 10px; padding: 0.35em 0.7em; text-align: center; }
+    .arrowflow .arr { color: var(--cs-blue); font-weight: 700; }
+    .footer-note { position: absolute; bottom: 0.6em; left: 2em; right: 2em; font-size: 0.45em; color: #9a9996; text-align: center; }
+    .big-emoji { font-size: 1.6em; }
+  </style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+  <!-- 1 · Title -->
+  <section class="title-slide">
+    <h1>CiteSight</h1>
+    <p class="kicker">Academic integrity · citation verification</p>
+    <p>Verify the citations in student work — before you sign off on the grade.</p>
+    <p class="small">Demo · Desktop app · v0.8.28</p>
+    <aside class="notes">
+      Welcome. This is CiteSight, a tool for marking: it checks that the references and in-text
+      citations in a student assignment are real, correctly cited, and actually used. Today we'll
+      download the desktop app, point it at a folder of submissions, and read the results.
+      Timing: ~15 minutes plus questions.
+    </aside>
+  </section>
+
+  <!-- 2 · The problem -->
+  <section>
+    <h2>Marking question: <em>are those references real?</em></h2>
+    <div class="cols">
+      <div>
+        <ul>
+          <li><strong>Fabricated</strong> references — plausible-looking, don't exist</li>
+          <li><strong>Mismatched</strong> — the cited claim isn't what the source says</li>
+          <li><strong>Orphans</strong> — in-text citations with no bibliography entry</li>
+          <li><strong>Dead / bot-blocked URLs</strong> and broken DOIs</li>
+          <li><strong>Formatting</strong> drift across APA, MLA, Chicago</li>
+        </ul>
+      </div>
+      <div>
+        <p>Checking one paper by hand is tedious.<br>Checking a <em>tutorial set</em> of 30 is worse.</p>
+        <p>CiteSight does the mechanical pass so your time goes to judgement calls.</p>
+        <p class="small">It verifies existence and metadata — <em>you</em> still decide whether the source supports the claim.</p>
+      </div>
+    </div>
+    <aside class="notes">
+      Frame it as the mechanical layer of marking references: does each entry exist, is it cited
+      in the text, does the formatting follow the required style? Emphasise the division of
+      labour: CiteSight flags; the tutor judges. It is evidence, not a verdict.
+    </aside>
+  </section>
+
+  <!-- 3 · What it does -->
+  <section>
+    <h2>What CiteSight does</h2>
+    <div class="arrowflow">
+      <div class="stage">Read the paper<br><small>PDF · DOCX · TXT · MD</small></div>
+      <span class="arr">→</span>
+      <div class="stage">Extract references<br><small>+ in-text citations</small></div>
+      <span class="arr">→</span>
+      <div class="stage">Verify<br><small>academic databases</small></div>
+      <span class="arr">→</span>
+      <div class="stage">Cross-check<br><small>text ↔ bibliography</small></div>
+      <span class="arr">→</span>
+      <div class="stage">Report<br><small>confidence + evidence</small></div>
+    </div>
+    <ul>
+      <li>Every bibliography entry checked against <strong>Crossref, Semantic Scholar, OpenAlex</strong> (+ arXiv, DataCite, Open Library)</li>
+      <li>APA / MLA / Chicago format validation</li>
+      <li>Suspicious patterns: future-dated citations, suspicious year clusters, placeholder text</li>
+      <li>URL liveness checks — with <strong>screenshots as evidence</strong> (desktop)</li>
+    </ul>
+    <aside class="notes">
+      The pipeline runs automatically per file. Everything on this slide is free-tier, open
+      bibliographic services — no accounts required to get started, though two optional
+      upgrades (slides later) make big batches smoother.
+    </aside>
+  </section>
+
+  <!-- 4 · How verification works -->
+  <section>
+    <h2>How a reference gets verified</h2>
+    <ol>
+      <li><strong>Parse</strong> — pull authors, title, year, journal, DOI, URL from the entry</li>
+      <li><strong>Validate format</strong> — against the selected style</li>
+      <li><strong>Verify existence</strong> — cascade of free databases:
+        <ul>
+          <li>DOI? → Crossref → then title + author search → Semantic Scholar → OpenAlex</li>
+          <li>Has a URL? → HTTP status check (+ optional screenshot)</li>
+        </ul>
+      </li>
+      <li><strong>Cross-reference</strong> — match bibliography ↔ in-text citations, flag orphans</li>
+      <li><strong>Score</strong> — confidence 0–1 from metadata match quality</li>
+    </ol>
+    <p class="small">A DOI on a paywalled publisher page is reported as <em>blocked</em>, not dead — the DOI itself still resolves.</p>
+    <aside class="notes">
+      Keep this brief in the live demo — it's the "why results look the way they do" slide.
+      The confidence score reflects how well the parsed entry matched a real record: exact DOI
+      match scores high; a fuzzy title-only match scores lower and lands in "needs review".
+    </aside>
+  </section>
+
+  <!-- 5 · Get the desktop app -->
+  <section>
+    <h2><span class="stepnum">1</span>Download the desktop app</h2>
+    <p>One installer, no accounts, works offline for everything except the lookups.</p>
+    <table>
+      <thead><tr><th>Platform</th><th>Download</th></tr></thead>
+      <tbody>
+        <tr><td>macOS</td><td>DMG installer</td></tr>
+        <tr><td>Windows</td><td>NSIS installer</td></tr>
+        <tr><td>Linux</td><td>AppImage</td></tr>
+      </tbody>
+    </table>
+    <p>Grab the latest release:</p>
+    <p><code>github.com/michael-borck/cite-sight/releases/latest</code></p>
+    <p class="small">The app auto-updates when new versions are released — install once.</p>
+    <aside class="notes">
+      Live demo moment: open the releases page in a browser and show the three installers
+      sitting at the top of the release, plus cite-sight-standalone.html below them
+      (mention it exists as a zero-install fallback for locked-down machines, then move on).
+    </aside>
+  </section>
+
+  <!-- 6 · Point at a folder -->
+  <section>
+    <h2><span class="stepnum">2</span>Point it at a folder of submissions</h2>
+    <div class="cols">
+      <div>
+        <ul>
+          <li>Drag &amp; drop onto the window, or</li>
+          <li><strong>Browse Files</strong> — pick one or many, or</li>
+          <li><strong>Browse Folder</strong> — picks up every supported file in the folder <em>and its subfolders</em></li>
+        </ul>
+        <p class="small">Files: PDF · DOCX · TXT · MD · QMD — up to 50&nbsp;MB each</p>
+      </div>
+      <div>
+        <p>Typical marking workflow:</p>
+        <pre><code>Downloads/
+└── FIT1040-semester2/
+    ├── alice-essay.pdf
+    ├── ben-report.docx
+    ├── chloe-essay.pdf
+    └── ...</code></pre>
+        <p>Select <code>FIT1040-semester2</code> once — done.</p>
+      </div>
+    </div>
+    <aside class="notes">
+      The folder picker walks the tree recursively, so a download folder with subfolders per
+      student works as-is. Results stream in per file as each finishes, so with a folder of 30
+      papers you can start reading the first report while the rest process.
+      Demo tip: use the demo-corpus/ folder in the repo — chen-1189-essay.md is mostly clean
+      with a dead URL and a live one (screenshot evidence), lee-3642-essay.md carries a
+      fabricated reference, a wrong-year mismatch, an orphan in-text citation, and an uncited
+      bibliography entry. Pre-run the folder once before the audience arrives — the persistent
+      lookup cache makes the on-stage re-run near-instant.
+    </aside>
+  </section>
+
+  <!-- 7 · Options -->
+  <section>
+    <h2><span class="stepnum">3</span>Two optional settings before you run</h2>
+    <div class="cols">
+      <div>
+        <h3>Your email <span class="badge green">recommended</span></h3>
+        <ul>
+          <li>Identifies your lookups to Crossref &amp; OpenAlex</li>
+          <li>Puts you in their <strong>polite pool</strong> — more reliable, faster responses</li>
+          <li>Used only for that — no sign-up, no spam</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Semantic Scholar key <span class="badge amber">free, optional</span></h3>
+        <ul>
+          <li>Lifts Semantic Scholar rate limits</li>
+          <li>Large batches verify <em>far more reliably</em> with one</li>
+          <li>Get a free key: <code>semanticscholar.org/product/api</code></li>
+        </ul>
+      </div>
+    </div>
+    <p class="small">Also on this panel: verify URLs on/off, and "Screenshot URLs" to capture page snapshots as evidence.</p>
+    <aside class="notes">
+      Neither field is required — the app works without both. But for a full tutorial set,
+      the email takes ten seconds and the free S2 key takes five minutes once. Demo tip:
+      enter the email live, and either paste a key or show the placeholder text
+      "Free key — lifts rate limits, fewer unverified".
+    </aside>
+  </section>
+
+  <!-- 8 · Results: overview -->
+  <section>
+    <h2>Reading the results — Overview</h2>
+    <p>Each paper gets a dashboard with an overall verdict:</p>
+    <p style="text-align:center; margin: 0.4em 0;">
+      <span class="badge green" style="font-size:0.8em;">All clear</span>&nbsp;&nbsp;
+      <span class="badge amber" style="font-size:0.8em;">Caution</span>&nbsp;&nbsp;
+      <span class="badge rose" style="font-size:0.8em;">Issues</span>
+    </p>
+    <ul>
+      <li>A proportion bar: verified / to-check / unverifiable</li>
+      <li>A <strong>"Things to check"</strong> priority list — ranked, with the evidence attached</li>
+      <li>Counts: N to review · N not found · N orphan citations</li>
+    </ul>
+    <p class="small">Start at the top of the priority list; work down until you're comfortable.</p>
+    <aside class="notes">
+      The verdict pill is the triage signal: green papers can be skimmed, amber and rose
+      deserve the priority list. "All clear" still means *formatting and existence* check out —
+      not that every claim is properly supported.
+    </aside>
+  </section>
+
+  <!-- 9 · Results: references -->
+  <section>
+    <h2>Reading the results — References tab</h2>
+    <ul>
+      <li>Every reference, one row, with status:
+        <span class="badge green">Verified</span>
+        <span class="badge green">Likely valid</span>
+        <span class="badge amber">Needs review</span>
+        <span class="badge rose">Not found</span>
+        <span class="badge gray">Unverified</span>
+        <span class="badge gray">Dismissed</span>
+      </li>
+      <li><strong>Confidence meter</strong> (0–1) per row — how well the entry matched a real record</li>
+      <li>Expand a row to see: what was cited vs. what the matched record holds, format issues, flags</li>
+      <li><strong>Page snapshot</strong> — screenshot of any cited web page; shown in-app <em>and</em> embedded as a thumbnail in the PDF export</li>
+    </ul>
+    <p class="small">Row actions: Open DOI · Open cited URL · Search Scholar · Search web · Re-check · Dismiss</p>
+    <aside class="notes">
+      Demo the expand: show the cited-vs-matched comparison — this is where mismatches jump out
+      (right title, wrong year; real paper, real authors, but not the one the student described).
+      The page snapshot is handy evidence for a chat with the student: what the cited page
+      looked like when you marked it.
+    </aside>
+  </section>
+
+  <!-- 10 · Results: cross-refs + actions -->
+  <section>
+    <h2>Reading the results — Cross-refs tab</h2>
+    <div class="cols">
+      <div>
+        <h3>Two mismatch lists</h3>
+        <ul>
+          <li><strong>Unmatched bibliography entries</strong> — listed but never cited in the text</li>
+          <li><strong>Orphaned in-text citations</strong> — cited but missing from the bibliography</li>
+        </ul>
+        <p class="small">Both are classic signs of assembled-at-the-deadline referencing.</p>
+      </div>
+      <div>
+        <h3>One-click follow-ups</h3>
+        <ul>
+          <li>Open DOI / Open cited URL — eyeball the source</li>
+          <li>Search Scholar / Search web — find near-misses</li>
+          <li>Mark as fabricated — record your judgement</li>
+          <li>Dismiss — struck-through, remembered across re-scans; Restore anytime</li>
+        </ul>
+      </div>
+    </div>
+    <aside class="notes">
+      Orphans matter both ways: an in-text citation with no bibliography entry may be a missing
+      reference (sloppy) or a citation that never existed (concerning). The tool separates the
+      lists so tutors can apply the appropriate penalty or conversation. Dismiss exists for
+      false positives — e.g. a reference the databases index poorly — and the summary strip
+      updates so "dismissed" items don't inflame the verdict.
+    </aside>
+  </section>
+
+  <!-- 11 · Exports / records -->
+  <section>
+    <h2>Keeping the records — exports</h2>
+    <p>Three buttons on the results screen work over the <strong>whole batch</strong>:</p>
+    <div class="cols">
+      <div>
+        <h3>Export PDF <span class="badge blue">audit-ready</span></h3>
+        <ul>
+          <li>One file for all papers: per-paper overview, colour-coded reference table, cross-ref lists</li>
+          <li><strong>Screenshots embedded as thumbnails</strong></li>
+          <li>Date + disclaimer on every page</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Export CSV <span class="badge blue">spreadsheet</span></h3>
+        <ul>
+          <li>One row per reference: File, Title, Authors, Year, DOI, URL, Status, Confidence, URL Status, Flags, <strong>Dismissed</strong></li>
+          <li>Drops straight into Excel/Sheets for moderation panels</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Export .bib</h3>
+        <ul>
+          <li>Verified references only, DOIs included</li>
+          <li>Handy for reading lists and follow-up</li>
+        </ul>
+      </div>
+    </div>
+    <p class="small">Triage travels with the report: rows you dismissed show in the PDF struck-through with a <em>"Dismissed by reviewer"</em> note, and the CSV carries a <strong>Dismissed</strong> column — the database status stays visible either way.</p>
+    <aside class="notes">
+      This is the "keep the receipts" slide for marking moderation and academic-integrity
+      processes: the batch PDF is the artefact to attach to the marking record. Dismissals
+      persist on the tutor's machine (keyed by reference content, so they survive re-runs and
+      app restarts) and appear in exports as a struck-through row plus reviewer note (PDF) or a
+      Dismissed column (CSV) — while the database status pill stays untouched, so the record
+      shows both facts: what the databases said, and what the tutor decided.
+    </aside>
+  </section>
+
+  <!-- 12 · Rate limits -->
+  <section>
+    <h2>Rate limits — what to expect</h2>
+    <ul>
+      <li>All the databases are <strong>free services</strong> — CiteSight stays within their polite-pool limits
+        <ul>
+          <li>Lookups paced to <strong>one request per second</strong> (arXiv: one per three seconds)</li>
+          <li>A folder of papers is deliberately <em>slow</em> — slow here means polite</li>
+        </ul>
+      </li>
+      <li>Results are <strong>cached per run</strong> — a work cited in ten papers is looked up once</li>
+      <li>If Semantic Scholar throttles a big batch, that reference shows
+        <span class="badge gray">Unverified</span> with the reason (e.g. <em>"rate-limited on Semantic Scholar"</em>)</li>
+    </ul>
+    <p><strong>Unverified ≠ not found.</strong> It means "we couldn't ask just now" — hit <em>Re-check</em> (or re-run) to retry those.</p>
+    <aside class="notes">
+      Set expectations for the live demo: a 20-paper folder takes minutes, not seconds, and that
+      is by design — the alternative is getting IP-throttled by the free services everyone
+      depends on. The summary strip has a bulk "Re-check N unverified" button for exactly the
+      throttled-batch case.
+    </aside>
+  </section>
+
+  <!-- 13 · The two free upgrades -->
+  <section>
+    <h2>Make big batches smoother — two free upgrades</h2>
+    <table>
+      <thead>
+        <tr><th></th><th>Contact email</th><th>Semantic Scholar key</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Effort</strong></td><td>10 seconds — type it in the options panel</td><td>~5 min, once — free account</td></tr>
+        <tr><td><strong>Effect</strong></td><td>Crossref + OpenAlex polite pool → faster, steadier lookups</td><td>Lifts S2 rate limits → fewer <span class="badge gray">Unverified</span> rows</td></tr>
+        <tr><td><strong>Needed?</strong></td><td>Recommended for everyone</td><td>Recommended if you mark in bulk</td></tr>
+      </tbody>
+    </table>
+    <p class="small">Key: <code>semanticscholar.org/product/api</code> — free, personal use.
+    The desktop app also reads <code>SEMANTIC_SCHOLAR_API_KEY</code> if you prefer environment variables.</p>
+    <aside class="notes">
+      Key etiquette: the key is personal (covers you and your organisation's authorised users).
+      Fine on your own machine; don't put a shared key on a public web server. CiteSight itself
+      ships with no embedded key — everyone brings their own.
+    </aside>
+  </section>
+
+  <!-- 14 · CLI -->
+  <section>
+    <h2>Prefer the terminal? There's a CLI</h2>
+    <pre><code>npm install -g cite-sight
+
+cite-sight check ./submissions/              # a whole folder, recursed
+cite-sight check "essays/*.pdf"              # or glob patterns
+cite-sight check ./submissions/ --json &gt; results.json
+cite-sight check essay.pdf --fail-on suspicious   # CI exit codes</code></pre>
+    <ul>
+      <li>Same verification engine — <strong>folders and globs work</strong>; per-file report plus a <strong>Batch Summary</strong></li>
+      <li><code>--json</code>: batch envelope with per-file results + roll-up totals — machine-readable records</li>
+      <li><code>--fail-on</code> (none | suspicious | broken-url | any) sets exit codes for automated pipelines</li>
+      <li>Same pacing and politeness rules; same <code>--email</code> / <code>--s2-key</code> options</li>
+    </ul>
+    <p class="small">Also available: standalone single-file HTML (no install, runs in your browser tab, document never leaves your device) and Docker for hosting a shared instance.</p>
+    <aside class="notes">
+      Keep this to 30 seconds for a tutor audience — the point is "the capability also exists
+      for course teams with scripting needs": point it at a folder like the desktop app, get a
+      batch summary on screen or a JSON envelope for records. The standalone HTML option is
+      worth a one-liner for tutors on locked-down university machines: download one file,
+      double-click, done.
+    </aside>
+  </section>
+
+  <!-- 15 · Trust & wrap-up -->
+  <section>
+    <h2>Good to know</h2>
+    <ul>
+      <li><strong>Free &amp; open data</strong> — verifies against Crossref, Semantic Scholar, OpenAlex, arXiv, DataCite, Open Library</li>
+      <li><strong>Private</strong> — the app runs on your machine; only reference strings go to the databases for lookup</li>
+      <li><strong>Evidence, not verdicts</strong> — <span class="badge gray">Unverified</span> is not <span class="badge rose">Not found</span>; you make the call, the tool keeps the receipts</li>
+      <li><strong>No lock-in</strong> — export records as PDF, CSV, or BibTeX; JSON from the CLI</li>
+    </ul>
+    <p style="margin-top:0.8em;"><strong>Get started:</strong> <code>github.com/michael-borck/cite-sight/releases/latest</code></p>
+    <p class="small">Questions? Try it on last semester's folder while we talk.</p>
+    <aside class="notes">
+      Close with the division of labour one more time: CiteSight handles existence, format,
+      and cross-referencing mechanically; the tutor judges whether sources support claims.
+      Offer the test fixtures in packages/core/test/fixtures (sample-paper.md, style-apa.md)
+      as safe demo files if the audience wants to try it hands-on right now.
+    </aside>
+  </section>
+
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/notes/notes.min.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    transition: 'fade',
+    width: 1280,
+    height: 800,
+    margin: 0.08,
+    plugins: [RevealNotes]
+  });
+</script>
+</body>
+</html>
