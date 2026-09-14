@@ -14,7 +14,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
+          # macos-latest (macOS 15) breaks electron-builder's temp-keychain
+          # setup — SecKeychainUnlock on set-key-partition-list. Pinned to the
+          # macOS 14 image era that built v0.8.28 successfully.
+          - os: macos-14
             platform: mac
           - os: ubuntu-latest
             platform: linux
@@ -44,7 +47,7 @@ jobs:
       # identity AFTER electron-builder finishes (the keychain it imports
       # CSC_LINK into is torn down once its own signing step completes).
       - name: Set up signing keychain (macOS)
-        if: matrix.os == 'macos-latest'
+        if: matrix.platform == 'mac'
         env:
           CSC_LINK_B64: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
@@ -75,14 +78,14 @@ jobs:
         # macOS publishes after we've signed + notarised the DMG container
         # (next step). Other platforms publish straight from electron-builder.
         run: |
-          if [ "${{ matrix.os }}" = "macos-latest" ]; then
+          if [ "${{ matrix.platform }}" = "mac" ]; then
             npx electron-builder --${{ matrix.platform }} --publish=never
           else
             npx electron-builder --${{ matrix.platform }} --publish=always
           fi
 
       - name: Sign + notarise + staple DMGs (macOS)
-        if: matrix.os == 'macos-latest'
+        if: matrix.platform == 'mac'
         working-directory: packages/desktop
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -108,7 +111,7 @@ jobs:
           done
 
       - name: Upload macOS artifacts to release
-        if: matrix.os == 'macos-latest'
+        if: matrix.platform == 'mac'
         working-directory: packages/desktop
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
