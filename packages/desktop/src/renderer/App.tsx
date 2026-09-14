@@ -263,13 +263,13 @@ export function App() {
                 <div className="results-actions">
                   <button
                     className="btn btn-secondary"
-                    onClick={() => void downloadPdfReport(results)}
+                    onClick={() => void downloadPdfReport(results, new Set(persistedDismissals))}
                   >
                     Export PDF
                   </button>
                   <button
                     className="btn btn-secondary"
-                    onClick={() => downloadCsvReport(results)}
+                    onClick={() => downloadCsvReport(results, new Set(persistedDismissals))}
                   >
                     Export CSV
                   </button>

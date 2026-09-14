@@ -1,4 +1,5 @@
 import type { AnalysisResult } from '@michaelborck/cite-sight-core';
+import { referenceContentKey } from '@michaelborck/cite-sight-core/dashboard';
 import { DISCLAIMER } from '@michaelborck/cite-sight-core/disclaimer';
 
 function csvEscape(value: string): string {
@@ -12,7 +13,11 @@ function formatDate(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function buildCsvLines(result: AnalysisResult, includeFileColumn: boolean): string[] {
+function buildCsvLines(
+  result: AnalysisResult,
+  includeFileColumn: boolean,
+  dismissedKeys?: ReadonlySet<string>,
+): string[] {
   const ref = result.references;
   const lines: string[] = [];
 
@@ -32,6 +37,9 @@ function buildCsvLines(result: AnalysisResult, includeFileColumn: boolean): stri
       v.confidenceScore.toFixed(2),
       v.urlCheck?.status ?? 'no_url',
       csvEscape(v.flags.join('; ')),
+      // Kept beside the raw status on purpose: Status stays what the databases
+      // said, Dismissed records the reviewer's triage on top of it.
+      dismissedKeys?.has(referenceContentKey(r.raw)) ? 'yes' : 'no',
     );
     lines.push(row.join(','));
   }
@@ -39,7 +47,7 @@ function buildCsvLines(result: AnalysisResult, includeFileColumn: boolean): stri
   return lines;
 }
 
-export function downloadCsvReport(results: AnalysisResult[]): void {
+export function downloadCsvReport(results: AnalysisResult[], dismissedKeys?: ReadonlySet<string>): void {
   const isBatch = results.length > 1;
   const lines: string[] = [];
 
@@ -54,12 +62,12 @@ export function downloadCsvReport(results: AnalysisResult[]): void {
 
   // Column headers
   const headers = isBatch
-    ? 'File,Ref,Title,Authors,Year,DOI,URL,Status,Confidence,URL Status,Flags'
-    : 'Ref,Title,Authors,Year,DOI,URL,Status,Confidence,URL Status,Flags';
+    ? 'File,Ref,Title,Authors,Year,DOI,URL,Status,Confidence,URL Status,Flags,Dismissed'
+    : 'Ref,Title,Authors,Year,DOI,URL,Status,Confidence,URL Status,Flags,Dismissed';
   lines.push(headers);
 
   for (const result of results) {
-    lines.push(...buildCsvLines(result, isBatch));
+    lines.push(...buildCsvLines(result, isBatch, dismissedKeys));
   }
 
   const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });

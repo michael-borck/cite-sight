@@ -4,6 +4,7 @@ import type {
   ReferenceVerification,
   VerificationStatus,
 } from '@michaelborck/cite-sight-core';
+import { referenceContentKey } from '@michaelborck/cite-sight-core/dashboard';
 import { DISCLAIMER } from '@michaelborck/cite-sight-core/disclaimer';
 
 // ── Colours ──────────────────────────────────────────────────────────────────
@@ -170,6 +171,7 @@ function drawReferencesTable(
   y: number,
   margin: number,
   contentW: number,
+  dismissedKeys?: ReadonlySet<string>,
 ): number {
   y = drawSectionTitle(doc, 'References', y, margin);
 
@@ -218,7 +220,11 @@ function drawReferencesTable(
     const screenshotH = screenshotDataUrl ? 32 : 0;
     const rowH = 6;
 
-    y = ensureSpace(doc, y, rowH + (v.flags.length > 0 ? 10 : 0) + screenshotH, margin);
+    // Reviewer triage: mirrors the dashboard's struck-through rows. The
+    // database status pill stays as-is — the record keeps both facts.
+    const isDismissed = dismissedKeys?.has(referenceContentKey(ref.raw)) ?? false;
+
+    y = ensureSpace(doc, y, rowH + (v.flags.length > 0 ? 10 : 0) + (isDismissed ? 5 : 0) + screenshotH, margin);
 
     if (i % 2 === 0) {
       setFillColour(doc, [248, 248, 252]);
@@ -233,7 +239,16 @@ function drawReferencesTable(
     cx += cols[0].w;
 
     setColour(doc, BLACK);
-    doc.text(truncate(ref.title || ref.raw, 70), cx + 1.5, y);
+    const titleText = truncate(ref.title || ref.raw, 70);
+    doc.text(titleText, cx + 1.5, y);
+    if (isDismissed) {
+      // jsPDF has no text-strike, so draw one — matches the dashboard's
+      // struck-through-dismissed convention.
+      const tw = doc.getTextWidth(titleText);
+      doc.setDrawColor(GREY[0], GREY[1], GREY[2]);
+      doc.setLineWidth(0.25);
+      doc.line(cx + 1.5, y - 1.1, cx + 1.5 + tw, y - 1.1);
+    }
     cx += cols[1].w;
 
     const statusCol = STATUS_COLOURS[v.status];
@@ -265,6 +280,16 @@ function drawReferencesTable(
       setColour(doc, [245, 124, 0]);
       doc.setFont('helvetica', 'italic');
       doc.text('Flags: ' + v.flags.join(', '), margin + cols[0].w + 1.5, y);
+      doc.setFontSize(7.5);
+      y += 5;
+    }
+
+    if (isDismissed) {
+      y = ensureSpace(doc, y, 5, margin);
+      doc.setFontSize(7);
+      setColour(doc, GREY);
+      doc.setFont('helvetica', 'italic');
+      doc.text('Dismissed by reviewer \u2014 marked as reviewed', margin + cols[0].w + 1.5, y);
       doc.setFontSize(7.5);
       y += 5;
     }
@@ -368,7 +393,7 @@ async function loadScreenshots(results: AnalysisResult[]): Promise<Map<string, s
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
-export async function downloadPdfReport(results: AnalysisResult[]): Promise<void> {
+export async function downloadPdfReport(results: AnalysisResult[], dismissedKeys?: ReadonlySet<string>): Promise<void> {
   const screenshots = await loadScreenshots(results);
 
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -393,7 +418,7 @@ export async function downloadPdfReport(results: AnalysisResult[]): Promise<void
       y = margin;
     }
     y = drawOverview(doc, result, y, margin, contentW);
-    y = drawReferencesTable(doc, result.references.verifications, screenshots, y, margin, contentW);
+    y = drawReferencesTable(doc, result.references.verifications, screenshots, y, margin, contentW, dismissedKeys);
     y = drawCrossReferences(doc, result, y, margin, contentW);
   }
 
