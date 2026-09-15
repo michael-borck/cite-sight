@@ -382,7 +382,7 @@ function CrossReferencesPanel({ results }: PanelProps) {
       <div className="panel-body">
         <div className="cross-section">
           <h4>
-            Unmatched Bibliography Entries
+            Reference List Entries Never Cited
             <span className="count-badge">{crossReference.unmatchedBibliography.length}</span>
           </h4>
           {crossReference.unmatchedBibliography.length > 0 ? (
@@ -395,7 +395,7 @@ function CrossReferencesPanel({ results }: PanelProps) {
               ))}
             </ul>
           ) : (
-            <p className="no-issues">All bibliography entries have corresponding in-text citations.</p>
+            <p className="no-issues">Every reference list entry is cited in the text.</p>
           )}
         </div>
 
@@ -418,7 +418,7 @@ function CrossReferencesPanel({ results }: PanelProps) {
               ))}
             </ul>
           ) : (
-            <p className="no-issues">All in-text citations have corresponding bibliography entries.</p>
+            <p className="no-issues">Every in-text citation has a reference list entry.</p>
           )}
         </div>
 

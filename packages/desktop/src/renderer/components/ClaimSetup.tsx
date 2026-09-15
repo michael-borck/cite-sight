@@ -47,7 +47,7 @@ export function ClaimSetup({ path, result, onOpenSettings }: { path: string; res
       on this Mac, offline, on the CPU. It <em>suggests</em> a verdict with quoted evidence; <strong>you decide</strong> whether
       the evidence supports the claim. It is a research preview, not a verified judge.</p>
     <ClaimModelPicker disabled={isProcessing} />
-    {!ready && <p>After the one-time download, the steps here are: map each bibliography row to its source file, then start the review.</p>}
+    {!ready && <p>After the one-time download, the steps here are: map each reference list entry to its source file, then start the review.</p>}
     {onOpenSettings && <button type="button" onClick={onOpenSettings}>Open local claim settings</button>}
     <p>Scanned PDFs need local OCR first. Only detected cited statements are checked; this is not a check of every claim in the document.</p>
     <fieldset disabled={isProcessing || !ready}>

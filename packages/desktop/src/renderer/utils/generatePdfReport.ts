@@ -330,7 +330,7 @@ function drawCrossReferences(doc: jsPDF, result: AnalysisResult, y: number, marg
     y = ensureSpace(doc, y, 8, margin);
     doc.setFont('helvetica', 'bold');
     setColour(doc, BLACK);
-    doc.text(`Unmatched bibliography entries (${cr.unmatchedBibliography.length}):`, margin, y);
+    doc.text(`Reference list entries never cited (${cr.unmatchedBibliography.length}):`, margin, y);
     y += 5;
     doc.setFont('helvetica', 'normal');
     setColour(doc, GREY);

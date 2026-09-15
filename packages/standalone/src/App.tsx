@@ -412,7 +412,7 @@ export function App() {
                                 onChange={(e) => setCheckInText(e.target.checked)}
                               />
                               <label htmlFor="check-intext">Check In-Text Citations</label>
-                              <span className="hint">Cross-reference citations with bibliography</span>
+                              <span className="hint">Cross-reference citations with the reference list</span>
                             </div>
                           </div>
                         </details>

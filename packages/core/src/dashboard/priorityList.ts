@@ -132,7 +132,7 @@ export function gatherPriorityItems(
       category: 'orphan',
       headline: c.raw,
       sourceText: c.raw,
-      reason: 'This citation appears in the body but no bibliography entry matches.',
+      reason: 'This citation appears in the body but no reference list entry matches.',
     });
   });
 

@@ -48,7 +48,7 @@ ${result.offline ? '' : sourceLink(v.reference.doi ? `https://doi.org/${encodeUR
     }).join('')}
 ${result.offline ? '<p>Local-only run. External citation services were disabled.</p>' : ''}
 ${result.claims ? `<h3>Local claim checks</h3>${claimReportLines(result.claims).map((line) => `<p>${escape(line)}</p>`).join('')}` : ''}
-<h3>In-text matching</h3>${refs.inTextCheckSkipped ? '<p>Skipped for this run.</p>' : `<ul>${refs.crossReference.unmatchedInText.map((cite) => `<li>No bibliography match: ${escape(cite.raw)}</li>`).join('')}${refs.crossReference.unmatchedBibliography.map((ref) => `<li>Not cited in the text: ${escape(ref.raw)}</li>`).join('')}${(refs.crossReference.nearMatches ?? []).map(({ cite, reference }) => `<li>Possible spelling mismatch: ${escape(cite.raw)} ↔ ${escape(reference.raw)}</li>`).join('')}</ul>`}
+<h3>In-text matching</h3>${refs.inTextCheckSkipped ? '<p>Skipped for this run.</p>' : `<ul>${refs.crossReference.unmatchedInText.map((cite) => `<li>No reference list match: ${escape(cite.raw)}</li>`).join('')}${refs.crossReference.unmatchedBibliography.map((ref) => `<li>Not cited in the text: ${escape(ref.raw)}</li>`).join('')}${(refs.crossReference.nearMatches ?? []).map(({ cite, reference }) => `<li>Possible spelling mismatch: ${escape(cite.raw)} ↔ ${escape(reference.raw)}</li>`).join('')}</ul>`}
 ${reviewEntries(result).length ? `<h3>Review decisions</h3><ul>${reviewEntries(result).map((review) => `<li>${escape(review.label)}: ${escape(review.source)}</li>`).join('')}</ul>` : ''}</article>`;
   }).join('')}<footer><p>${escape(DISCLAIMER)}</p><p>${escape(ATTRIBUTION)}</p></footer></body></html>`;
 }
@@ -60,7 +60,7 @@ function textReport(outcomes: FileOutcome[]): string {
     return `${outcome.file}\n${refs.verifiedCount} verified or likely valid; ${reviewCount(outcome.result)} need review; ${refs.unverifiedCount} unavailable\n` +
       (outcome.result.claims ? claimReportLines(outcome.result.claims).join('\n') + '\n' : '') +
       refs.verifications.map((v) => `[${v.status}] ${v.reference.raw}\n${explainVerification(v).map((issue) => `  ${issue.label}: ${issue.detail ?? ''}`).join('\n')}\n${v.formatIssues.map((issue) => `  ${issue.field}: ${issue.message}`).join('\n')}`).join('\n') + '\n' +
-      refs.crossReference.unmatchedInText.map((cite) => `No bibliography match: ${cite.raw}`).join('\n') + '\n' +
+      refs.crossReference.unmatchedInText.map((cite) => `No reference list match: ${cite.raw}`).join('\n') + '\n' +
       refs.crossReference.unmatchedBibliography.map((ref) => `Not cited in the text: ${ref.raw}`).join('\n') + '\n' +
       reviewEntries(outcome.result).map((review) => `Review decision: ${review.label}: ${review.source}`).join('\n') + '\n';
   }).join('\n') + `\n${DISCLAIMER}\n${ATTRIBUTION}\n`;

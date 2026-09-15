@@ -19,7 +19,7 @@ import { extractArxivId, lookupArxivId, searchArxiv } from './arxiv.js';
 import { checkUrl } from './urlChecker.js';
 import { verifyWebSource } from './webSourceVerifier.js';
 import { LookupError, type LookupFailureReason } from './lookupError.js';
-import { normalizeTitle, authorCorroboration, yearCorroboration, titleTokenConflict, bibliographicConflicts, characterSimilarity, subtitleVariant } from './matching.js';
+import { normalizeTitle, authorCorroboration, yearCorroboration, titleTokenConflict, bibliographicConflicts, characterSimilarity, subtitleVariant, repairedTitleQuery } from './matching.js';
 
 // ============================================================
 // Title similarity (Jaccard on word sets)
@@ -419,6 +419,22 @@ async function verifySingleReference(
     if (!strongMatch() && ref.title && searchQuery !== ref.title) {
       try { considerResults(await searchCrossref(ref.title, options.mailto)); }
       catch (err) { noteFailure(err); }
+    }
+    // A typo in a distinctive word can zero out a full-title search. Retry the
+    // two most reliable fuzzy providers with a stripped query (longest words
+    // only) and let their relevance ranking do the rest.
+    if (!strongMatch() && ref.title) {
+      const repaired = repairedTitleQuery(ref.title);
+      if (repaired && repaired !== normalizeTitle(ref.title)) {
+        for (const search of [
+          () => searchCrossref(repaired, options.mailto),
+          () => searchOpenAlex(repaired, options.mailto, options.openAlexApiKey),
+        ]) {
+          if (strongMatch()) break;
+          try { considerResults(await search()); }
+          catch (err) { noteFailure(err); }
+        }
+      }
     }
   }
 

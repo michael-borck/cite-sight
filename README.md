@@ -346,7 +346,7 @@ For each reference in the bibliography:
 3. **Verify existence and metadata**:
    - Resolve DOI via Crossref, DataCite, then the DOI registry; resolve ISBN and arXiv identifiers
    - Search Crossref, OpenAlex, Semantic Scholar, arXiv, DataCite and Europe PMC as needed
-   - Continue beyond partial or ambiguous candidates; retry title-only search when author parsing may have interfered
+   - Continue beyond partial or ambiguous candidates; retry title-only search when author parsing may have interfered, then a stripped typo-tolerant query so one misspelt word doesn't hide a real paper
    - Compare titles, authors, years, identifiers and available publication details
    - Check book/web metadata and URL liveness separately; a live page alone does not confirm a citation
    - Check publication notices, with a separate outcome and check timestamp

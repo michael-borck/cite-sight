@@ -137,20 +137,20 @@ function printReport(result: AnalysisResult, minimal: boolean): void {
 
     if (references.crossReference.unmatchedBibliography.length > 0) {
       console.log(
-        `  Unmatched in bibliography (no in-text citation): ` +
+        `  Reference list entries never cited in the text: ` +
         chalk.yellow(String(references.crossReference.unmatchedBibliography.length))
       );
     }
     if (references.crossReference.unmatchedInText.length > 0) {
       console.log(
-        `  Unmatched in-text citations (no bibliography entry): ` +
+        `  In-text citations with no reference list entry: ` +
         chalk.yellow(String(references.crossReference.unmatchedInText.length))
       );
     }
     if (references.crossReference.nearMatches?.length) {
       console.log(
         `  Possible spelling mismatches: ${chalk.cyan(String(references.crossReference.nearMatches.length))} ` +
-        chalk.gray('(citation ≈ bibliography entry within a couple of letters — common for hand-typed references)')
+        chalk.gray('(citation ≈ reference list entry within a couple of letters — common for hand-typed references)')
       );
     }
     if (references.sourceListLikely) {
@@ -215,7 +215,7 @@ function printReport(result: AnalysisResult, minimal: boolean): void {
       label: 'Possible spelling mismatch',
       detail: `${cite.raw} ↔ "${reference.title || reference.raw.slice(0, 60)}"`,
       severity: 'info',
-      lines: [`cited “${cite.raw}” — bibliography entry: ${reference.raw}`],
+      lines: [`cited “${cite.raw}” — reference list entry: ${reference.raw}`],
     });
   }
 
@@ -224,7 +224,7 @@ function printReport(result: AnalysisResult, minimal: boolean): void {
   for (const cite of references.crossReference.unmatchedInText) {
     issues.push({
       label: 'Unmatched in-text citation',
-      detail: `${cite.raw} — no matching bibliography entry`,
+      detail: `${cite.raw} — no matching reference list entry`,
       severity: 'warn',
       lines: [`context: ${contextSnippet(result.extractedText, cite.position, cite.raw.length)}`],
     });
@@ -236,7 +236,7 @@ function printReport(result: AnalysisResult, minimal: boolean): void {
     const year = ref.year ? ` (${ref.year})` : '';
     issues.push({
       label: 'Uncited reference',
-      detail: `"${title}"${year} — in the bibliography but never cited in the text`,
+      detail: `"${title}"${year} — in the reference list but never cited in the text`,
       severity: 'warn',
     });
   }

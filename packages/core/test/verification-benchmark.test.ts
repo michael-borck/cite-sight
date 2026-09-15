@@ -115,4 +115,21 @@ describe('verification regression benchmark', () => {
     expect((await run(citation())).status).toBe('verified');
     expect(searchCrossref).toHaveBeenCalledWith(record.title, undefined);
   });
+
+  it('retries with a stripped typo-tolerant query on a clean miss', async () => {
+    const typoTitle = 'Attention Is All You Need for Massively Multilingaul Machine Translation';
+    vi.mocked(searchCrossref).mockImplementation(async (query) => {
+      // Full and title-only queries zero out; only the stripped query finds it.
+      return query.startsWith('attention massively') ? [record] : [];
+    });
+    const result = await run(citation({ title: typoTitle }));
+    expect(result.matchedWork?.doi).toBe(record.doi);
+    expect(searchCrossref).toHaveBeenLastCalledWith('attention massively multilingaul machine translation', undefined);
+  });
+
+  it('does not spend the repaired query when a corroborated match already exists', async () => {
+    await run(citation());
+    const calls = vi.mocked(searchCrossref).mock.calls.length;
+    expect(calls).toBe(1); // combined query only
+  });
 });

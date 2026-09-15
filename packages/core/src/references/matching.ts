@@ -81,3 +81,14 @@ export function characterSimilarity(a: string, b: string): number {
   }
   return 1 - previous[b.length] / Math.max(a.length, b.length);
 }
+
+/** A typo-tolerant retry query: strip short and low-information words so a
+ *  misspelt distinctive term still leaves the remaining words for the
+ *  provider's own fuzzy relevance ranking to work with. */
+export function repairedTitleQuery(title: string, maxWords = 6): string {
+  const words = normalizeTitle(title).split(' ').filter(Boolean);
+  if (!words.length) return '';
+  const preferred = words.filter((word) => word.length >= 5);
+  const chosen = preferred.length >= 3 ? preferred : words.filter((word) => word.length >= 3);
+  return chosen.slice(0, maxWords).join(' ').trim();
+}
