@@ -19,9 +19,10 @@ it('maps chosen source files and forces local-only claim checks from desktop', a
   };
   Object.defineProperty(window, 'citeSight', { configurable: true, value: bridge });
   useStore.getState().updateOptions({ offline: false });
-  useStore.getState().setClaimInstallation({ ready: true, runtimeReady: true, ramGB: 16, phase: 'idle', received: 0, total: 0 });
+  useStore.getState().setClaimInstallation({ ready: true, runtimeReady: true, modelId: 'qwen3.5-2b-q4km', ramGB: 16, phase: 'idle', received: 0, total: 0 });
   const user = userEvent.setup();
   render(<ClaimSetup path="/local/essay.txt" result={result} />);
+  expect(screen.getAllByText(/Experimental/).length).toBeGreaterThan(0);
   await user.click(screen.getByText('Claim evidence review'));
   await user.click(screen.getByRole('button', { name: 'Choose source for reference 1' }));
   await user.click(screen.getByRole('button', { name: 'Review claim evidence locally' }));

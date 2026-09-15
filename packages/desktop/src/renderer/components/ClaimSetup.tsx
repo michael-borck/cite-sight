@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import type { AnalysisResult } from '@michaelborck/cite-sight-core';
-import { CLAIM_MODELS, durationRange } from '@michaelborck/cite-sight-core/browser';
-import { useStore } from '../store';
 import { makeReviewSession } from '@michaelborck/cite-sight-core/session';
+import { durationRange } from '@michaelborck/cite-sight-core/browser';
+import { ClaimModelPicker } from './ClaimModelPicker';
+import { useStore } from '../store';
 
 export function ClaimSetup({ path, result, onOpenSettings }: { path: string; result: AnalysisResult; onOpenSettings?: () => void }) {
   const { isProcessing, options, progress, setProcessing, updateOptions, updateResult, setError, claimInstallation, claimSources, setClaimSource } = useStore();
@@ -10,6 +11,7 @@ export function ClaimSetup({ path, result, onOpenSettings }: { path: string; res
   const [running, setRunning] = useState(false);
   const [maxClaims, setMaxClaims] = useState(result.claims?.progress?.total || 50);
   const [restart, setRestart] = useState(false);
+  const ready = Boolean(claimInstallation?.ready);
 
   async function pick(reference: number) {
     try {
@@ -40,14 +42,16 @@ export function ClaimSetup({ path, result, onOpenSettings }: { path: string; res
   }
 
   return <details className="desktop-settings" open={running || undefined}>
-    <summary>Claim evidence review</summary>
-    <p>{claimInstallation?.ready ? `Ready with ${CLAIM_MODELS.find((entry) => entry.id === claimInstallation.modelId)?.name ?? 'the saved model'}.` : 'Set up a model in Settings > Local claim review before opening the batch.'} This run uses CPU inference and suggests evidence matches for you to review.</p>
+    <summary>Claim evidence review <strong>(Experimental)</strong></summary>
+    <p><strong>What this is:</strong> the app compares each cited statement in this essay against the source file you choose,
+      on this Mac, offline, on the CPU. It <em>suggests</em> a verdict with quoted evidence; <strong>you decide</strong> whether
+      the evidence supports the claim. It is a research preview, not a verified judge.</p>
+    <ClaimModelPicker disabled={isProcessing} />
+    {!ready && <p>After the one-time download, the steps here are: map each bibliography row to its source file, then start the review.</p>}
     {onOpenSettings && <button type="button" onClick={onOpenSettings}>Open local claim settings</button>}
     <p>Scanned PDFs need local OCR first. Only detected cited statements are checked; this is not a check of every claim in the document.</p>
-    <p>Each completed claim is saved locally. After cancellation or shutdown, reopen the batch and resume. The interrupted claim restarts; completed claims are reused only after validating the submission, model settings, source hashes and quotations.</p>
-    {result.claims?.progress?.state === 'partial' && <p role="status">Paused: {result.claims.progress.completed} of {result.claims.progress.total} claims saved. You can inspect these results now or resume below.</p>}
-    <fieldset disabled={isProcessing}>
-      <legend>Local files</legend>
+    <fieldset disabled={isProcessing || !ready}>
+      <legend>Step 2 — map sources, then review</legend>
       <label>Maximum cited statements <input type="number" min={1} max={200} value={maxClaims} onChange={(event) => setMaxClaims(Number(event.target.value))} /></label>
       <label><input type="checkbox" checked={restart} onChange={(event) => setRestart(event.target.checked)} /> Restart all claims instead of resuming. Use after changing the model or source mappings.</label>
       <ol>{result.references.references.map((reference, index) => <li key={index}>
@@ -56,7 +60,9 @@ export function ClaimSetup({ path, result, onOpenSettings }: { path: string; res
         <span>{sources.find((source) => source.reference === index + 1)?.path.split(/[\\/]/).pop() ?? 'No local source'}</span>
         {sources.some((source) => source.reference === index + 1) && <button type="button" onClick={() => setClaimSource(reference.raw)}>Remove source {index + 1}</button>}
       </li>)}</ol>
-      <button type="button" className="btn btn-primary" disabled={!claimInstallation?.ready || !sources.length} onClick={() => void check()}>{!restart && result.claims?.progress?.state === 'partial' ? 'Resume saved claim review' : 'Review claim evidence locally'}</button>
+      <button type="button" className="btn btn-primary" disabled={!ready || !sources.length} onClick={() => void check()}>Review claim evidence locally</button>
+      <p>Each completed claim is saved locally, so an interrupted run resumes without repeating finished claims. After it finishes,
+        open the <strong>Claims</strong> tab to compare each suggestion with the quoted evidence and record your own assessment.</p>
     </fieldset>
     {running && <div><p role="status">{progress?.message ?? 'Starting local claim checks...'}</p>
       {progress?.eta && <p>Estimated remaining on CPU: {durationRange(progress.eta)}. Basis: {progress.eta.basis}.</p>}

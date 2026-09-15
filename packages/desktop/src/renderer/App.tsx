@@ -46,7 +46,11 @@ export function App() {
     const stopProgress = window.citeSight?.onProgress((update) => useStore.getState().setProgress(update));
     const stopReferences = window.citeSight?.onReference(({ verification, total }) => useStore.getState().addStreamingRef(verification, total));
     const stopClaims = window.citeSight?.onClaimCheckpoint?.(({ path, result }) => useStore.getState().saveClaimProgress(path, result));
-    return () => { stopProgress?.(); stopReferences?.(); stopClaims?.(); };
+    const stopInstall = window.citeSight?.onClaimInstallProgress?.((progress) => {
+      const current = useStore.getState().claimInstallation;
+      if (current) useStore.getState().setClaimInstallation({ ...current, ...progress });
+    });
+    return () => { stopProgress?.(); stopReferences?.(); stopClaims?.(); stopInstall?.(); };
   }, []);
   useEffect(() => {
     if (!activePath) { setElapsed(0); return; }

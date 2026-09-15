@@ -14,8 +14,8 @@ export function ClaimResults({ analysis }: { analysis: ClaimAnalysis }) {
   const reviewContext = useContext(ReviewContext);
   const assessments = analysis.findings.map((_finding, index) => reviewContext?.result.reviews?.[reviewKey(reviewContext.result, `claim:${index}`)]);
   return <section className="panel-card">
-    <h3>Claim evidence review</h3>
-    <p>These are model suggestions, not determinations. Compare the passages and record your judgement. Model: {analysis.model}. Checked: {analysis.checkedAt}.</p>
+    <h3>Claim evidence review (Experimental)</h3>
+    <p><strong>Experimental research preview.</strong> These are model suggestions, not determinations. Compare the passages and record your judgement. Model: {analysis.model}. Checked: {analysis.checkedAt}.</p>
     {analysis.progress && <p role="status">{analysis.progress.state === 'partial' ? 'Partial run' : 'Completed run'}: {analysis.progress.completed}/{analysis.progress.total} claims saved; {analysis.progress.reused} restored without repeating inference.
       {analysis.progress.state === 'partial' ? ' Unfinished claims have not been assessed. Resume from desktop or CLI.' : ''}</p>}
     {analysis.provenance && <details><summary>Model and runtime versions</summary>

@@ -42,10 +42,12 @@ your institution; running locally does not establish fitness for assessment.
 
 ### Desktop
 
-1. Before opening documents, go to **Settings → Local claim review**. Choose a
-   trial model and select **Download and verify model**, or import the matching
-   downloaded GGUF. The UI shows download size, disk needs, RAM guidance and hash.
-   A failed or cancelled download is never registered as an installed model.
+1. Open the **Claim evidence review (Experimental)** panel on a checked
+   document, or **Settings → Local claim review**. Choose **Faster** or
+   **More accurate** and select **Download and verify model** — a one-time,
+   user-initiated download with a progress bar, or import the matching GGUF.
+   The UI shows download size, disk needs, RAM guidance and hash. A failed or
+   cancelled download is never registered as an installed model.
 2. Optionally run **Measure CPU speed**. This uses a short synthetic statement,
    not a student submission. It measures speed, not assessment accuracy.
 3. Extract the bibliography, then expand **Claim evidence review**. The saved

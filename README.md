@@ -339,11 +339,13 @@ instruction model**. The run forces local-only mode, uses CPU inference and
 verifies the model's quotations against retrieved source passages. Model
 judgements still require review.
 
-Desktop installers include a pinned llama.cpp runtime. Go to
-**Settings → Local claim review**, choose an experimental model and select
-**Download and verify model**. The download is about 1.1 GB (4B: 2.7 GB) and is
-checked against a pinned SHA-256. You can import an already downloaded catalog
-model instead. Setup can run while a batch is open, but not while checks run.
+Desktop installers include a pinned llama.cpp runtime. Open the
+**Claim evidence review (Experimental)** panel on a checked document — or
+**Settings → Local claim review** — pick **Faster** (2B, ~1.3 GB) or
+**More accurate** (4B, ~2.7 GB), and select **Download and verify model**.
+The download is user-initiated, checked against a pinned SHA-256, and shown
+with a progress bar. An already downloaded catalog model can be imported
+instead. Setup can run while a batch is open, but not while checks run.
 Setup is remembered on the computer. **Measure CPU speed** runs a short local
 sample to improve runtime estimates.
 
