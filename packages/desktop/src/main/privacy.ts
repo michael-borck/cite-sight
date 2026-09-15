@@ -1,15 +1,10 @@
 let localOnly = true;
 let activeTask = false;
 let onlineOperations = 0;
-let documentsOpen = false;
-export function setDocumentsOpen(value: boolean): void {
-  if (onlineOperations && value) throw new Error('Finish model setup before opening documents.');
-  documentsOpen = value;
-}
-/** A deliberate model download is allowed while local-only remains enabled.
- * It sends only pinned artifact requests, before any documents are opened. */
+/** A deliberate, pinned-host model download may run while a batch is merely
+ * open; analysis itself still excludes it through activeTask/onlineOperations. */
 export async function setupOperation<T>(action: () => Promise<T>): Promise<T> {
-  if (activeTask || onlineOperations || documentsOpen) throw new Error('Clear the document batch and finish other operations before model setup.');
+  if (activeTask || onlineOperations) throw new Error('Wait for the current operation to finish before model setup.');
   onlineOperations++;
   try { return await action(); } finally { onlineOperations--; }
 }

@@ -8,7 +8,6 @@ contextBridge.exposeInMainWorld('citeSight', {
   loadBatchCheckpoint: (): Promise<ReviewSession | null> => ipcRenderer.invoke('cite-sight:load-batch-checkpoint'),
   clearBatchCheckpoint: (): Promise<void> => ipcRenderer.invoke('cite-sight:clear-batch-checkpoint'),
   setLocalOnly: (value: boolean): Promise<void> => ipcRenderer.invoke('cite-sight:set-local-only', value),
-  setDocumentsOpen: (value: boolean): Promise<void> => ipcRenderer.invoke('cite-sight:documents-open', value),
   getClaimInstallation: (): Promise<ClaimInstallationStatus> => ipcRenderer.invoke('cite-sight:claim-installation'),
   calibrateClaimModel: (): Promise<ClaimInstallationStatus> => ipcRenderer.invoke('cite-sight:calibrate-claim-model'),
   installClaimModel: (id: string): Promise<ClaimInstallationStatus> => ipcRenderer.invoke('cite-sight:install-claim-model', id),

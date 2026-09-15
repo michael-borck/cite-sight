@@ -3,7 +3,7 @@ import { CLAIM_MODELS } from '@michaelborck/cite-sight-core/browser';
 import { useStore } from '../store';
 
 export function LocalClaimSettings() {
-  const { claimInstallation: status, setClaimInstallation, filePaths, isProcessing, setProcessing } = useStore();
+  const { claimInstallation: status, setClaimInstallation, isProcessing, setProcessing } = useStore();
   const [id, setId] = useState(status?.modelId ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -25,7 +25,7 @@ export function LocalClaimSettings() {
     } catch (error) { setError(error instanceof Error ? error.message : String(error)); }
     finally { setBusy(false); setProcessing(false); }
   }
-  const blocked = busy || isProcessing || filePaths.length > 0;
+  const blocked = busy || isProcessing;
   return <section className="desktop-settings" aria-label="Local claim review settings">
     <h3>Local claim review</h3>
     <p>{status?.runtimeReady ? `Bundled runtime: llama.cpp ${status.runtimeVersion}. CPU-only inference.` : status?.error ?? 'Checking bundled runtime...'}</p>
@@ -50,13 +50,12 @@ export function LocalClaimSettings() {
     {id && model.smokeResult && <p>Small synthetic smoke test: {model.smokeResult.correct}/{model.smokeResult.total} label matches,
       {' '}{model.smokeResult.falseSupport} false support suggestions and {model.smokeResult.falseContradiction} false contradiction suggestions.
       These provisional results do not justify grading use. There is no assessment-ready default model.</p>}
-    <p>Download contacts Hugging Face for this model only. Clear the document batch first. Local-only mode stays enabled, and analysis is locked while setup runs.</p>
+    <p>Download contacts Hugging Face for this model only. Setup is remembered on this computer and pauses checks until it finishes or is cancelled; you can set it up while a batch is open, just not while checks are running.</p>
     <button type="button" disabled={blocked || !status?.runtimeReady || !id} onClick={() => void action('download')}>Download and verify model</button>{' '}
     <button type="button" disabled={blocked || !status?.runtimeReady || !id} onClick={() => void action('import')}>Import downloaded model</button>{' '}
     <button type="button" disabled={blocked || !status?.modelId} onClick={() => void action('remove')}>Remove downloaded models</button>
     <p>{status?.sampleMsPerClaim ? `Short CPU sample: ${(status.sampleMsPerClaim / 1000).toFixed(1)} seconds per statement. Longer passages can take more time.` : 'Run a local speed sample to improve batch estimates before opening a folder.'}</p>
     <button type="button" disabled={blocked || !status?.ready} onClick={() => void action('calibrate')}>Measure CPU speed</button>
-    {filePaths.length > 0 && <p>Clear or save and close the current batch before model setup.</p>}
     {busy && <div role="status"><p>{status?.phase === 'calibrating' ? 'Measuring CPU speed with a short synthetic statement. Allow up to a minute.' : status?.phase === 'verifying' ? 'Verifying model checksum...' : `Downloaded ${((status?.received ?? 0) / 1e6).toFixed(0)} of ${(model.bytes / 1e6).toFixed(0)} MB`}</p>
       <progress max={model.bytes} value={status?.received ?? 0} aria-label="Model setup progress" />
       <button type="button" onClick={() => void window.citeSight.cancelClaimInstall()}>Cancel setup</button></div>}

@@ -1,16 +1,18 @@
 import { afterEach, expect, it } from 'vitest';
-import { allowRendererRequest, desktopTask, isLocalOnly, onlineOperation, setLocalOnly, setDocumentsOpen, setupOperation } from '../src/main/privacy';
+import { allowRendererRequest, desktopTask, isLocalOnly, onlineOperation, setLocalOnly, setupOperation } from '../src/main/privacy';
 
-afterEach(() => { setLocalOnly(true); setDocumentsOpen(false); });
-it('allows an explicit setup download before documents, while keeping local-only enabled', async () => {
+afterEach(() => setLocalOnly(true));
+it('allows model setup while a batch is merely open, but never during analysis', async () => {
   setLocalOnly(true);
   await setupOperation(async () => {
     expect(isLocalOnly()).toBe(true);
     await expect(desktopTask(true, async () => {})).rejects.toThrow(/Another/);
-    expect(() => setDocumentsOpen(true)).toThrow(/Finish model setup/);
   });
-  setDocumentsOpen(true);
-  await expect(setupOperation(async () => {})).rejects.toThrow(/Clear the document/);
+  // An active analysis excludes setup; a merely-open batch does not.
+  await desktopTask(true, async () => {
+    await expect(setupOperation(async () => 'setup')).rejects.toThrow(/Wait for the current operation/);
+  });
+  await setupOperation(async () => 'setup while batch open');
 });
 it('blocks renderer HTTP and websockets in packaged local-only mode', () => {
   setLocalOnly(true);

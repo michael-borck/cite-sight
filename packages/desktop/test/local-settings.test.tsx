@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LocalClaimSettings } from '../src/renderer/components/LocalClaimSettings';
 import { useStore } from '../src/renderer/store';
@@ -23,11 +23,13 @@ it('requires an explicit download and remembers the installed model', async () =
   expect(bridge.installClaimModel).toHaveBeenCalledWith('qwen2.5-1.5b-q4km');
   expect(useStore.getState().options.offline).toBe(true);
 });
-it('disables model setup after documents are opened', async () => {
+it('offers setup while a batch is open, as long as checks are not running', async () => {
   Object.defineProperty(window, 'citeSight', { configurable: true, value: { getClaimInstallation: async () => status, onClaimInstallProgress: () => () => {} } });
   useStore.getState().addFiles(['/private/submission.pdf']);
   render(<LocalClaimSettings />);
-  await screen.findByText(/Clear or save and close/);
+  await screen.findByText(/Bundled runtime/);
+  expect((screen.getByRole('button', { name: 'Download and verify model' }) as HTMLButtonElement).disabled).toBe(false);
+  act(() => { useStore.getState().setProcessing(true); });
   expect((screen.getByRole('button', { name: 'Download and verify model' }) as HTMLButtonElement).disabled).toBe(true);
 });
 it('offers both Qwen 3.5 versions and shows comparison timings before a download', async () => {

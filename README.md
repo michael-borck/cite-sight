@@ -339,10 +339,11 @@ instruction model**. The run forces local-only mode, uses CPU inference and
 verifies the model's quotations against retrieved source passages. Model
 judgements still require review.
 
-Desktop installers include a pinned llama.cpp runtime. Before opening documents,
-go to **Settings → Local claim review**, choose an experimental model and select
-**Download and verify model**. The download is about 1.1 GB and is checked against
-a pinned SHA-256. You can import an already downloaded catalog model instead.
+Desktop installers include a pinned llama.cpp runtime. Go to
+**Settings → Local claim review**, choose an experimental model and select
+**Download and verify model**. The download is about 1.1 GB (4B: 2.7 GB) and is
+checked against a pinned SHA-256. You can import an already downloaded catalog
+model instead. Setup can run while a batch is open, but not while checks run.
 Setup is remembered on the computer. **Measure CPU speed** runs a short local
 sample to improve runtime estimates.
 
@@ -417,8 +418,11 @@ before analysis; no downloads occur during a claim run. CLI retains explicit
 local executable/model options. See the
 [local setup, privacy boundaries and limitations](docs/privacy-and-claim-checking.md).
 
-For reference checks alone, use **Local-only mode** on desktop or `--offline` in
-CLI. Disabling only DOI and URL checks still leaves searches enabled when online
+**Desktop and CLI verify references online by default.** Only extracted
+reference details (titles, authors, identifiers, cited URLs) are sent to
+citation databases; the essay text itself never leaves the machine. For fully
+offline checks, use **Local-only mode** on desktop or `--offline` in CLI.
+Disabling only DOI and URL checks still leaves searches enabled when online
 mode is selected. Hosted web uploads go to the server and do not support local
 claim inference.
 

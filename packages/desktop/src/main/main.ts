@@ -12,6 +12,17 @@ const __dirname = dirname(__filename);
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
+// A marking session must never be interrupted by a native crash dialog for a
+// transient async failure (a provider request timing out, for example). Log
+// these instead; the analysis itself already reports failed lookups per
+// reference as 'unverified'. Deliberate quit paths still terminate normally.
+process.on('unhandledRejection', (reason) => {
+  console.error('[cite-sight] Unhandled rejection:', reason);
+});
+process.on('uncaughtException', (error) => {
+  console.error('[cite-sight] Uncaught exception:', error);
+});
+
 function createWindow(): BrowserWindow {
   const preloadPath = join(__dirname, 'preload.js');
   const indexPath = join(__dirname, '..', 'renderer', 'index.html');

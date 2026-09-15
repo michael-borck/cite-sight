@@ -48,7 +48,9 @@ interface AppState {
 }
 
 export const defaultOptions: ProcessingOptions = {
-  offline: true,
+  // Online by default: verification sends only extracted reference details
+  // (titles, authors, identifiers, cited URLs), never the essay text.
+  offline: false,
   documentType: 'assignment', citationStyle: 'auto', checkUrls: true, checkDoi: true,
   checkInText: true, screenshotUrls: false,
 };

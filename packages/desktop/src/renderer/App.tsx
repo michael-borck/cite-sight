@@ -40,10 +40,6 @@ export function App() {
     });
   }, [options.offline]);
   useEffect(() => {
-    void window.citeSight?.setDocumentsOpen?.(filePaths.length > 0).catch((error) => state.setError(String(error)));
-  }, [filePaths.length]);
-
-  useEffect(() => {
     window.citeSight?.getVersion().then(setVersion).catch(() => undefined);
     void window.citeSight?.getClaimInstallation?.().then(state.setClaimInstallation).catch(() => undefined);
     window.citeSight?.loadDismissals().then(setPersistedDismissals).catch(() => undefined);
@@ -162,7 +158,7 @@ export function App() {
       <div className="batch-toolbar">
         <button type="button" className="btn btn-secondary" disabled={isProcessing} onClick={() => void openReview()}>Open review session</button>
         <button type="button" className="btn btn-secondary" disabled={isProcessing} onClick={async () => {
-          try { const saved = await window.citeSight.loadBatchCheckpoint(); if (saved) { state.restoreSession(saved); setClock(undefined); setNotice('Batch restored. Check the local-only setting before resuming reference verification.'); } else setNotice('No saved batch checkpoint was found.'); }
+          try { const saved = await window.citeSight.loadBatchCheckpoint(); if (saved) { state.restoreSession(saved); setClock(undefined); setNotice('Batch restored. Reference verification runs online by default; tick Local-only mode first if this batch must stay offline.'); } else setNotice('No saved batch checkpoint was found.'); }
           catch (error) { state.setError(String(error)); }
         }}>Restore last batch</button>
         <button type="button" className="btn btn-secondary" disabled={!batch.length} onClick={() => void saveReview()}>Save review session</button>

@@ -6,7 +6,7 @@ Desktop and CLI can compare cite-bearing sentences with explicitly supplied
 local source files. Extraction, keyword retrieval and model inference run on
 the computer. The model is a local GGUF instruction model executed by llama.cpp's
 `llama-cli`. There is no cloud endpoint, Ollama connection or remote fallback.
-Desktop has an explicit one-time model download in Settings, before analysis.
+Desktop has an explicit one-time model download in Settings.
 
 Findings are supported, partially supported, contradicted, insufficient evidence,
 or unavailable. A supported or contradicted finding must include a quotation
@@ -48,8 +48,9 @@ your institution; running locally does not establish fitness for assessment.
    A failed or cancelled download is never registered as an installed model.
 2. Optionally run **Measure CPU speed**. This uses a short synthetic statement,
    not a student submission. It measures speed, not assessment accuracy.
-3. Keep **Local-only mode** enabled, extract the bibliography, then expand
-   **Claim evidence review**. The saved model and bundled runtime are automatic.
+3. Extract the bibliography, then expand **Claim evidence review**. The saved
+   model and bundled runtime are automatic. Claim runs force local-only mode for
+   their duration regardless of the reference-check setting.
 4. Choose the corresponding source file for each bibliography row. Mappings are
    explicit; CiteSight does not assume that a similarly named PDF is the source.
 5. Set the maximum number of cited statements and select **Review claim evidence locally**.
@@ -213,8 +214,9 @@ model and source options. The reference `retry` command does not run a model.
   including DOI, book, web-metadata and URL fallbacks.
 - A deliberate setup download can contact the pinned artifact hosts while
   local-only mode stays enabled. It carries no submission fields or credentials.
-  Setup requires a cleared batch and blocks analysis until it completes. Cancel
-  removes the partial file. Existing valid installations survive failed updates.
+  Setup may run while a batch is merely open, but never during a running check:
+  analysis and setup exclude each other. Cancel removes the partial file.
+  Existing valid installations survive failed updates.
 - Desktop blocks renderer HTTP/WebSocket requests and external-link opening in
   local-only mode. Update checks are manual and disabled while local-only mode
   or analysis is active. A private run cannot start while an explicit online

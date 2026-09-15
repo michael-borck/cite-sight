@@ -10,7 +10,6 @@ declare global {
       loadBatchCheckpoint: () => Promise<ReviewSession | null>;
       clearBatchCheckpoint: () => Promise<void>;
       setLocalOnly: (value: boolean) => Promise<void>;
-      setDocumentsOpen: (value: boolean) => Promise<void>;
       getClaimInstallation: () => Promise<ClaimInstallationStatus>;
       calibrateClaimModel: () => Promise<ClaimInstallationStatus>;
       installClaimModel: (id: string) => Promise<ClaimInstallationStatus>;

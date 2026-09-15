@@ -144,7 +144,7 @@ reports have the retention behaviour described in the README. Local lookup
 caches, saved sessions, screenshots and exported reports can also retain
 reference details. Storage depends on the interface and deployment.
 
-Desktop local-only mode and CLI `--offline` disable external citation services.
+Desktop and CLI verify references online by default; Desktop local-only mode and CLI `--offline` disable external citation services.
 Desktop claim evidence review uses a bundled, pinned llama.cpp runtime and a
 locally configured GGUF model. CLI accepts explicit local runtime and model files.
 The bundled runtime is MIT-licensed and includes its upstream license. Optional

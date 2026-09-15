@@ -8,7 +8,7 @@ import { join, extname, basename, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import type { ProcessingOptions, AnalysisResult } from '@michaelborck/cite-sight-core';
 import type { ClaimRequest } from '../shared/claimInstallation.js';
-import { desktopTask, isLocalOnly, onlineOperation, setLocalOnly, setupOperation, setDocumentsOpen } from './privacy.js';
+import { desktopTask, isLocalOnly, onlineOperation, setLocalOnly, setupOperation } from './privacy.js';
 import { ClaimInstallation } from './claimInstallation.js';
 import { claimCheckpointPath, checkpointClaimResult, clearBatchRecovery, loadBatchRecovery, saveBatchRecovery } from './batchRecovery.js';
 
@@ -74,16 +74,11 @@ export function registerIpcHandlers(window: BrowserWindow): void {
   ipcMain.handle('cite-sight:load-batch-checkpoint', async () => authorizeSources(await loadBatchRecovery(app.getPath('userData'))));
   ipcMain.handle('cite-sight:clear-batch-checkpoint', () => desktopTask(isLocalOnly(), () => clearBatchRecovery(app.getPath('userData'))));
   ipcMain.handle('cite-sight:plan-batch', (_event, paths: string[], options: Parameters<typeof planFiles>[1]) => desktopTask(isLocalOnly(), async () => {
-    setDocumentsOpen(true);
     return planFiles(paths, options, (index, total) => {
       if (!mainWindow.isDestroyed()) mainWindow.webContents.send('cite-sight:progress', { stage: 'extracting', progress: index / total * 100, message: `Estimating document ${index} of ${total} locally...` });
     });
   }));
   ipcMain.handle('cite-sight:get-version', () => app.getVersion());
-  ipcMain.handle('cite-sight:documents-open', (_event, value: unknown) => {
-    if (typeof value !== 'boolean') throw new Error('Invalid document state.');
-    setDocumentsOpen(value);
-  });
   ipcMain.handle('cite-sight:claim-installation', () => claimInstallation().status());
   ipcMain.handle('cite-sight:calibrate-claim-model', () => desktopTask(true, async () => { await claimInstallation().calibrate(); return claimInstallation().status(); }));
   const notifySetup = (progress: unknown) => { if (!mainWindow.isDestroyed()) mainWindow.webContents.send('cite-sight:claim-install-progress', progress); };
@@ -113,7 +108,6 @@ export function registerIpcHandlers(window: BrowserWindow): void {
   });
   ipcMain.handle('cite-sight:cancel-claims', () => claimController?.abort(new Error('Claim checking cancelled.')));
   ipcMain.handle('cite-sight:check-claims', (_event, filePath: string, config: ClaimRequest, options: ProcessingOptions) => desktopTask(true, async () => {
-    setDocumentsOpen(true);
     if (!config || !Array.isArray(config.sources) || config.sources.some((source) => !source || !selectedClaimFiles.source.has(source.path))) {
       throw new Error('Select source files using the desktop file pickers.');
     }
@@ -135,7 +129,6 @@ export function registerIpcHandlers(window: BrowserWindow): void {
   ipcMain.handle(
     'cite-sight:analyze',
     async (_event, filePath: string, options: ProcessingOptions) => desktopTask(options.offline !== false, async () => {
-      setDocumentsOpen(true);
       // A Semantic Scholar key from the environment lifts keyless rate-limiting
       // during large folder batches, without needing a UI field for it.
       const mergedOptions: ProcessingOptions = {
