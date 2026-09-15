@@ -158,6 +158,14 @@ export function explainVerification(v: ReferenceVerification): FlagExplanation[]
         });
         break;
 
+      case 'duplicate_reference':
+        out.push({
+          flag,
+          label: 'Duplicate reference',
+          detail: 'this entry repeats an earlier bibliography entry (same author, year and title) \u2014 tidy the list so each work appears once',
+        });
+        break;
+
       case 'verification_unavailable':
         out.push({
           flag,

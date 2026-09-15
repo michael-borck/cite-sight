@@ -43,6 +43,28 @@ describe('pipeline citation matching', () => {
     expect(result.crossReference.nearMatches).toBeUndefined();
   });
 
+  it('suggests a near match when the year is one off but the surname is exact', async () => {
+    const result = await run('A claim (Wilmot and Ones, 2020).', ['Wilmot, M. (2019). A study. Journal, 1, 1-10.']);
+    expect(result.crossReference.unmatchedInText).toHaveLength(0);
+    expect(result.crossReference.nearMatches).toHaveLength(1);
+    expect(result.crossReference.nearMatches![0].reference.year).toBe(2019);
+  });
+
+  it('suggests a near match when a non-first author is cited', async () => {
+    const result = await run('A claim (Swailes and Senior, 2007).', [
+      'Aritzeta, A., Swailes, S., and Senior, B. (2007). Belbin team roles. Journal, 1, 1-10.',
+    ]);
+    expect(result.crossReference.unmatchedInText).toHaveLength(0);
+    expect(result.crossReference.unmatchedBibliography).toHaveLength(0);
+    expect(result.crossReference.nearMatches).toHaveLength(1);
+  });
+
+  it('keeps two slips (surname typo and year off by one) as orphans', async () => {
+    const result = await run('A claim (Smth, 2021).', [references[0]]);
+    expect(result.crossReference.unmatchedInText).toHaveLength(1);
+    expect(result.crossReference.nearMatches).toBeUndefined();
+  });
+
   it('keeps distant surnames as orphans rather than near matches', async () => {
     const result = await run('A claim (Williamsen, 2020).', ['Williams, J. (2020). A study. Journal, 1, 1-10.']);
     expect(result.crossReference.unmatchedInText).toHaveLength(1);

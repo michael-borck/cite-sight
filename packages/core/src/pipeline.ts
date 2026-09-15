@@ -4,6 +4,7 @@ import { extractFromBytes } from './extractors/fromBytes.js';
 import { extractReferences } from './references/extractor.js';
 import { verifyReferences } from './references/verifier.js';
 import { crossReferenceCheck } from './references/crossReference.js';
+import { findDuplicateReferences } from './references/duplicates.js';
 import { withoutExternalRequests } from './httpClient.js';
 import type {
   AnalysisResult,
@@ -91,6 +92,12 @@ async function analyzeDocumentInner(
     inTextCitations.length === 0;
   if (sourceListLikely) {
     crossReference = { unmatchedBibliography: [], unmatchedInText: [] };
+  }
+
+  // Bibliography duplicates (same author/year/title as an earlier entry) are
+  // an editing artefact worth tidying, not a verification verdict.
+  for (const index of findDuplicateReferences(references)) {
+    verifications[index]?.flags.push('duplicate_reference');
   }
 
   const referenceResult: ReferenceAnalysisResult = {
