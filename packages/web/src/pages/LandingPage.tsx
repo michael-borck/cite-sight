@@ -25,10 +25,18 @@ function detectPlatform(): Platform {
   return 'mac';
 }
 
-function matchAsset(assets: { name: string; browser_download_url: string }[], platform: Platform): string | null {
+type MacArch = 'arm64' | 'x64';
+
+function matchAsset(assets: { name: string; browser_download_url: string }[], platform: Platform, macArch?: MacArch): string | null {
   for (const asset of assets) {
     const name = asset.name.toLowerCase();
-    if (platform === 'mac' && name.endsWith('.dmg')) return asset.browser_download_url;
+    if (platform === 'mac' && name.endsWith('.dmg')) {
+      // Since the arch-suffixed naming, prefer the requested chip explicitly.
+      // Older releases without suffixes still match the bare .dmg fallback.
+      if (macArch === 'arm64' && name.includes('arm64')) return asset.browser_download_url;
+      if (macArch === 'x64' && !name.includes('arm64')) return asset.browser_download_url;
+      if (!macArch && !name.includes('x64')) return asset.browser_download_url;
+    }
     if (platform === 'windows' && name.endsWith('.exe')) return asset.browser_download_url;
     if (platform === 'linux' && name.endsWith('.appimage')) return asset.browser_download_url;
   }
@@ -210,13 +218,22 @@ export function LandingPage({ onNavigate }: Props) {
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>(detectPlatform);
   const { assets, version } = useReleaseAssets();
 
-  const downloadUrl = matchAsset(assets, selectedPlatform) ?? FALLBACK_URL;
+  // Mac ships two builds (Apple Silicon and Intel) and browsers cannot tell
+  // the chip apart (Safari reports "MacIntel" on both), so the primary button
+  // serves the M-series build and an explicit Intel link sits beside it.
+  const macArch: MacArch = 'arm64';
+  const downloadUrl = selectedPlatform === 'mac'
+    ? matchAsset(assets, 'mac', macArch) ?? matchAsset(assets, 'mac', 'x64') ?? FALLBACK_URL
+    : matchAsset(assets, selectedPlatform) ?? FALLBACK_URL;
+  const intelUrl = matchAsset(assets, 'mac', 'x64') ?? FALLBACK_URL;
   // Single-file build: matched by exact artifact name so it never collides
   // with the platform matchers above. Falls back to the releases page until
   // a release ships the artifact.
   const standaloneUrl =
     assets.find((a) => a.name === 'cite-sight-standalone.html')?.browser_download_url ?? FALLBACK_URL;
-  const label = `Download for ${PLATFORM_LABELS[selectedPlatform]}`;
+  const label = selectedPlatform === 'mac'
+    ? 'Download for macOS (M-series)'
+    : `Download for ${PLATFORM_LABELS[selectedPlatform]}`;
   // The primary button auto-detects; visitors on the "wrong" machine (or
   // fetching for a colleague) get a one-line escape hatch instead of having
   // to discover the platform selector at the bottom of the page.
@@ -247,6 +264,11 @@ export function LandingPage({ onNavigate }: Props) {
                 {label}
               </a>
             </div>
+            {selectedPlatform === 'mac' && (
+              <p className="hero-note hero-alt-platforms">
+                Intel Mac? <a href={intelUrl}>Download the Intel (x64) build</a>.
+              </p>
+            )}
             <p className="hero-note hero-alt-platforms">
               Also for{' '}
               {otherPlatforms.map((p, i) => (
@@ -346,6 +368,12 @@ export function LandingPage({ onNavigate }: Props) {
         <a className="download-btn" href={downloadUrl}>
           {label}
         </a>
+
+        {selectedPlatform === 'mac' && (
+          <p className="download-fine">
+            Intel Mac? <a href={intelUrl}>Download the Intel (x64) build</a> instead.
+          </p>
+        )}
 
         <div className="platform-selector">
           {(['mac', 'windows', 'linux'] as Platform[]).map((p) => (
