@@ -421,6 +421,32 @@ function CrossReferencesPanel({ results }: PanelProps) {
             <p className="no-issues">All in-text citations have corresponding bibliography entries.</p>
           )}
         </div>
+
+        {(crossReference.nearMatches?.length ?? 0) > 0 && (
+          <div className="cross-section">
+            <h4>
+              Possible Spelling Mismatches
+              <span className="count-badge">{crossReference.nearMatches!.length}</span>
+            </h4>
+            <p className="download-fine">
+              Cited with a likely spelling slip (same year, surname within a couple of letters). Common when
+              references are hand-typed — verify the details rather than assuming a problem with the source.
+            </p>
+            <ul className="cross-list">
+              {crossReference.nearMatches!.map(({ cite, reference }, i) => (
+                <li key={i} className="cross-item cross-intext">
+                  <span className="cross-icon">{'\u2248'}</span>
+                  <span>
+                    {cite.raw}
+                    {cite.year ? ` (${cite.year})` : ''}
+                    {' \u2194 '}
+                    {reference.raw}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );

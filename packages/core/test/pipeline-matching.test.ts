@@ -27,6 +27,28 @@ describe('pipeline citation matching', () => {
     expect(result.crossReference.unmatchedInText).toHaveLength(1);
   });
 
+  it('suggests a near match when a hand-typed surname is misspelled', async () => {
+    const result = await run('A claim (Smth, 2020).', [references[0]]);
+    expect(result.crossReference.unmatchedInText).toHaveLength(0);
+    expect(result.crossReference.unmatchedBibliography).toHaveLength(0);
+    expect(result.crossReference.nearMatches).toHaveLength(1);
+    const { cite, reference } = result.crossReference.nearMatches![0];
+    expect(cite.raw).toBe('(Smth, 2020)');
+    expect(reference.raw).toBe(references[0]);
+  });
+
+  it('keeps year mismatches as orphans rather than near matches', async () => {
+    const result = await run('A claim (Smth, 2021).', [references[0]]);
+    expect(result.crossReference.unmatchedInText).toHaveLength(1);
+    expect(result.crossReference.nearMatches).toBeUndefined();
+  });
+
+  it('keeps distant surnames as orphans rather than near matches', async () => {
+    const result = await run('A claim (Williamsen, 2020).', ['Williams, J. (2020). A study. Journal, 1, 1-10.']);
+    expect(result.crossReference.unmatchedInText).toHaveLength(1);
+    expect(result.crossReference.nearMatches).toBeUndefined();
+  });
+
   it('keeps findings when every in-text citation is orphaned', async () => {
     const result = await run('A claim (Taylor, 2024).');
     expect(result.sourceListLikely).toBe(false);

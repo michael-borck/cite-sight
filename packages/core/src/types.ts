@@ -163,6 +163,10 @@ export interface ReferenceVerification {
 export interface CrossReferenceResult {
   unmatchedBibliography: ParsedReference[]; // in bibliography but no in-text citation
   unmatchedInText: InTextCitation[];         // in-text but no bibliography entry
+  /** Cited with a likely spelling slip (same year, surname within two edits).
+   *  Hand-typed references make these common; reported as a best-guess pair
+   *  rather than as orphans. */
+  nearMatches?: Array<{ cite: InTextCitation; reference: ParsedReference }>;
 }
 
 export interface ReferenceAnalysisResult {

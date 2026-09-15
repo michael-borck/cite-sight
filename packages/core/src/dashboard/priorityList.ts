@@ -81,7 +81,7 @@ export function gatherPriorityItems(
           ? 'The closest database record appears to be a different work (its authors do not overlap the citation). The citation itself is unmatched — check it at the source.'
           : v.matchCategory === 'conflict'
             ? "The citation's DOI resolves to a different-titled work — the identifier and the citation disagree."
-            : 'A database returned a match, but the metadata does not agree.';
+            : 'A database returned a match, but the cited details differ — for hand-typed references this is often a small typo rather than a problem with the source. Compare against the record.';
       suspect.push({
         itemKey,
         category: 'suspect',

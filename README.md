@@ -13,7 +13,8 @@ A desktop app, CLI tool, and web service that loads a student assignment, extrac
 - **Reference Verification** — Searches Crossref, OpenAlex, Semantic Scholar, arXiv, DataCite, Europe PMC, and book/web metadata
 - **Publication notices** — Shows Crossref and Retraction Watch updates separately from the reference's identity match
 - **Citation Format Validation** — Checks APA, MLA, and Chicago formatting rules
-- **Cross-Reference Checking** — Matches in-text citations to bibliography entries, flags orphans
+- **Cross-Reference Checking** — Matches in-text citations to bibliography entries, flags orphans, and
+  suggests likely spelling mismatches (hand-typed references often slip by a letter or two)
 - **URL Verification** — HTTP checks on referenced URLs, with screenshots as evidence (desktop)
 - **DOI Resolution** — Validates DOIs via Crossref (bot-blocked/paywalled publisher pages are reported as *blocked*, not dead)
 - **Citation Patterns** — Future-dated citations, suspicious year clusters, mixed citation styles, and placeholder/template citation text
@@ -349,7 +350,9 @@ For each reference in the bibliography:
    - Compare titles, authors, years, identifiers and available publication details
    - Check book/web metadata and URL liveness separately; a live page alone does not confirm a citation
    - Check publication notices, with a separate outcome and check timestamp
-4. **Cross-Reference** — Match bibliography ↔ in-text citations
+4. **Cross-Reference** — Match bibliography ↔ in-text citations; near misses (same year, surname one edit
+   or a letter-swap apart) are reported as "possible spelling mismatches" instead of orphans — common when
+   references are hand-typed
 5. **Score** — Heuristic match strength from 0 to 1, not a probability of correctness
 
 The offline regression benchmark lives in

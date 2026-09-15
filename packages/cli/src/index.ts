@@ -147,6 +147,12 @@ function printReport(result: AnalysisResult, minimal: boolean): void {
         chalk.yellow(String(references.crossReference.unmatchedInText.length))
       );
     }
+    if (references.crossReference.nearMatches?.length) {
+      console.log(
+        `  Possible spelling mismatches: ${chalk.cyan(String(references.crossReference.nearMatches.length))} ` +
+        chalk.gray('(citation ≈ bibliography entry within a couple of letters — common for hand-typed references)')
+      );
+    }
     if (references.sourceListLikely) {
       console.log(
         `  ${chalk.cyan('Note:')} no reference is cited in the body — this looks like a source list, ` +
@@ -200,6 +206,17 @@ function printReport(result: AnalysisResult, minimal: boolean): void {
         });
       }
     }
+  }
+
+  // Near matches: cited with a likely spelling slip. Hand-typed references
+  // (no EndNote) make these common — informational, not a finding.
+  for (const { cite, reference } of references.crossReference.nearMatches ?? []) {
+    issues.push({
+      label: 'Possible spelling mismatch',
+      detail: `${cite.raw} ↔ "${reference.title || reference.raw.slice(0, 60)}"`,
+      severity: 'info',
+      lines: [`cited “${cite.raw}” — bibliography entry: ${reference.raw}`],
+    });
   }
 
   // Unmatched in-text citations: a citation in the prose with no bibliography
