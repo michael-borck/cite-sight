@@ -221,19 +221,19 @@ export function LandingPage({ onNavigate }: Props) {
   // Mac ships two builds (Apple Silicon and Intel) and browsers cannot tell
   // the chip apart (Safari reports "MacIntel" on both), so the primary button
   // serves the M-series build and an explicit Intel link sits beside it.
-  const macArch: MacArch = 'arm64';
+  // Browsers cannot tell an M-series Mac from an Intel one, so both mac
+  // downloads are offered explicitly rather than guessed.
+  const macArm64Url = matchAsset(assets, 'mac', 'arm64') ?? FALLBACK_URL;
+  const macX64Url = matchAsset(assets, 'mac', 'x64') ?? FALLBACK_URL;
   const downloadUrl = selectedPlatform === 'mac'
-    ? matchAsset(assets, 'mac', macArch) ?? matchAsset(assets, 'mac', 'x64') ?? FALLBACK_URL
+    ? macArm64Url
     : matchAsset(assets, selectedPlatform) ?? FALLBACK_URL;
-  const intelUrl = matchAsset(assets, 'mac', 'x64') ?? FALLBACK_URL;
   // Single-file build: matched by exact artifact name so it never collides
   // with the platform matchers above. Falls back to the releases page until
   // a release ships the artifact.
   const standaloneUrl =
     assets.find((a) => a.name === 'cite-sight-standalone.html')?.browser_download_url ?? FALLBACK_URL;
-  const label = selectedPlatform === 'mac'
-    ? 'Download for macOS (M-series)'
-    : `Download for ${PLATFORM_LABELS[selectedPlatform]}`;
+  const label = `Download for ${PLATFORM_LABELS[selectedPlatform]}`;
   // The primary button auto-detects; visitors on the "wrong" machine (or
   // fetching for a colleague) get a one-line escape hatch instead of having
   // to discover the platform selector at the bottom of the page.
@@ -260,13 +260,18 @@ export function LandingPage({ onNavigate }: Props) {
               <button className="btn btn-primary" onClick={() => onNavigate('tool')}>
                 Check Citations Online
               </button>
-              <a className="btn btn-secondary" href={downloadUrl}>
-                {label}
-              </a>
+              {selectedPlatform === 'mac' ? (
+                <>
+                  <a className="btn btn-secondary" href={macArm64Url}>Download for Mac (M-series)</a>
+                  <a className="btn btn-secondary" href={macX64Url}>Download for Mac (Intel)</a>
+                </>
+              ) : (
+                <a className="btn btn-secondary" href={downloadUrl}>{label}</a>
+              )}
             </div>
             {selectedPlatform === 'mac' && (
               <p className="hero-note hero-alt-platforms">
-                Intel Mac? <a href={intelUrl}>Download the Intel (x64) build</a>.
+                Not sure which? Apple menu → About This Mac → check the Chip line.
               </p>
             )}
             <p className="hero-note hero-alt-platforms">
@@ -365,14 +370,14 @@ export function LandingPage({ onNavigate }: Props) {
           </div>
         </div>
 
-        <a className="download-btn" href={downloadUrl}>
-          {label}
-        </a>
-
-        {selectedPlatform === 'mac' && (
-          <p className="download-fine">
-            Intel Mac? <a href={intelUrl}>Download the Intel (x64) build</a> instead.
-          </p>
+        {selectedPlatform === 'mac' ? (
+          <>
+            <a className="download-btn" href={macArm64Url}>Download for Mac (M-series)</a>
+            <a className="download-btn download-btn--secondary" href={macX64Url}>Download for Mac (Intel)</a>
+            <p className="download-fine">Not sure which? Apple menu → About This Mac → check the Chip line.</p>
+          </>
+        ) : (
+          <a className="download-btn" href={downloadUrl}>{label}</a>
         )}
 
         <div className="platform-selector">
