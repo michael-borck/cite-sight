@@ -1,6 +1,6 @@
 {
   "name": "@michaelborck/cite-sight-standalone",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "private": true,
   "type": "module",
   "description": "CiteSight Standalone - single-file HTML build of the academic integrity checker",
