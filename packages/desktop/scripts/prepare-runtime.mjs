@@ -19,10 +19,16 @@ try { valid = await hashFile(archive) === artifact.sha256; } catch { /* First bu
 if (!valid) await downloadArtifact({ ...artifact, url: `https://github.com/${lock.repository}/releases/download/${lock.version}/${artifact.file}` }, archive);
 const unpacked = join(archiveDir, `${platform}-${arch}-unpacked`);
 await rm(unpacked, { recursive: true, force: true }); await mkdir(unpacked, { recursive: true });
+// Windows runners put GNU tar from Git bash on PATH, which reads "D:\..." as a
+// remote host and cannot read .zip. The Windows system tar is bsdtar: it
+// handles drive letters, .tar.gz and .zip. Pin it by absolute path.
+const tar = platform === 'win32'
+  ? join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe')
+  : 'tar';
 try {
-  const entries = execFileSync('tar', ['-tf', archive], { encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 }).split(/\r?\n/).filter(Boolean);
+  const entries = execFileSync(tar, ['-tf', archive], { encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 }).split(/\r?\n/).filter(Boolean);
   if (entries.some((entry) => /^(\/|\\|[a-z]:)/i.test(entry) || entry.split(/[\\/]/).includes('..'))) throw new Error('Unsafe runtime archive entry.');
-  execFileSync('tar', ['-xf', archive, '-C', unpacked]);
+  execFileSync(tar, ['-xf', archive, '-C', unpacked]);
   async function files(path) {
     return (await Promise.all((await readdir(path, { withFileTypes: true })).map(async (entry) => entry.isDirectory() ? files(join(path, entry.name)) : [join(path, entry.name)]))).flat();
   }
