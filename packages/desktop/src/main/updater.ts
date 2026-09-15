@@ -74,5 +74,29 @@ export function initAutoUpdater(window: BrowserWindow): void {
     }
   });
 
-  // Updates are manual. No background connection can overlap a private run.
+  // Notification-only background check: shortly after launch, then daily.
+  // It can only *tell* the user an update exists (autoDownload stays false) —
+  // downloading and installing always need an explicit click. Each tick
+  // re-checks the guards, so a check never runs in local-only mode, during
+  // analysis, or while another online operation is in flight.
+  const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+  const FIRST_CHECK_DELAY_MS = 60 * 1000;
+  let checkInFlight = false;
+  const backgroundCheck = async (): Promise<void> => {
+    if (checkInFlight || !app.isPackaged) return;
+    if (!win || win.isDestroyed()) return;
+    if (isLocalOnly()) return;
+    checkInFlight = true;
+    try {
+      // onlineOperation refuses while a task is running or local-only is on,
+      // so this can never overlap a marking run or an offline session.
+      await onlineOperation(() => autoUpdater.checkForUpdates());
+    } catch {
+      // Offline, local-only, mid-task — silently wait for the next tick.
+    } finally {
+      checkInFlight = false;
+    }
+  };
+  setTimeout(backgroundCheck, FIRST_CHECK_DELAY_MS);
+  setInterval(backgroundCheck, UPDATE_CHECK_INTERVAL_MS);
 }

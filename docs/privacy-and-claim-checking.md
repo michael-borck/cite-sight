@@ -220,8 +220,10 @@ model and source options. The reference `retry` command does not run a model.
   analysis and setup exclude each other. Cancel removes the partial file.
   Existing valid installations survive failed updates.
 - Desktop blocks renderer HTTP/WebSocket requests and external-link opening in
-  local-only mode. Update checks are manual and disabled while local-only mode
-  or analysis is active. A private run cannot start while an explicit online
+  local-only mode. Update checks run via the version button and, in online
+  mode, a notification-only background check shortly after launch and daily.
+  Checks never run in local-only mode or during analysis, and downloads always
+  require an explicit click. A private run cannot start while an explicit online
   operation is still running. Development builds allow only their Vite origin
   at `localhost:5173`; use a packaged build for a no-network deployment.
 - llama-cli receives an explicit local model, offline mode and CPU-only device
