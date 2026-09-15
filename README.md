@@ -252,11 +252,29 @@ For development: `npm run dev -w packages/standalone`.
 
 ### CLI
 
-```bash
-npm run build:core
-npx tsc -p packages/cli/tsconfig.json
+**Just want to run it?** No build needed — install the published package (Node.js 20+):
 
+```bash
+npm install -g cite-sight
 cite-sight check paper.pdf
+```
+
+**Building from source** (requires Node.js 20+; any Apple Silicon or Intel Mac works — nothing is architecture-specific):
+
+```bash
+# 1. Install workspace dependencies once, from the repository root.
+#    This is a npm workspaces monorepo: installing inside packages/cli alone
+#    will not wire up @michaelborck/cite-sight-core. Re-run after each git pull.
+npm install
+
+# 2. Build core, then the CLI. dist lands in packages/cli/dist/index.js.
+npm run build:core
+npm run build:cli
+
+# 3. Run it from the repo (the `cite-sight` command only exists on your PATH
+#    after `npm install -g cite-sight`, which replaces this whole section).
+node packages/cli/dist/index.js check paper.pdf
+node packages/cli/dist/index.js check paper.pdf --json
 cite-sight check paper.pdf --json
 cite-sight check paper.pdf --style apa --email you@example.com
 
@@ -272,6 +290,16 @@ cite-sight check paper.pdf --minimal
 # when no in-text citations are detected. Orphaned citations are still reported.
 cite-sight check sources.md --source-list
 ```
+
+**Build troubleshooting**
+
+- `build:core` fails with "tsc: command not found", or `npx tsc` prints
+  "This is not the tsc command you are looking for", or TypeScript errors about
+  `@types/node`: the `npm install` step at the repository root was skipped (or a
+  `git pull` landed new dependencies). Run `npm install` from the repo root and retry.
+- Do **not** package the CLI with `pkg` or similar bundlers — the PDF extractor
+  loads its pdf.js worker at runtime and such packages crash. Use the npm
+  package, `node packages/cli/dist/index.js`, or Docker.
 
 **Batch checking and rate limits.** Lookups run one reference at a time and every
 external request is paced by provider, with a longer interval for arXiv. Results
