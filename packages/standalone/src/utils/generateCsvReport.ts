@@ -54,8 +54,8 @@ export function downloadCsvReport(results: AnalysisResult[]): void {
 
   // Column headers
   const headers = isBatch
-    ? 'File,Ref,Title,Authors,Year,DOI,URL,Status,Confidence,URL Status,Flags'
-    : 'Ref,Title,Authors,Year,DOI,URL,Status,Confidence,URL Status,Flags';
+    ? 'File,Ref,Title,Authors,Year,DOI,URL,Status,Match strength,URL Status,Flags'
+    : 'Ref,Title,Authors,Year,DOI,URL,Status,Match strength,URL Status,Flags';
   lines.push(headers);
 
   for (const result of results) {

@@ -1,0 +1,333 @@
+{
+  "version": 1,
+  "evaluatedAt": "2026-09-14T12:26:04.941Z",
+  "provenance": {
+    "runtimeVersion": "b8680 (15f786e65)",
+    "runtimeSha256": "8a1b2f56c70636f5ba739670ce9370a88b1ccb5a68bc5f8601beb204ea5a48f4",
+    "modelSha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+    "modelId": "qwen2.5-1.5b-q4km",
+    "modelRevision": "91cad51170dc346986eccefdc2dd33a9da36ead9",
+    "platform": "darwin",
+    "arch": "arm64",
+    "promptVersion": "claim-evidence-v2",
+    "parameters": {
+      "temperature": 0,
+      "seed": 0,
+      "contextSize": 8192,
+      "maxTokens": 1024,
+      "device": "cpu"
+    }
+  },
+  "metrics": {
+    "total": 20,
+    "correct": 11,
+    "accuracy": 0.55,
+    "falseSupport": 6,
+    "falseSupportRate": 0.4,
+    "falseContradiction": 3,
+    "falseContradictionRate": 0.21428571428571427,
+    "unavailable": 0,
+    "insufficientEvidence": 2,
+    "medianMs": 7004,
+    "p90Ms": 7787
+  },
+  "rows": [
+    {
+      "id": "direct-support",
+      "expected": "supported",
+      "actual": "supported",
+      "elapsedMs": 7787,
+      "reason": "The source reports that practice improved recall in adults, which directly supports the statement.",
+      "evidence": [
+        {
+          "quote": "Practice improved recall in adults after two weeks.",
+          "passageId": "p0",
+          "start": 0,
+          "end": 51
+        }
+      ]
+    },
+    {
+      "id": "quantity-support",
+      "expected": "supported",
+      "actual": "supported",
+      "elapsedMs": 6739,
+      "reason": "The statement is supported by the evidence that the trial enrolled 120 participants across three clinics.",
+      "evidence": [
+        {
+          "quote": "The trial enrolled 120 participants across three clinics.",
+          "passageId": "p0",
+          "start": 0,
+          "end": 57
+        }
+      ]
+    },
+    {
+      "id": "qualified-support",
+      "expected": "supported",
+      "actual": "supported",
+      "elapsedMs": 7233,
+      "reason": "The statement suggests that the intervention may improve sleep quality, and the evidence confirms this by mentioning the confidence interval is wide, which implies uncertainty but not a contradiction.",
+      "evidence": [
+        {
+          "quote": "The intervention may improve sleep quality, but the confidence interval is wide.",
+          "passageId": "p0",
+          "start": 0,
+          "end": 80
+        }
+      ]
+    },
+    {
+      "id": "negative-support",
+      "expected": "supported",
+      "actual": "contradicted",
+      "elapsedMs": 6377,
+      "reason": "The source reports the same lack of effect; the drug did not lower blood pressure.",
+      "evidence": [
+        {
+          "quote": "The drug did not lower blood pressure in the randomized trial.",
+          "passageId": "p0",
+          "start": 0,
+          "end": 62
+        }
+      ]
+    },
+    {
+      "id": "population-gap",
+      "expected": "partially_supported",
+      "actual": "supported",
+      "elapsedMs": 6467,
+      "reason": "The passage reports that the program improved recall in adults, which directly supports the statement.",
+      "evidence": [
+        {
+          "quote": "The program improved recall in adults. Children were not included in the study.",
+          "passageId": "p0",
+          "start": 0,
+          "end": 79
+        }
+      ]
+    },
+    {
+      "id": "endpoint-gap",
+      "expected": "partially_supported",
+      "actual": "partially_supported",
+      "elapsedMs": 6455,
+      "reason": "The source reports the same improvement in sleep; the effect on anxiety is unknown.",
+      "evidence": [
+        {
+          "quote": "The intervention improved sleep. Anxiety was not measured.",
+          "passageId": "p0",
+          "start": 0,
+          "end": 58
+        }
+      ]
+    },
+    {
+      "id": "causal-overstatement",
+      "expected": "partially_supported",
+      "actual": "supported",
+      "elapsedMs": 6983,
+      "reason": "The passage confirms the existence of a relationship between exercise and mood but does not establish causation.",
+      "evidence": [
+        {
+          "quote": "The study found a relationship between exercise and mood. Its observational design cannot establish causation.",
+          "passageId": "p0",
+          "start": 0,
+          "end": 110
+        }
+      ]
+    },
+    {
+      "id": "time-gap",
+      "expected": "partially_supported",
+      "actual": "supported",
+      "elapsedMs": 7123,
+      "reason": "The source reports the same reduction in pain; the effect on pain is established after one week.",
+      "evidence": [
+        {
+          "quote": "The treatment reduced pain after one week. The study did not collect year-long follow-up data.",
+          "passageId": "p0",
+          "start": 0,
+          "end": 94
+        }
+      ]
+    },
+    {
+      "id": "opposite-effect",
+      "expected": "contradicted",
+      "actual": "contradicted",
+      "elapsedMs": 7004,
+      "reason": "The source reports a decrease in mortality, which directly contradicts the statement that the intervention increased mortality.",
+      "evidence": [
+        {
+          "quote": "The intervention decreased mortality compared with the control group.",
+          "passageId": "p0",
+          "start": 0,
+          "end": 69
+        }
+      ]
+    },
+    {
+      "id": "wrong-number",
+      "expected": "contradicted",
+      "actual": "supported",
+      "elapsedMs": 7503,
+      "reason": "The source reports the same number of participants; 120 is compatible additional detail.",
+      "evidence": [
+        {
+          "quote": "The trial enrolled 120 participants, not 200.",
+          "passageId": "p0",
+          "start": 0,
+          "end": 45
+        }
+      ]
+    },
+    {
+      "id": "negation-error",
+      "expected": "contradicted",
+      "actual": "contradicted",
+      "elapsedMs": 6514,
+      "reason": "The source reports the opposite effect; no statistically significant reduction in pain.",
+      "evidence": [
+        {
+          "quote": "The researchers found no statistically significant reduction in pain.",
+          "passageId": "p0",
+          "start": 0,
+          "end": 69
+        }
+      ]
+    },
+    {
+      "id": "date-error",
+      "expected": "contradicted",
+      "actual": "contradicted",
+      "elapsedMs": 7242,
+      "reason": "The source confirms the survey took place in 2019, not 2022.",
+      "evidence": [
+        {
+          "quote": "The survey took place in 2019. No survey was conducted in 2022.",
+          "passageId": "p0",
+          "start": 0,
+          "end": 63
+        }
+      ]
+    },
+    {
+      "id": "population-unsupported",
+      "expected": "insufficient_evidence",
+      "actual": "insufficient_evidence",
+      "elapsedMs": 7471,
+      "reason": "The passage confirms that the treatment was tested in adults and does not provide information about its effectiveness in children, leaving the statement unsupported.",
+      "evidence": [
+        {
+          "quote": "The treatment was tested in adults. Children were not studied and its effectiveness in children remains unknown.",
+          "passageId": "p0",
+          "start": 0,
+          "end": 112
+        }
+      ]
+    },
+    {
+      "id": "unmeasured-outcome",
+      "expected": "insufficient_evidence",
+      "actual": "contradicted",
+      "elapsedMs": 6830,
+      "reason": "The passage does not support the statement that the intervention improved memory.",
+      "evidence": [
+        {
+          "quote": "The intervention study measured sleep quality. It did not assess memory.",
+          "passageId": "p0",
+          "start": 0,
+          "end": 72
+        }
+      ]
+    },
+    {
+      "id": "unrelated-source",
+      "expected": "insufficient_evidence",
+      "actual": "insufficient_evidence",
+      "elapsedMs": 0,
+      "reason": "No retrieved passages.",
+      "evidence": []
+    },
+    {
+      "id": "protocol-only",
+      "expected": "insufficient_evidence",
+      "actual": "supported",
+      "elapsedMs": 7128,
+      "reason": "The passage confirms that the treatment is being tested for its effect on anxiety, which is the statement's claim.",
+      "evidence": [
+        {
+          "quote": "This protocol proposes testing whether the treatment reduces anxiety. Results are not yet available.",
+          "passageId": "p0",
+          "start": 0,
+          "end": 100
+        }
+      ]
+    },
+    {
+      "id": "source-instruction",
+      "expected": "contradicted",
+      "actual": "contradicted",
+      "elapsedMs": 6939,
+      "reason": "The source reports the same lack of improvement; no additional detail is provided.",
+      "evidence": [
+        {
+          "quote": "Practice did not improve recall in children.",
+          "passageId": "p0",
+          "start": 0,
+          "end": 44
+        }
+      ]
+    },
+    {
+      "id": "statement-instruction",
+      "expected": "contradicted",
+      "actual": "supported",
+      "elapsedMs": 7657,
+      "reason": "The source reports the same number of participants; 120 is compatible additional detail.",
+      "evidence": [
+        {
+          "quote": "The trial enrolled 120 participants, not 200.",
+          "passageId": "p0",
+          "start": 0,
+          "end": 45
+        }
+      ]
+    },
+    {
+      "id": "absence-not-negation",
+      "expected": "insufficient_evidence",
+      "actual": "contradicted",
+      "elapsedMs": 8064,
+      "reason": "The passage directly states that no conclusion can be drawn about infection rates, which directly contradicts the statement that the intervention reduces infection rates.",
+      "evidence": [
+        {
+          "quote": "The intervention protocol did not measure infection rates, so no conclusion can be drawn about infection rates.",
+          "passageId": "p0",
+          "start": 0,
+          "end": 111
+        }
+      ]
+    },
+    {
+      "id": "qualified-exact",
+      "expected": "supported",
+      "actual": "supported",
+      "elapsedMs": 6909,
+      "reason": "The source reports that the treatment reduced pain in a small trial, but larger trials are needed before recommending routine use.",
+      "evidence": [
+        {
+          "quote": "In this small trial, the treatment reduced pain, but larger trials are needed before recommending routine use.",
+          "passageId": "p0",
+          "start": 0,
+          "end": 110
+        }
+      ]
+    }
+  ],
+  "dataset": {
+    "name": "CiteSight synthetic evidence-review smoke set v1",
+    "labelStatus": "Developer-authored synthetic cases and provisional labels. Not independently adjudicated or an assessment-validation dataset."
+  }
+}

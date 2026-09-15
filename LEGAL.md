@@ -133,13 +133,39 @@ CiteSight integrates with several external services to provide comprehensive doc
 
 ## Data Privacy Notice
 
-CiteSight is designed with privacy as a core principle:
-- All document processing occurs in memory only
-- No user documents or content are permanently stored
-- No data is shared with third parties except for:
-  - URL verification (only URLs are sent, not document content)
-  - DOI resolution (only DOI strings are sent to CrossRef)
-  - Wayback Machine queries (only broken URLs are checked)
+Desktop, CLI and standalone builds process submissions locally. Online bibliographic
+verification sends extracted reference titles, authors and identifiers to
+external providers. URL and web-metadata checks send cited URLs to their hosts
+or the relevant metadata service. Parsing errors can put unintended text into
+these fields, so this workflow does not meet a strict zero-disclosure policy.
+
+The hosted web tool receives the uploaded submission. Uploaded files and queued
+reports have the retention behaviour described in the README. Local lookup
+caches, saved sessions, screenshots and exported reports can also retain
+reference details. Storage depends on the interface and deployment.
+
+Desktop local-only mode and CLI `--offline` disable external citation services.
+Desktop claim evidence review uses a bundled, pinned llama.cpp runtime and a
+locally configured GGUF model. CLI accepts explicit local runtime and model files.
+The bundled runtime is MIT-licensed and includes its upstream license. Optional
+catalog models are Apache-2.0-licensed and download from their publisher-hosted
+repositories with pinned hashes. Catalog inclusion is not assessment approval.
+Claim reports and sessions contain student statement
+excerpts and source quotations. Temporary prompts are removed after normal
+completion, errors or cancellation. A forced process termination can leave
+temporary files for operating-system cleanup.
+
+Desktop batch checkpoints persist completed results, source paths and review
+excerpts locally. Claim inference now saves individual completed claims and
+evidence during the run. CLI writes a sidecar checkpoint by default; desktop
+stores checkpoints in its user-data directory. Human assessments and timestamps
+remain separate from the model suggestions. Settings can remove desktop batch
+and per-claim checkpoints. Model setup is a
+separate, explicit download before documents are opened; it does not upload
+submissions. Normal claim inference remains offline.
+
+See [on-device claim checking](docs/privacy-and-claim-checking.md) for setup,
+retention details and the limits of the local-only workflow.
 
 ## Compliance
 

@@ -36,7 +36,8 @@ export const DISCLAIMER_SHORT =
 /** One-line data-source credit — render wherever results are displayed. */
 export const ATTRIBUTION =
   'Bibliographic data from Crossref, OpenAlex, Semantic Scholar (Allen Institute for AI), ' +
-  'arXiv, DataCite, and Open Library. Thank you to arXiv for use of its open access interoperability.';
+  'arXiv, DataCite, Europe PMC, and Open Library. Publication notices from Crossref and Retraction Watch. ' +
+  'Thank you to arXiv for use of its open access interoperability.';
 
 /** Why verification takes time — shown while checks run. */
 export const PACING_NOTE =
@@ -58,16 +59,14 @@ export const PACING_NOTE =
 
 /** Shown on the online checker before upload — why the hosted version finds less. */
 export const HOSTED_LIMITS_NOTICE =
-  'The online checker is a free taster. It queries Crossref, OpenAlex and Semantic Scholar ' +
-  'anonymously and paces those lookups across everyone using the site, so at busy times checks ' +
-  'run slower and more references come back “not found”. The desktop app runs the same analysis ' +
-  'on your own machine and lets you supply a contact email — and, optionally, a free Semantic ' +
-  'Scholar API key — which lifts those limits. The same document usually verifies more references there.';
+  'The online checker sends your upload to this server and reference metadata to citation databases. ' +
+  'Lookups share the server\'s rate limits. Unavailable checks can be retried. ' +
+  'The desktop app processes files locally and supports personal OpenAlex and Semantic Scholar API keys, ' +
+  'but still sends reference metadata to external services.';
 
 /** One-line version — shown alongside results, where a low verified count prompts the question. */
 export const HOSTED_LIMITS_SHORT =
-  'Fewer references verified than you expected? The online checker shares one anonymous, rate-limited ' +
-  'connection to the citation databases; adding your contact email in the desktop app lifts that limit.';
+  'The online checker shares server-side API quotas. Desktop supports personal OpenAlex and Semantic Scholar keys.';
 
 // ---------------------------------------------------------------------------
 // Standalone (single-file) build notice
@@ -81,7 +80,8 @@ export const HOSTED_LIMITS_SHORT =
 
 /** Shown on the standalone build's upload screen — what changes in a browser. */
 export const STANDALONE_LIMITS_NOTICE =
-  'This standalone file runs entirely in your browser — your document never leaves this device. ' +
+  'This standalone file processes the submission in your browser. It sends extracted reference titles, authors, ' +
+  'identifiers and URLs to external services for verification. It is not a zero-network mode. ' +
   'Two checks work differently here: cited URLs are not probed automatically (browsers block ' +
   'cross-site requests), and arXiv preprints can\u2019t be looked up (arXiv\u2019s API refuses ' +
   'browser requests), so those references may come back \u201cunverified\u201d. Expand any row and ' +

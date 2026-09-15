@@ -1,10 +1,11 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, shell } from 'electron';
 import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { registerIpcHandlers } from './ipc.js';
 import { loadLookupCache } from './cacheStore.js';
 import { initAutoUpdater } from './updater.js';
+import { allowRendererRequest, isLocalOnly } from './privacy.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -25,6 +26,16 @@ function createWindow(): BrowserWindow {
     },
     titleBarStyle: 'default',
     show: false,
+  });
+  win.webContents.session.webRequest.onBeforeRequest((details, callback) => {
+    callback({ cancel: !allowRendererRequest(details.url, isDev) });
+  });
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (!isLocalOnly() && /^https?:\/\//i.test(url)) void shell.openExternal(url);
+    return { action: 'deny' };
+  });
+  win.webContents.on('will-navigate', (event, url) => {
+    if (!allowRendererRequest(url, isDev)) event.preventDefault();
   });
 
   if (isDev) {

@@ -107,10 +107,13 @@ export async function extractPdf(
     if (charCount > MAX_TEXT_CHARS) break;
   }
 
+  const totalPages = pdf.numPages;
+  await pdf.destroy();
   return {
     text: clampText(repairSplitDois(pageTexts.join('\n'))),
+    pages: pageTexts.map((text, index) => ({ page: index + 1, text })),
     fileName,
     fileType: 'pdf',
-    pageCount: pdf.numPages,
+    pageCount: totalPages,
   };
 }

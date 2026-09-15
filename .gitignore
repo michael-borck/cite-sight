@@ -51,3 +51,6 @@ temp/
 # Claude Code
 .claude/
 .superpowers/
+packages/desktop/resources/runtime/
+packages/desktop/resources/runtime-downloads/
+packages/desktop/release/

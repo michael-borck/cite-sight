@@ -2,6 +2,7 @@ import electronUpdater from 'electron-updater';
 const { autoUpdater } = electronUpdater;
 import type { BrowserWindow } from 'electron';
 import { app, ipcMain } from 'electron';
+import { desktopTask, isLocalOnly, onlineOperation } from './privacy.js';
 
 let win: BrowserWindow | undefined;
 let initialized = false;
@@ -53,11 +54,11 @@ export function initAutoUpdater(window: BrowserWindow): void {
 
   // Renderer can request to download or install
   ipcMain.handle('cite-sight:download-update', () => {
-    return autoUpdater.downloadUpdate();
+    return onlineOperation(() => autoUpdater.downloadUpdate());
   });
 
   ipcMain.handle('cite-sight:install-update', () => {
-    autoUpdater.quitAndInstall();
+    return desktopTask(isLocalOnly(), async () => { autoUpdater.quitAndInstall(); });
   });
 
   // Manual "Check for updates" from the renderer. Returns whether a newer
@@ -65,7 +66,7 @@ export function initAutoUpdater(window: BrowserWindow): void {
   // path stays silent on no-update, but a click deserves an answer.
   ipcMain.handle('cite-sight:check-updates', async () => {
     try {
-      const result = await autoUpdater.checkForUpdates();
+      const result = await onlineOperation(() => autoUpdater.checkForUpdates());
       const latest = result?.updateInfo?.version;
       return { updateAvailable: Boolean(latest && latest !== autoUpdater.currentVersion.version), version: latest };
     } catch {
@@ -73,14 +74,5 @@ export function initAutoUpdater(window: BrowserWindow): void {
     }
   });
 
-  const check = () =>
-    autoUpdater.checkForUpdates().catch(() => {
-      // Silently fail — offline or no releases yet
-    });
-
-  // Check for updates after a short delay so the window is ready, then
-  // every four hours — long-running sessions (the app left open across a
-  // marking day) would otherwise never learn a release shipped.
-  setTimeout(check, 3000);
-  setInterval(check, 4 * 60 * 60 * 1000);
+  // Updates are manual. No background connection can overlap a private run.
 }

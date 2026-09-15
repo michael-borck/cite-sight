@@ -1,6 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { ParsedReference } from '../src/types.js';
 import { referenceContentKey } from '../src/dashboard/priorityList.js';
+vi.mock('../src/references/datacite.js', () => ({ searchDataCite: async () => [] }));
+vi.mock('../src/references/europePmc.js', () => ({ searchEuropePmc: async () => [] }));
+vi.mock('../src/references/publicationUpdates.js', () => ({ checkPublicationUpdates: async () => ({ status: 'not_available', updates: [] }) }));
 
 // Scenario from a real session: heavy rate-limiting knocks out the good
 // sources mid-cascade, a weaker source supplies the only (wrong) candidate,

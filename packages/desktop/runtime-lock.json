@@ -1,0 +1,12 @@
+{
+  "version": "b8680",
+  "repository": "ggml-org/llama.cpp",
+  "artifacts": {
+    "darwin-arm64": { "file": "llama-b8680-bin-macos-arm64.tar.gz", "bytes": 40251991, "sha256": "4ccfb4bdacb8d90b166e3636f2eee71dd682e9487a1b0c14cf79f25310552920" },
+    "darwin-x64": { "file": "llama-b8680-bin-macos-x64.tar.gz", "bytes": 104235447, "sha256": "686067309a57d689124fbe1b1692f158a61aa4c9189c9fa880e276f46dbddeb6" },
+    "linux-x64": { "file": "llama-b8680-bin-ubuntu-x64.tar.gz", "bytes": 31668148, "sha256": "53d2dc06358ca83a71fd65eeb345942f4fc581d2b64c56c7077c97da8cd87882" },
+    "linux-arm64": { "file": "llama-b8680-bin-ubuntu-arm64.tar.gz", "bytes": 27847014, "sha256": "dd57e2acd4c5d46273ae26ba661460c3ca52bf651f83ad9a18d706acc156995e" },
+    "win32-x64": { "file": "llama-b8680-bin-win-cpu-x64.zip", "bytes": 39397140, "sha256": "0ee1cfd410a1d9efa9df584c712f3b471ddce13240995f3965ff52fd4fb2086c" },
+    "win32-arm64": { "file": "llama-b8680-bin-win-cpu-arm64.zip", "bytes": 32176538, "sha256": "d6007c3b90f1753f0c39f0a648f9dc842acac08504b108d94356d9d07501bdf9" }
+  }
+}

@@ -4,6 +4,7 @@ import { extractFromBytes } from './extractors/fromBytes.js';
 import { extractReferences } from './references/extractor.js';
 import { verifyReferences } from './references/verifier.js';
 import { crossReferenceCheck } from './references/crossReference.js';
+import { withoutExternalRequests } from './httpClient.js';
 import type {
   AnalysisResult,
   ProcessingOptions,
@@ -31,6 +32,15 @@ export async function analyzeDocument(
   onProgress?: ProgressCallback,
   onReference?: (verification: ReferenceVerification, index: number, total: number) => void,
 ): Promise<AnalysisResult> {
+  return options.offline
+    ? withoutExternalRequests(() => analyzeDocumentInner(bytes, fileName, options, onProgress, onReference))
+    : analyzeDocumentInner(bytes, fileName, options, onProgress, onReference);
+}
+
+async function analyzeDocumentInner(
+  bytes: Uint8Array, fileName: string, options: ProcessingOptions, onProgress?: ProgressCallback,
+  onReference?: (verification: ReferenceVerification, index: number, total: number) => void,
+): Promise<AnalysisResult> {
   const startTime = Date.now();
 
   // Stage 1: Extract text
@@ -56,9 +66,11 @@ export async function analyzeDocument(
   onProgress?.({ stage: 'verifying_references', progress: 65, message: `Verifying ${references.length} references...` });
   const verifications = references.length > 0
     ? await verifyReferences(references, {
+        offline: options.offline,
         mailto: options.contactEmail,
         citationStyle: detectedStyle,
         semanticScholarApiKey: options.semanticScholarApiKey,
+        openAlexApiKey: options.openAlexApiKey,
         checkUrls: options.checkUrls,
         checkDoi: options.checkDoi,
       }, onReference)
@@ -100,6 +112,7 @@ export async function analyzeDocument(
   onProgress?.({ stage: 'complete', progress: 100, message: 'Analysis complete.' });
 
   return {
+    offline: options.offline === true,
     fileName: doc.fileName,
     extractedText: doc.text,
     references: referenceResult,

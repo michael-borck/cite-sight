@@ -1,7 +1,33 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type { ProcessingOptions, AnalysisResult, ProgressUpdate, ReferenceVerification, ReviewSession } from '@michaelborck/cite-sight-core';
+import type { ClaimInstallationStatus, ClaimRequest } from '../shared/claimInstallation.js';
 
 contextBridge.exposeInMainWorld('citeSight', {
+  planBatch: (paths: string[], options: { offline: boolean; claims?: boolean; observedMs?: number }): Promise<import('@michaelborck/cite-sight-core').BatchPlan> => ipcRenderer.invoke('cite-sight:plan-batch', paths, options),
+  saveBatchCheckpoint: (session: ReviewSession): Promise<void> => ipcRenderer.invoke('cite-sight:save-batch-checkpoint', session),
+  loadBatchCheckpoint: (): Promise<ReviewSession | null> => ipcRenderer.invoke('cite-sight:load-batch-checkpoint'),
+  clearBatchCheckpoint: (): Promise<void> => ipcRenderer.invoke('cite-sight:clear-batch-checkpoint'),
+  setLocalOnly: (value: boolean): Promise<void> => ipcRenderer.invoke('cite-sight:set-local-only', value),
+  setDocumentsOpen: (value: boolean): Promise<void> => ipcRenderer.invoke('cite-sight:documents-open', value),
+  getClaimInstallation: (): Promise<ClaimInstallationStatus> => ipcRenderer.invoke('cite-sight:claim-installation'),
+  calibrateClaimModel: (): Promise<ClaimInstallationStatus> => ipcRenderer.invoke('cite-sight:calibrate-claim-model'),
+  installClaimModel: (id: string): Promise<ClaimInstallationStatus> => ipcRenderer.invoke('cite-sight:install-claim-model', id),
+  importClaimModel: (id: string): Promise<ClaimInstallationStatus> => ipcRenderer.invoke('cite-sight:import-claim-model', id),
+  removeClaimModel: (): Promise<ClaimInstallationStatus> => ipcRenderer.invoke('cite-sight:remove-claim-model'),
+  cancelClaimInstall: (): Promise<void> => ipcRenderer.invoke('cite-sight:cancel-claim-install'),
+  onClaimInstallProgress: (callback: (progress: Partial<ClaimInstallationStatus>) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, progress: Partial<ClaimInstallationStatus>) => callback(progress);
+    ipcRenderer.on('cite-sight:claim-install-progress', listener);
+    return () => ipcRenderer.removeListener('cite-sight:claim-install-progress', listener);
+  },
+  selectClaimFile: (kind: 'source'): Promise<string | null> => ipcRenderer.invoke('cite-sight:select-claim-file', kind),
+  checkClaims: (path: string, config: ClaimRequest, options: ProcessingOptions): Promise<AnalysisResult> => ipcRenderer.invoke('cite-sight:check-claims', path, config, options),
+  cancelClaims: (): Promise<void> => ipcRenderer.invoke('cite-sight:cancel-claims'),
+  onClaimCheckpoint: (callback: (data: { path: string; result: AnalysisResult }) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, data: { path: string; result: AnalysisResult }) => callback(data);
+    ipcRenderer.on('cite-sight:claim-checkpoint', listener);
+    return () => ipcRenderer.removeListener('cite-sight:claim-checkpoint', listener);
+  },
   saveSession: (session: ReviewSession): Promise<string | null> => ipcRenderer.invoke('cite-sight:save-session', session),
   openSession: (): Promise<ReviewSession | null> => ipcRenderer.invoke('cite-sight:open-session'),
   getPathForFile: (file: File): string => webUtils.getPathForFile(file),

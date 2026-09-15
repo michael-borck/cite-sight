@@ -29,6 +29,8 @@ const SERVICE_NAMES: Record<string, string> = {
   semantic_scholar: 'Semantic Scholar',
   openalex: 'OpenAlex',
   arxiv: 'arXiv',
+  datacite: 'DataCite',
+  europe_pmc: 'Europe PMC',
   doi: 'the DOI resolver',
 };
 
@@ -63,6 +65,41 @@ export function explainVerification(v: ReferenceVerification): FlagExplanation[]
   for (const flag of v.flags) {
     if (REASON_TOKEN_RE.test(flag)) continue; // surfaced via 'verification_unavailable'
     switch (flag) {
+      case 'offline':
+        out.push({ flag, label: 'Local-only check', detail: 'External reference services were disabled. Formatting and in-text matching do not establish source existence.' });
+        break;
+      case 'ambiguous_match':
+        out.push({ flag, label: 'Several plausible records', detail: 'The best candidates have similar match strength. Compare their identifiers and publication details.' });
+        break;
+      case 'doi_mismatch':
+        out.push({ flag, label: 'DOI differs', detail: `Cited ${ref.doi}; matched record ${work?.doi}. Check for an incorrect identifier or a different version.` });
+        break;
+      case 'title_token_mismatch':
+        out.push({ flag, label: 'Title wording differs', detail: `Numbers, negation or publication-notice wording differ. Cited "${ref.title}"; record "${work?.title ?? 'unknown'}".` });
+        break;
+      case 'title_variant':
+        out.push({ flag, label: 'Partial title match', detail: `Cited "${ref.title}"; record "${work?.title ?? 'unknown'}". Compare the full titles.` });
+        break;
+      case 'volume_mismatch':
+      case 'issue_mismatch':
+      case 'pages_mismatch': {
+        const field = flag.replace('_mismatch', '') as 'volume' | 'issue' | 'pages';
+        out.push({ flag, label: `${field} mismatch`, detail: `Cited ${ref[field]}; record ${work?.[field]}.` });
+        break;
+      }
+      case 'url_only':
+        out.push({ flag, label: 'Page responds, citation unconfirmed', detail: 'A live URL does not establish that it contains the cited document.' });
+        break;
+      case 'retraction_notice':
+      case 'correction_notice':
+      case 'expression_of_concern':
+      case 'publication_update':
+        out.push({ flag, label: flag.replaceAll('_', ' '), detail: (v.publicationCheck?.updates ?? [])
+          .map((update) => `${update.type}, ${update.source}${update.date ? `, ${update.date.slice(0, 10)}` : ''}${update.doi ? `, DOI ${update.doi}` : ''}`).join('; ') });
+        break;
+      case 'publication_check_unavailable':
+        out.push({ flag, label: 'Publication notices could not be checked', detail: 'The metadata match still stands. Retry later to check for retractions and corrections.' });
+        break;
       case 'author_mismatch':
         out.push({
           flag,
@@ -169,4 +206,11 @@ export function explainVerification(v: ReferenceVerification): FlagExplanation[]
   }
 
   return out;
+}
+
+/** Findings can need review even when the source's identity is confirmed. */
+export function hasReviewFlags(v: ReferenceVerification): boolean {
+  return v.flags.some((flag) => flag.endsWith('_mismatch') || [
+    'ambiguous_match', 'title_variant', 'retraction_notice', 'correction_notice', 'expression_of_concern', 'publication_update',
+  ].includes(flag));
 }

@@ -85,6 +85,7 @@ export function App() {
   const [citationStyle, setCitationStyle] = useState<ProcessingOptions['citationStyle']>('auto');
   const [contactEmail, setContactEmail] = useState('');
   const [s2Key, setS2Key] = useState('');
+  const [openAlexKey, setOpenAlexKey] = useState('');
   const [checkInText, setCheckInText] = useState(true);
 
   const [isProcessing, setIsProcessing] = useState(false);
@@ -106,7 +107,7 @@ export function App() {
   // Cancel is checked BETWEEN files; a single file's analysis runs to completion.
   const cancelRef = useRef(false);
   // The run's options, for re-verify calls after the run completes.
-  const runOptionsRef = useRef<{ contactEmail?: string; semanticScholarApiKey?: string }>({});
+  const runOptionsRef = useRef<{ contactEmail?: string; semanticScholarApiKey?: string; openAlexApiKey?: string }>({});
 
   // Elapsed timer for the streaming view.
   useEffect(() => {
@@ -146,6 +147,7 @@ export function App() {
     runOptionsRef.current = {
       contactEmail: contactEmail || undefined,
       semanticScholarApiKey: s2Key || undefined,
+      openAlexApiKey: openAlexKey || undefined,
     };
 
     const options: ProcessingOptions = {
@@ -154,6 +156,7 @@ export function App() {
       checkInText,
       contactEmail: contactEmail || undefined,
       semanticScholarApiKey: s2Key || undefined,
+      openAlexApiKey: openAlexKey || undefined,
     };
 
     try {
@@ -214,6 +217,7 @@ export function App() {
       mailto: runOptionsRef.current.contactEmail,
       citationStyle: detectedStyle,
       semanticScholarApiKey: runOptionsRef.current.semanticScholarApiKey,
+      openAlexApiKey: runOptionsRef.current.openAlexApiKey,
       checkUrls: false,
     });
     return verification ?? null;
@@ -392,6 +396,12 @@ export function App() {
                                 Stored only in this tab's memory.
                               </span>
                             </div>
+                          </div>
+                          <div className="option-group full">
+                            <label className="option-label" htmlFor="openalex-key">OpenAlex API key, optional</label>
+                            <input id="openalex-key" className="option-select" type="password" autoComplete="off"
+                              value={openAlexKey} onChange={(e) => setOpenAlexKey(e.target.value)} />
+                            <span className="hint">Get a free key at openalex.org/settings/api. Stored only in this tab's memory.</span>
                           </div>
                           <div className="checkbox-group">
                             <div className="checkbox-row">

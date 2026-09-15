@@ -67,8 +67,8 @@ export function downloadCsvReport(results: AnalysisResult[], dismissedKeys?: Rea
 
   // Column headers
   const headers = isBatch
-    ? 'File,Ref,Title,Authors,Year,DOI,URL,Status,Confidence,URL Status,Flags,Dismissed,Review decision,Reviewed at'
-    : 'Ref,Title,Authors,Year,DOI,URL,Status,Confidence,URL Status,Flags,Dismissed,Review decision,Reviewed at';
+    ? 'File,Ref,Title,Authors,Year,DOI,URL,Status,Match strength,URL Status,Flags,Dismissed,Review decision,Reviewed at'
+    : 'Ref,Title,Authors,Year,DOI,URL,Status,Match strength,URL Status,Flags,Dismissed,Review decision,Reviewed at';
   lines.push(headers);
 
   for (const result of results) {

@@ -1,5 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { AcademicWork, ParsedReference } from '../src/types.js';
+vi.mock('../src/references/datacite.js', () => ({ searchDataCite: async () => [] }));
+vi.mock('../src/references/europePmc.js', () => ({ searchEuropePmc: async () => [] }));
+vi.mock('../src/references/publicationUpdates.js', () => ({ checkPublicationUpdates: async () => ({ status: 'not_available', updates: [] }) }));
 
 // A small fake "academic database": what the live APIs would contain. The
 // mocks below return candidates from here, and the verifier does its own

@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import type { AnalysisResult, ProcessingOptions } from '@michaelborck/cite-sight-core';
-import { ATTRIBUTION, DISCLAIMER, explainVerification, REVIEW_LABELS, reviewKey } from '@michaelborck/cite-sight-core';
+import { ATTRIBUTION, DISCLAIMER, explainVerification, REVIEW_LABELS, reviewKey, reviewCount, claimReportLines } from '@michaelborck/cite-sight-core';
 import { isAnalysisResult } from '@michaelborck/cite-sight-core/session';
 import { reviewEntries } from '@michaelborck/cite-sight-core/review';
 
@@ -9,7 +9,7 @@ export interface FileOutcome { file: string; result?: AnalysisResult; error?: st
 export type ReportFormat = 'text' | 'json' | 'html';
 
 export function reportEnvelope(outcomes: FileOutcome[], options?: ProcessingOptions) {
-  const { semanticScholarApiKey: _key, ...safeOptions } = options ?? {};
+  const { semanticScholarApiKey: _key, openAlexApiKey: _openAlexKey, ...safeOptions } = options ?? {};
   return {
     version: 1, createdAt: new Date().toISOString(), processingOptions: safeOptions,
     files: outcomes.map((outcome) => outcome.error ? { file: outcome.file, error: outcome.error } : { file: outcome.file, ...outcome.result }),
@@ -37,15 +37,17 @@ body{font:16px/1.6 system-ui,sans-serif;color:#172b3a;background:#f8fafc;max-wid
 ${outcomes.map((outcome) => {
     if (!outcome.result) return `<article><h2>${escape(outcome.file)}</h2><p class="error">Could not check: ${escape(outcome.error)}</p></article>`;
     const result = outcome.result; const refs = result.references;
-    return `<article><h2>${escape(result.fileName)}</h2><p>${refs.suspiciousCount + refs.notFoundCount} references need review · ${refs.verifiedCount} verified or likely valid · ${refs.unverifiedCount} couldn’t be checked</p>
+    return `<article><h2>${escape(result.fileName)}</h2><p>${reviewCount(result)} items need review · ${refs.verifiedCount} verified or likely valid · ${refs.unverifiedCount} couldn’t be checked</p>
 ${refs.verifications.map((v, i) => {
       const decision = result.reviews?.[reviewKey(result, `ref:${i}`)]?.decision;
       return `<details open><summary class="${escape(v.status)}">${i + 1}. ${escape(v.reference.title || v.reference.raw)} · ${escape(v.status.replaceAll('_', ' '))}</summary>
 <div class="comparison"><div><h3>Your citation</h3><p>${escape(v.reference.raw)}</p></div>${v.matchedWork ? `<div><h3>Matched record</h3><p>${escape(v.matchedWork.title)} (${escape(v.matchedWork.year)})</p><p>${escape(v.matchedWork.authors.join('; '))}</p></div>` : ''}</div>
 <ul>${explainVerification(v).map((issue) => `<li>${escape(issue.label)}${issue.detail ? `: ${escape(issue.detail)}` : ''}</li>`).join('')}${v.formatIssues.map((issue) => `<li>${escape(issue.field)}: ${escape(issue.message)}</li>`).join('')}</ul>
 ${decision ? `<p>Review decision: <strong>${escape(REVIEW_LABELS[decision])}</strong></p>` : ''}
-${sourceLink(v.reference.doi ? `https://doi.org/${encodeURIComponent(v.reference.doi)}` : undefined, 'Open DOI')}${sourceLink(v.reference.url, 'Open cited URL')}</details>`;
+${result.offline ? '' : sourceLink(v.reference.doi ? `https://doi.org/${encodeURIComponent(v.reference.doi)}` : undefined, 'Open DOI') + sourceLink(v.reference.url, 'Open cited URL')}</details>`;
     }).join('')}
+${result.offline ? '<p>Local-only run. External citation services were disabled.</p>' : ''}
+${result.claims ? `<h3>Local claim checks</h3>${claimReportLines(result.claims).map((line) => `<p>${escape(line)}</p>`).join('')}` : ''}
 <h3>In-text matching</h3>${refs.inTextCheckSkipped ? '<p>Skipped for this run.</p>' : `<ul>${refs.crossReference.unmatchedInText.map((cite) => `<li>No bibliography match: ${escape(cite.raw)}</li>`).join('')}${refs.crossReference.unmatchedBibliography.map((ref) => `<li>Not cited in the text: ${escape(ref.raw)}</li>`).join('')}</ul>`}
 ${reviewEntries(result).length ? `<h3>Review decisions</h3><ul>${reviewEntries(result).map((review) => `<li>${escape(review.label)}: ${escape(review.source)}</li>`).join('')}</ul>` : ''}</article>`;
   }).join('')}<footer><p>${escape(DISCLAIMER)}</p><p>${escape(ATTRIBUTION)}</p></footer></body></html>`;
@@ -55,7 +57,8 @@ function textReport(outcomes: FileOutcome[]): string {
   return outcomes.map((outcome) => {
     if (!outcome.result) return `${outcome.file}\nCould not check: ${outcome.error}\n`;
     const refs = outcome.result.references;
-    return `${outcome.file}\n${refs.verifiedCount} verified or likely valid; ${refs.suspiciousCount + refs.notFoundCount} need review; ${refs.unverifiedCount} unavailable\n` +
+    return `${outcome.file}\n${refs.verifiedCount} verified or likely valid; ${reviewCount(outcome.result)} need review; ${refs.unverifiedCount} unavailable\n` +
+      (outcome.result.claims ? claimReportLines(outcome.result.claims).join('\n') + '\n' : '') +
       refs.verifications.map((v) => `[${v.status}] ${v.reference.raw}\n${explainVerification(v).map((issue) => `  ${issue.label}: ${issue.detail ?? ''}`).join('\n')}\n${v.formatIssues.map((issue) => `  ${issue.field}: ${issue.message}`).join('\n')}`).join('\n') + '\n' +
       refs.crossReference.unmatchedInText.map((cite) => `No bibliography match: ${cite.raw}`).join('\n') + '\n' +
       refs.crossReference.unmatchedBibliography.map((ref) => `Not cited in the text: ${ref.raw}`).join('\n') + '\n' +

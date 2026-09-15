@@ -29,7 +29,7 @@ export function downloadCsvReport(result: AnalysisResult): void {
   lines.push('');
 
   // Column headers
-  lines.push('Ref,Title,Authors,Year,DOI,URL,Status,Confidence,URL Status,Flags,Review decision,Reviewed at');
+  lines.push('Ref,Title,Authors,Year,DOI,URL,Status,Match strength,URL Status,Flags,Review decision,Reviewed at');
 
   // Data rows
   for (let i = 0; i < ref.verifications.length; i++) {

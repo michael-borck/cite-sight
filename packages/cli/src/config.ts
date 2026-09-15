@@ -23,7 +23,7 @@ export function readConfig(): CliConfig {
 }
 
 function validate(key: string, value?: string): void {
-  if (!['email', 'style'].includes(key)) throw new Error('Setting must be email or style. Supply API keys through SEMANTIC_SCHOLAR_API_KEY.');
+  if (!['email', 'style'].includes(key)) throw new Error('Setting must be email or style. Supply API keys through SEMANTIC_SCHOLAR_API_KEY or OPENALEX_API_KEY.');
   if (value === undefined) return;
   if (key === 'email' && (typeof value !== 'string' || value.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))) throw new Error('Provide a valid contact email.');
   if (key === 'style' && !['auto', 'apa', 'mla', 'chicago'].includes(value)) throw new Error('Style must be auto, apa, mla or chicago.');

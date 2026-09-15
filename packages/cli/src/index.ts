@@ -2,7 +2,7 @@
 
 import { program, type Command } from 'commander';
 import chalk from 'chalk';
-import { analyzePipeline, MANIFEST, explainVerification, DISCLAIMER, ATTRIBUTION } from '@michaelborck/cite-sight-core';
+import { analyzePipeline, analyzeClaimsFile, readClaimSources, planFiles, durationRange, claimSuggestionLabel, MANIFEST, explainVerification, DISCLAIMER, ATTRIBUTION } from '@michaelborck/cite-sight-core';
 import type { AnalysisResult, ProcessingOptions, ProgressCallback } from '@michaelborck/cite-sight-core';
 import { readFileSync } from 'node:fs';
 import { SUPPORTED_EXTENSIONS, collectInputs } from './inputs.js';
@@ -106,6 +106,20 @@ function printReport(result: AnalysisResult, minimal: boolean): void {
   console.log(chalk.bold.cyan('CiteSight Analysis Report'));
   console.log(chalk.gray(`File: ${result.fileName}`));
   console.log(chalk.gray(`Processed in ${formatDuration(processingTime)}`));
+  if (result.offline) console.log('Local-only run. External citation services were disabled.');
+  if (result.claims) {
+    printSectionHeader('Claim evidence review: model suggestions');
+    console.log(`Model: ${result.claims.model}`);
+    if (result.claims.provenance) {
+      console.log(`Runtime: ${result.claims.provenance.runtimeVersion}. Model SHA-256: ${result.claims.provenance.modelSha256}`);
+      console.log(`Runtime SHA-256: ${result.claims.provenance.runtimeSha256}. Prompt: ${result.claims.provenance.promptVersion}. Parameters: ${JSON.stringify(result.claims.provenance.parameters)}`);
+    }
+    for (const warning of result.claims.warnings) console.log(warning);
+    for (const finding of result.claims.findings) {
+      console.log(`[${claimSuggestionLabel(finding.status)}] ${finding.claim}\n  ${finding.reason}`);
+      if (!minimal) for (const evidence of finding.evidence) console.log(`  ${finding.source?.fileName ?? 'Source'}${evidence.page ? `, PDF page ${evidence.page}` : ''}: "${evidence.quote}"`);
+    }
+  }
 
   // Reference verification summary
   printSectionHeader('Reference Verification');
@@ -295,6 +309,7 @@ function makeProgressCallback(verbose: boolean): ProgressCallback {
 // -------------------------------------------------------
 
 interface AnalysisOpts {
+  offline?: boolean;
   style?: string;
   urls?: boolean;
   doi?: boolean;
@@ -302,6 +317,7 @@ interface AnalysisOpts {
   sourceList?: boolean;
   email?: string;
   s2Key?: string;
+  openalexKey?: string;
   json: boolean;
   verbose: boolean;
   minimal: boolean;
@@ -311,7 +327,7 @@ interface AnalysisOpts {
   only?: 'all' | 'failed' | 'unavailable';
 }
 
-function explicitOptions(opts: AnalysisOpts, command: Command): AnalysisOpts {
+function explicitOptions<T extends object>(opts: T, command: Command): T {
   // The default command and subcommands share flags. Commander may consume a
   // flag at the parent, so child defaults must not hide explicitly supplied ones.
   const chain: Command[] = [];
@@ -329,6 +345,7 @@ function toProcessingOptions(opts: AnalysisOpts, defaults: Partial<ProcessingOpt
   const style = opts.style ?? defaults.citationStyle ?? saved.style ?? 'auto';
   if (!['auto', 'apa', 'mla', 'chicago'].includes(style)) throw new Error('Citation style must be auto, apa, mla or chicago.');
   return {
+    offline: opts.offline ?? defaults.offline ?? false,
     citationStyle: style as ProcessingOptions['citationStyle'],
     documentType: opts.sourceList ? 'reference-list' : defaults.documentType,
     checkUrls: opts.urls ?? defaults.checkUrls ?? true,
@@ -339,6 +356,7 @@ function toProcessingOptions(opts: AnalysisOpts, defaults: Partial<ProcessingOpt
     screenshotUrls: false,
     contactEmail: opts.email ?? process.env.CITESIGHT_EMAIL ?? saved.email,
     semanticScholarApiKey: opts.s2Key ?? process.env.SEMANTIC_SCHOLAR_API_KEY,
+    openAlexApiKey: opts.openalexKey ?? process.env.OPENALEX_API_KEY,
   };
 }
 
@@ -518,7 +536,7 @@ function finishAnalysis(outcomes: FileOutcome[], opts: AnalysisOpts, options: Pr
   }
 
   // --- Exit code ---
-  const hadError = outcomes.some((o) => o.error);
+  const hadError = outcomes.some((o) => o.error || o.result?.claims?.findings.some((finding) => finding.status === 'unavailable'));
   const tripped = outcomes.some((o) => o.result && meetsThreshold(fileFindings(o.result), level));
   process.exit(hadError ? EXIT_ERROR : tripped ? EXIT_FINDINGS : EXIT_OK);
 }
@@ -554,6 +572,7 @@ program
  */
 function addAnalysisOptions(cmd: Command): Command {
   return cmd
+    .option('--offline', 'Keep reference checks local; disable all external API and URL requests')
     .option('--style <style>', 'Citation style (auto|apa|mla|chicago); defaults to saved style or auto')
     .option('--no-urls', 'Skip URL checking')
     .option('--no-doi', 'Skip DOI verification')
@@ -561,6 +580,7 @@ function addAnalysisOptions(cmd: Command): Command {
     .option('--source-list', 'Treat the input as a bare source list / bibliography (skips the in-text cross-reference)', false)
     .option('--email <email>', 'Contact email for API polite pool')
     .option('--s2-key <key>', 'Semantic Scholar API key (or set SEMANTIC_SCHOLAR_API_KEY) to avoid rate-limiting')
+    .option('--openalex-key <key>', 'OpenAlex API key (or set OPENALEX_API_KEY) for the larger free daily allowance')
     .option('--fail-on <level>', `Exit ${EXIT_FINDINGS} when findings are present — for CI (none|suspicious|broken-url|any)`, 'none')
     .option('--json', 'Output result as JSON', false)
     .option('--format <format>', 'Report format: text, json or html', (value: string) => {
@@ -616,6 +636,56 @@ addAnalysisOptions(program.command('retry <report>').description('Retry failed f
   }, 'all')
   .addHelpText('after', '\nExamples:\n  cite-sight retry reports/results.json --only failed --output retry.json\n  cite-sight retry results.json --only unavailable --format html --output retried.html\n')
   .action(async (path: string, opts: AnalysisOpts, command: Command) => runRetry(path, explicitOptions(opts, command)));
+
+addAnalysisOptions(program.command('claims <document>').description('Check cited statements against mapped local source files using a local GGUF model'))
+  .requiredOption('--sources <manifest>', 'JSON source mappings with version 1 and sources [{reference: 1, path: "source.pdf"}]')
+  .requiredOption('--model <path>', 'Local GGUF instruction model, installed beforehand')
+  .requiredOption('--runner <path>', 'Path to a trusted llama-cli executable with --offline and --single-turn support')
+  .option('--max-claims <count>', 'Maximum cited statements to check, 1-200', '50')
+  .option('--model-timeout <seconds>', 'Timeout per local inference, at most 600 seconds', '180')
+  .option('--checkpoint <path>', 'Per-claim checkpoint; default: <document>.claims-checkpoint.json. Reuse it to resume')
+  .option('--restart-claims', 'Explicitly replace an old checkpoint and run every claim again')
+  .action(async (document: string, raw: AnalysisOpts & { sources: string; model: string; runner: string; maxClaims: string; modelTimeout: string; checkpoint?: string; restartClaims?: boolean }, command: Command) => {
+    const opts = explicitOptions(raw, command);
+    outputFormat(opts); parseFailOn(opts.failOn);
+    const options = { ...toProcessingOptions(opts), offline: true, screenshotUrls: false, checkUrls: false, checkDoi: false };
+    const controller = new AbortController();
+    const cancel = () => controller.abort(new Error('Claim checking cancelled.'));
+    const checkpointPath = resolve(opts.checkpoint ?? `${resolve(document)}.claims-checkpoint.json`);
+    if (opts.output && resolve(opts.output) === checkpointPath || resolve(raw.sources) === checkpointPath) throw new Error('Checkpoint path must differ from report output and source manifest paths.');
+    process.once('SIGINT', cancel);
+    process.once('SIGTERM', cancel);
+    process.stderr.write(`Per-claim resume checkpoint: ${checkpointPath}\n`);
+    let result: AnalysisResult;
+    try {
+      result = await analyzeClaimsFile(resolve(document), {
+        sources: await readClaimSources(raw.sources), modelPath: raw.model, runnerPath: raw.runner,
+        maxClaims: Number(raw.maxClaims), timeoutMs: Number(raw.modelTimeout) * 1000,
+      }, options, (update) => {
+        if (opts.verbose || update.stage === 'checking_claims') process.stderr.write(update.message + (update.eta ? ` Remaining: ${durationRange(update.eta)} (${update.eta.basis}).` : '') + '\n');
+      }, controller.signal, { path: checkpointPath, restart: opts.restartClaims });
+    } finally { process.removeListener('SIGINT', cancel); process.removeListener('SIGTERM', cancel); }
+    if (outputFormat(opts) === 'text' && !opts.output) printReport(result, opts.minimal);
+    finishAnalysis([{ file: resolve(document), result }], opts, options);
+  });
+
+program.command('plan <paths...>').description('Estimate batch size and CPU/API runtime with a local-only preflight')
+  .option('--claims', 'Estimate CPU claim review, capped at 50 statements per document')
+  .option('--offline', 'Estimate reference parsing without online verification')
+  .option('--seconds-per-claim <seconds>', 'Use a measured CPU speed sample')
+  .option('--json', 'Print the full plan as JSON')
+  .action(async (paths: string[], opts: { claims?: boolean; offline?: boolean; secondsPerClaim?: string; json?: boolean }, command: Command) => {
+    opts = explicitOptions(opts, command);
+    const plan = await planFiles(collectInputs(paths), { offline: opts.offline === true, claims: opts.claims,
+      observedMs: opts.secondsPerClaim ? Number(opts.secondsPerClaim) * 1000 : undefined });
+    if (opts.json) console.log(JSON.stringify(plan, null, 2));
+    else {
+      console.log(`${plan.files.length} documents; ${plan.references} references (${plan.uniqueReferences} distinct lookup queries); ${plan.claims} cited statements.`);
+      console.log(`Estimated runtime: ${durationRange(plan.estimate)}. Basis: ${plan.estimate.basis}.`);
+      console.log('Planning range, not a deadline. API retries and rate limits can extend it. Claim estimates assume mapped sources for the detected statements.');
+      for (const file of plan.files) if (file.error) console.error(`${file.path}: ${file.error}`);
+    }
+  });
 
 const config = program.command('config').description('Save contact email and default citation style on this device');
 config.command('set <key> <value>').description('Set email or style').action((key: string, value: string) => { updateConfig(key, value); console.log(`Saved ${key}.`); });

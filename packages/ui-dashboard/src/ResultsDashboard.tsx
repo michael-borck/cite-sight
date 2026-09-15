@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type {
   AnalysisResult,
@@ -8,11 +8,14 @@ import type {
   ReviewDecision,
 } from '@michaelborck/cite-sight-core';
 import { ATTRIBUTION, DISCLAIMER } from '@michaelborck/cite-sight-core/disclaimer';
+import { explainVerification, hasReviewFlags } from '@michaelborck/cite-sight-core/browser';
 import { referenceContentKey } from '@michaelborck/cite-sight-core/dashboard';
 import { REVIEW_LABELS, reviewKey, withVerifications } from '@michaelborck/cite-sight-core/review';
 import { ReviewActions, ReviewContext } from './ReviewActions';
 import { OverviewPanel } from './Overview';
 import { ScreenshotContext, ScreenshotThumbnail } from './Screenshot';
+import { OfflineContext } from './OfflineContext';
+import { ClaimResults } from './ClaimResults';
 import './ResultsDashboard.css';
 
 export interface ResultsDashboardProps {
@@ -100,6 +103,7 @@ interface ReferenceRowProps {
 }
 
 function ReferenceRow({ v, index, isDismissed, onReverify, isRechecking }: ReferenceRowProps) {
+  const offline = useContext(OfflineContext);
   const [expanded, setExpanded] = useState(false);
   const [showSnapshot, setShowSnapshot] = useState(false);
   const ref = v.reference;
@@ -116,7 +120,9 @@ function ReferenceRow({ v, index, isDismissed, onReverify, isRechecking }: Refer
       >
         <td className="ref-index">{index + 1}</td>
         <td className="ref-title" title={ref.raw}>{title}</td>
-        <td><span className={`status-badge ${statusClass(v.status)}`}>{statusLabel(v.status)}</span></td>
+        <td><span className={`status-badge ${statusClass(v.status)}`}>{statusLabel(v.status)}</span>
+          {v.publicationCheck?.updates.length ? <span className="status-badge status-suspicious">Publication notice</span> : null}
+        </td>
         <td className="ref-doi">{ref.doi ?? '\u2014'}</td>
         <td className="ref-url-status">
           {v.urlCheck ? (
@@ -124,7 +130,7 @@ function ReferenceRow({ v, index, isDismissed, onReverify, isRechecking }: Refer
           ) : '\u2014'}
         </td>
         <td>
-          <div className="confidence-meter">
+          <div className="confidence-meter" title="Heuristic match strength, not a probability of correctness">
             <div className="confidence-bar">
               <div
                 className={`confidence-fill ${v.confidenceScore >= 0.7 ? 'high' : v.confidenceScore >= 0.4 ? 'medium' : 'low'}`}
@@ -146,12 +152,18 @@ function ReferenceRow({ v, index, isDismissed, onReverify, isRechecking }: Refer
               {v.matchedWork && (
                 <div className="ref-detail-matched">
                   <h4>Matched record</h4> {v.matchedWork.title}
+                  <p>{v.matchedWork.authors.join('; ')}</p>
                   {v.matchedWork.year ? ` (${v.matchedWork.year})` : ''}
                   {' \u2014 '}<em>{v.matchedWork.source}</em>
                   {v.matchedWork.doi && <>{' \u2014 DOI: '}{v.matchedWork.doi}</>}
                 </div>
               )}
               </div>
+              {v.evidence && <p>Source record: {v.evidence.existence.replaceAll('_', ' ')}. Metadata agreement: {v.evidence.metadata}.</p>}
+              {v.publicationCheck && <p>Publication notices: {v.publicationCheck.status.replaceAll('_', ' ')}
+                {v.publicationCheck.checkedAt ? ` as of ${v.publicationCheck.checkedAt.slice(0, 10)}` : ''}.
+                {v.publicationCheck.status === 'checked' && !v.publicationCheck.updates.length ? ' No notices returned by Crossref.' : ''}
+              </p>}
               {v.formatIssues.length > 0 && (
                 <div className="ref-detail-issues">
                   <strong>Format issues:</strong>
@@ -164,7 +176,7 @@ function ReferenceRow({ v, index, isDismissed, onReverify, isRechecking }: Refer
               )}
               {v.flags.length > 0 && (
                 <div className="ref-detail-flags">
-                  <strong>Flags:</strong> {v.flags.join(', ')}
+                  <ul>{explainVerification(v).map((item) => <li key={item.flag}>{item.label}{item.detail ? `. ${item.detail}` : ''}</li>)}</ul>
                 </div>
               )}
               {/* Same escape hatches as the Overview — on every row, verified
@@ -172,7 +184,7 @@ function ReferenceRow({ v, index, isDismissed, onReverify, isRechecking }: Refer
                   legitimate manual-verification workflow. Dismiss only where
                   there is something to dismiss. */}
               <div className="priority-row-actions ref-detail-actions" onClick={(e) => e.stopPropagation()}>
-                {ref.doi && (
+                {!offline && ref.doi && (
                   <a
                     className="priority-action priority-action-search"
                     href={`https://doi.org/${encodeURIComponent(ref.doi)}`}
@@ -182,17 +194,17 @@ function ReferenceRow({ v, index, isDismissed, onReverify, isRechecking }: Refer
                     Open DOI
                   </a>
                 )}
-                {ref.url && (
+                {!offline && ref.url && (
                   <a className="priority-action priority-action-search" href={ref.url} target="_blank" rel="noreferrer">
                     Open cited URL
                   </a>
                 )}
-                <a className="priority-action priority-action-search" href={scholarSearchUrl(ref.raw)} target="_blank" rel="noreferrer">
+                {!offline && <><a className="priority-action priority-action-search" href={scholarSearchUrl(ref.raw)} target="_blank" rel="noreferrer">
                   Search Scholar
                 </a>
                 <a className="priority-action priority-action-search" href={webSearchUrl(ref.raw)} target="_blank" rel="noreferrer">
                   Search web
-                </a>
+                </a></>}
                 {v.status === 'unverified' && onReverify && (
                   <button
                     type="button"
@@ -330,7 +342,7 @@ function ReferencesPanel({ results, dismissed, onReverify, rechecking }: PanelPr
                   <th className="sortable" onClick={() => setSort('status')}>Status{sortIndicator('status')}</th>
                   <th className="sortable" onClick={() => setSort('doi')}>DOI{sortIndicator('doi')}</th>
                   <th className="sortable" onClick={() => setSort('url')}>URL{sortIndicator('url')}</th>
-                  <th className="sortable" onClick={() => setSort('confidence')}>Confidence{sortIndicator('confidence')}</th>
+                  <th className="sortable" title="Heuristic score, not a probability" onClick={() => setSort('confidence')}>Match strength{sortIndicator('confidence')}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -417,6 +429,7 @@ function CrossReferencesPanel({ results }: PanelProps) {
 // ─── sidebar sections ─────────────────────────────────────────────────────────
 
 const SECTIONS = [
+  { id: 'claims', label: 'Claims', icon: '' },
   { id: 'overview',    label: 'Overview',    icon: '\u25C6' },
   { id: 'references',  label: 'References',  icon: '\uD83D\uDCDA' },
   { id: 'crossrefs',   label: 'Cross-refs',  icon: '\u21C4' },
@@ -510,6 +523,10 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
       const decision = reviews[reviewKey(results, `biblio:${idx}`)]?.decision;
       if (decision && decision !== 'unresolved') next.add(`biblio:${idx}`);
     });
+    results.claims?.findings.forEach((_finding, index) => {
+      const decision = reviews[reviewKey(results, `claim:${index}`)]?.decision;
+      if (decision && decision !== 'unresolved') next.add(`claim:${index}`);
+    });
     setDismissedRaw(next);
   }, [results, persistedDismissals, reviews]);
   // Diff each change against the previous set and report per-reference
@@ -532,7 +549,7 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
     let notFound = 0;
     refs.verifications.forEach((v, idx) => {
       if (dismissed.has(`ref:${idx}`)) return;
-      if (v.status === 'suspicious') suspicious++;
+      if (v.status === 'suspicious' || (!['not_found', 'unverified'].includes(v.status) && hasReviewFlags(v))) suspicious++;
       if (v.status === 'not_found') notFound++;
     });
     const orphanInText = refs.crossReference.unmatchedInText.filter(
@@ -545,10 +562,12 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
   const crossRefCount =
     adjusted.uncited + adjusted.orphanInText;
   const issueCount = adjusted.suspicious + adjusted.notFound;
-  const reviewTotal = issueCount + adjusted.orphanInText + adjusted.uncited;
+  const claimReviewCount = effectiveResults.claims?.findings.filter((_finding, index) => !dismissed.has(`claim:${index}`)).length ?? 0;
+  const reviewTotal = issueCount + adjusted.orphanInText + adjusted.uncited + claimReviewCount;
 
   const getBadge = (id: string): { count: number | null; warn: boolean } => {
     switch (id) {
+      case 'claims': return { count: effectiveResults.claims?.findings.length ?? null, warn: claimReviewCount > 0 };
       case 'references': return { count: refs.totalReferences, warn: issueCount > 0 };
       case 'crossrefs':  return { count: crossRefCount > 0 ? crossRefCount : null, warn: crossRefCount > 0 };
       default:           return { count: null, warn: false };
@@ -560,7 +579,7 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
       <aside className="results-sidebar">
         <div className="sidebar-filename">{results.fileName}</div>
         <nav className="sidebar-nav">
-          {SECTIONS.map((s) => {
+          {SECTIONS.filter((s) => s.id !== 'claims' || effectiveResults.claims).map((s) => {
             const badge = getBadge(s.id);
             return (
               <Fragment key={s.id}>
@@ -580,11 +599,13 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
       </aside>
 
       <main className="results-content">
+        {effectiveResults.offline && <p>Local-only run. Source existence was not checked with external services.</p>}
         <section className="review-summary" aria-label="Review summary">
-          <h2>{reviewTotal > 0 ? `${reviewTotal} ${reviewTotal === 1 ? 'item needs' : 'items need'} review` : 'No outstanding review items'}</h2>
+          <h2>{reviewTotal > 0 ? `${reviewTotal} ${reviewTotal === 1 ? 'item needs' : 'items need'} review` : effectiveResults.claims?.progress?.state === 'partial' ? 'Claim review incomplete' : 'No outstanding review items'}</h2>
           <p>{refs.verifiedCount} verified or likely valid · {unverifiedIdx.length} couldn’t be checked · {dismissed.size} reviewed</p>
           <div className="review-summary-actions">
-            <button className="review-primary" type="button" onClick={() => { setActiveSection('overview'); requestAnimationFrame(() => document.getElementById('review-items')?.focus()); }}>Review findings</button>
+            <button className="review-primary" type="button" onClick={() => { setActiveSection(effectiveResults.claims && issueCount + crossRefCount === 0 ? 'claims' : 'overview'); requestAnimationFrame(() => document.getElementById('review-items')?.focus()); }}>Review findings</button>
+            {effectiveResults.claims && <button type="button" onClick={() => setActiveSection('claims')}>Review claim checks ({claimReviewCount})</button>}
             {reverify && unverifiedIdx.length > 0 && <button type="button" onClick={() => void handleReverifyAll()} disabled={rechecking.size > 0}>
               {rechecking.size ? 'Retrying checks…' : `Retry ${unverifiedIdx.length} unavailable ${unverifiedIdx.length === 1 ? 'check' : 'checks'}`}
             </button>}
@@ -633,6 +654,7 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
         </div>
 
         <div id="review-items" tabIndex={-1}>
+        {activeSection === 'claims' && effectiveResults.claims && <ClaimResults analysis={effectiveResults.claims} />}
         {activeSection === 'overview'    && (
           <OverviewPanel
             results={effectiveResults}
@@ -655,9 +677,10 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
           {Object.entries(reviews).map(([key, entry]) => {
             const idx = refs.verifications.findIndex((v) => referenceContentKey(v.reference.raw) === key);
             const citeIdx = refs.crossReference.unmatchedInText.findIndex((_v, i) => reviewKey(effectiveResults, `intext:${i}`) === key);
-            const bibIdx = refs.crossReference.unmatchedBibliography.findIndex((_v, i) => reviewKey(effectiveResults, `biblio:${i}`) === key);
-            const itemKey = idx >= 0 ? `ref:${idx}` : citeIdx >= 0 ? `intext:${citeIdx}` : bibIdx >= 0 ? `biblio:${bibIdx}` : key;
-            const text = idx >= 0 ? refs.verifications[idx].reference.raw : citeIdx >= 0 ? refs.crossReference.unmatchedInText[citeIdx].raw : refs.crossReference.unmatchedBibliography[bibIdx]?.raw ?? key;
+             const bibIdx = refs.crossReference.unmatchedBibliography.findIndex((_v, i) => reviewKey(effectiveResults, `biblio:${i}`) === key);
+             const claimIdx = effectiveResults.claims?.findings.findIndex((_v, i) => reviewKey(effectiveResults, `claim:${i}`) === key) ?? -1;
+             const itemKey = idx >= 0 ? `ref:${idx}` : citeIdx >= 0 ? `intext:${citeIdx}` : bibIdx >= 0 ? `biblio:${bibIdx}` : claimIdx >= 0 ? `claim:${claimIdx}` : key;
+             const text = idx >= 0 ? refs.verifications[idx].reference.raw : citeIdx >= 0 ? refs.crossReference.unmatchedInText[citeIdx].raw : claimIdx >= 0 ? effectiveResults.claims!.findings[claimIdx].claim : refs.crossReference.unmatchedBibliography[bibIdx]?.raw ?? key;
             return <div key={key}><p><strong>{REVIEW_LABELS[entry.decision]}</strong>: {text}</p><ReviewActions itemKey={itemKey} /></div>;
           })}
         </details>}
@@ -672,9 +695,11 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
   // read it via context without prop-drilling through every panel.
   return (
     <ReviewContext.Provider value={{ result: effectiveResults, record: recordReview }}>
+    <OfflineContext.Provider value={effectiveResults.offline === true}>
     <ScreenshotContext.Provider value={readScreenshot ?? noScreenshot}>
       {body}
     </ScreenshotContext.Provider>
+    </OfflineContext.Provider>
     </ReviewContext.Provider>
   );
 }

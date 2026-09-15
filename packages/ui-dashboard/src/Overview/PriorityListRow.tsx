@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import type { PriorityItem } from '@michaelborck/cite-sight-core';
 import { ScreenshotThumbnail } from '../Screenshot';
 import { ReviewActions } from '../ReviewActions';
+import { OfflineContext } from '../OfflineContext';
 
 interface Props {
   item: PriorityItem;
@@ -25,6 +26,7 @@ function webSearchUrl(text: string): string {
 }
 
 export function PriorityListRow({ item, onReverify, rechecking }: Props) {
+  const offline = useContext(OfflineContext);
   // Priority keys are `ref:<idx>` for reference rows; re-check applies there.
   const refIdx = item.itemKey.startsWith('ref:') ? Number(item.itemKey.slice(4)) : null;
   const isRechecking = refIdx !== null && (rechecking?.has(refIdx) ?? false);
@@ -70,7 +72,7 @@ export function PriorityListRow({ item, onReverify, rechecking }: Props) {
                 (not_indexed_expected) leads with its own URL and a general web
                 search — Scholar is the wrong surface for it, which is usually
                 why it was flagged at all. Academic rows lead with Scholar. */}
-            {item.citedUrl && (
+            {!offline && item.citedUrl && (
               <a
                 className="priority-action priority-action-search"
                 href={item.citedUrl}
@@ -80,7 +82,7 @@ export function PriorityListRow({ item, onReverify, rechecking }: Props) {
                 Open cited URL
               </a>
             )}
-            {item.matchCategory === 'not_indexed_expected' ? (
+            {!offline && (item.matchCategory === 'not_indexed_expected' ? (
               <>
                 <a
                   className="priority-action priority-action-search"
@@ -118,7 +120,7 @@ export function PriorityListRow({ item, onReverify, rechecking }: Props) {
                   Search web
                 </a>
               </>
-            )}
+            ))}
             {item.category === 'unverified' && onReverify && refIdx !== null && (
               <button
                 type="button"

@@ -181,6 +181,7 @@ function analyzeUpload(allowQueue: boolean): RequestHandler {
         screenshotUrls: false,
         // Set a personal S2 key only on private deployments.
         semanticScholarApiKey: process.env.SEMANTIC_SCHOLAR_API_KEY,
+        openAlexApiKey: process.env.OPENALEX_API_KEY,
       };
 
       const result = await analyzePipeline(filePath, options);
@@ -213,6 +214,7 @@ router.post('/api/reverify', async (req, res, next) => {
       citationStyle: options.citationStyle === 'auto' ? reference.detectedStyle : options.citationStyle,
       checkUrls: options.checkUrls, checkDoi: options.checkDoi,
       semanticScholarApiKey: process.env.SEMANTIC_SCHOLAR_API_KEY,
+      openAlexApiKey: process.env.OPENALEX_API_KEY,
     });
     res.json({ verification });
   } catch (error) { next(error); }

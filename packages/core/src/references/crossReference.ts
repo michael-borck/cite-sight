@@ -5,7 +5,7 @@ function authorKey(author: string): string {
     .toLowerCase().replace(/[^\p{L}]/gu, '');
 }
 
-function matches(ref: ParsedReference, cite: InTextCitation): boolean {
+export function referenceMatchesCitation(ref: ParsedReference, cite: InTextCitation): boolean {
   // Author-date and MLA citations identify the work by its first author.
   // Preserve multi-word corporate names and kerning-split hyphenated surnames.
   const refAuthor = authorKey((ref.authors[0] ?? '').split(',')[0]);
@@ -21,7 +21,7 @@ export function crossReferenceCheck(
   inTextCitations: InTextCitation[],
 ): CrossReferenceResult {
   return {
-    unmatchedBibliography: references.filter((ref) => !inTextCitations.some((cite) => matches(ref, cite))),
-    unmatchedInText: inTextCitations.filter((cite) => !references.some((ref) => matches(ref, cite))),
+    unmatchedBibliography: references.filter((ref) => !inTextCitations.some((cite) => referenceMatchesCitation(ref, cite))),
+    unmatchedInText: inTextCitations.filter((cite) => !references.some((ref) => referenceMatchesCitation(ref, cite))),
   };
 }

@@ -77,6 +77,7 @@ async function init(): Promise<void> {
           checkInText,
           screenshotUrls: false,
           semanticScholarApiKey: process.env.SEMANTIC_SCHOLAR_API_KEY,
+          openAlexApiKey: process.env.OPENALEX_API_KEY,
         };
 
         const jobId = job.id ?? '';

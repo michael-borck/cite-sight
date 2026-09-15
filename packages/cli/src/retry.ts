@@ -14,8 +14,10 @@ export async function retryOutcomes(outcomes: FileOutcome[], options: Processing
       for (const [index, verification] of verifications.entries()) {
         if (verification.status !== 'unverified') continue;
         const [fresh] = await verifyReferences([verification.reference], {
+          offline: options.offline || result.offline,
           citationStyle: options.citationStyle === 'auto' ? result.references.detectedStyle : options.citationStyle,
           checkDoi: options.checkDoi, checkUrls: options.checkUrls, mailto: options.contactEmail, semanticScholarApiKey: options.semanticScholarApiKey,
+          openAlexApiKey: options.openAlexApiKey,
         });
         if (fresh) verifications[index] = fresh;
       }

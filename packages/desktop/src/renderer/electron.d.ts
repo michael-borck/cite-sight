@@ -1,9 +1,27 @@
 import type { AnalysisResult, ProcessingOptions, ProgressUpdate, ReferenceVerification } from '@michaelborck/cite-sight-core';
 import type { ReviewSession } from '@michaelborck/cite-sight-core/session';
+import type { ClaimInstallationStatus, ClaimRequest } from '../shared/claimInstallation';
 
 declare global {
   interface Window {
     citeSight: {
+      planBatch: (paths: string[], options: { offline: boolean; claims?: boolean; observedMs?: number }) => Promise<import('@michaelborck/cite-sight-core').BatchPlan>;
+      saveBatchCheckpoint: (session: ReviewSession) => Promise<void>;
+      loadBatchCheckpoint: () => Promise<ReviewSession | null>;
+      clearBatchCheckpoint: () => Promise<void>;
+      setLocalOnly: (value: boolean) => Promise<void>;
+      setDocumentsOpen: (value: boolean) => Promise<void>;
+      getClaimInstallation: () => Promise<ClaimInstallationStatus>;
+      calibrateClaimModel: () => Promise<ClaimInstallationStatus>;
+      installClaimModel: (id: string) => Promise<ClaimInstallationStatus>;
+      importClaimModel: (id: string) => Promise<ClaimInstallationStatus>;
+      removeClaimModel: () => Promise<ClaimInstallationStatus>;
+      cancelClaimInstall: () => Promise<void>;
+      onClaimInstallProgress: (callback: (progress: Partial<ClaimInstallationStatus>) => void) => () => void;
+      selectClaimFile: (kind: 'source') => Promise<string | null>;
+      checkClaims: (path: string, config: ClaimRequest, options: ProcessingOptions) => Promise<AnalysisResult>;
+      cancelClaims: () => Promise<void>;
+      onClaimCheckpoint: (callback: (data: { path: string; result: AnalysisResult }) => void) => () => void;
       saveSession: (session: ReviewSession) => Promise<string | null>;
       openSession: () => Promise<ReviewSession | null>;
       getPathForFile: (file: File) => string;

@@ -194,7 +194,7 @@ function drawReferencesTable(
     { label: 'Title', w: contentW - 100 },
     { label: 'Status', w: 28 },
     { label: 'DOI', w: 36 },
-    { label: 'Conf.', w: 14 },
+    { label: 'Match', w: 14 },
     { label: 'URL', w: 12 },
   ];
 
@@ -257,7 +257,7 @@ function drawReferencesTable(
 
     // Confidence
     setColour(doc, BLACK);
-    doc.text((v.confidenceScore * 100).toFixed(0) + '%', cx + 1.5, y);
+    doc.text(v.confidenceScore.toFixed(2), cx + 1.5, y);
     cx += cols[4].w;
 
     // URL status

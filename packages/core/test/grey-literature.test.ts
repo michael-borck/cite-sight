@@ -1,5 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { ParsedReference } from '../src/types.js';
+vi.mock('../src/references/datacite.js', () => ({ searchDataCite: async () => [] }));
+vi.mock('../src/references/europePmc.js', () => ({ searchEuropePmc: async () => [] }));
+vi.mock('../src/references/publicationUpdates.js', () => ({ checkPublicationUpdates: async () => ({ status: 'not_available', updates: [] }) }));
 
 // Offline: every lookup source is mocked. Grey-literature routing and edition
 // tolerance are decision-layer behaviours; the mocks supply the match (or the
@@ -88,7 +91,7 @@ describe('grey-literature detection', () => {
 });
 
 describe('grey-literature verdict routing', () => {
-  it('flags but upgrades to likely_valid when the URL is alive', async () => {
+  it('does not confirm a citation from URL liveness alone', async () => {
     const v = await run(ref({
       raw: 'Thoughtworks. 2025. "Spec-driven development." https://alive.example/sdd',
       authors: ['Thoughtworks'],
@@ -96,7 +99,8 @@ describe('grey-literature verdict routing', () => {
       year: 2025,
       url: 'https://alive.example/sdd',
     }));
-    expect(v.status).toBe('likely_valid');
+    expect(v.status).toBe('not_found');
+    expect(v.flags).toContain('url_only');
     expect(v.flags).toContain('grey_literature');
   });
 
@@ -125,15 +129,15 @@ describe('grey-literature verdict routing', () => {
 });
 
 describe('edition tolerance', () => {
-  it('renames year_mismatch to edition_difference for a same-work reissue', async () => {
+  it('keeps the year discrepancy until an edition relationship is established', async () => {
     const v = await run(ref({
       authors: ['Gibson, J. J.'],
       title: 'The Ecological Approach to Visual Perception',
       year: 1979, // original edition; record is the 2013 reissue
     }));
     expect(['verified', 'likely_valid']).toContain(v.status);
-    expect(v.flags).toContain('edition_difference');
-    expect(v.flags).not.toContain('year_mismatch');
-    expect(v.matchCategory).toBe('variant_record');
+    expect(v.flags).not.toContain('edition_difference');
+    expect(v.flags).toContain('year_mismatch');
+    expect(v.matchCategory).toBe('metadata_drift');
   });
 });

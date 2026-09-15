@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
+import { useStore } from '../store';
 import './UpdateNotification.css';
 
 type UpdateState = 'idle' | 'available' | 'downloading' | 'ready';
 
 export function UpdateNotification() {
+  const isProcessing = useStore((store) => store.isProcessing);
+  const offline = useStore((store) => store.options.offline !== false);
   const [state, setState] = useState<UpdateState>('idle');
   const [version, setVersion] = useState('');
   const [percent, setPercent] = useState(0);
@@ -34,9 +37,10 @@ export function UpdateNotification() {
           <span>Version {version} is available.</span>
           <button
             className="update-btn"
+            disabled={offline || isProcessing}
             onClick={() => {
               setState('downloading');
-              void window.citeSight.downloadUpdate();
+              void window.citeSight.downloadUpdate().catch(() => setState('available'));
             }}
           >
             Download
@@ -54,7 +58,8 @@ export function UpdateNotification() {
           <span>Update ready to install.</span>
           <button
             className="update-btn"
-            onClick={() => void window.citeSight.installUpdate()}
+            disabled={isProcessing}
+            onClick={() => void window.citeSight.installUpdate().catch(() => setState('ready'))}
           >
             Restart &amp; Install
           </button>

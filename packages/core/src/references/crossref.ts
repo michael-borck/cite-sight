@@ -30,6 +30,8 @@ interface CrossrefItem {
   issue?: string;
   page?: string;
   'is-referenced-by-count'?: number;
+  type?: string;
+  'updated-by'?: { DOI?: string; type?: string; source?: string; updated?: { 'date-time'?: string } }[];
 }
 
 function parseYear(item: CrossrefItem): number | null {
@@ -63,6 +65,13 @@ function itemToAcademicWork(item: CrossrefItem): AcademicWork {
     pages: item.page,
     source: 'crossref',
     citationCount: item['is-referenced-by-count'],
+    workType: item.type,
+    // updated-by describes notices ABOUT this work. update-to instead describes
+    // what a notice updates; treating that as a retraction would flag the notice.
+    publicationUpdates: (item['updated-by'] ?? []).map((update) => ({
+      type: update.type ?? 'update', doi: update.DOI, source: update.source ?? 'publisher', date: update.updated?.['date-time'],
+    })),
+    publicationStatusCheckedAt: new Date().toISOString(),
   };
 }
 
@@ -115,7 +124,7 @@ export async function searchCrossref(
 
 /**
  * Look up a single work by its DOI via the Crossref REST API.
- * Returns null on failure or if the DOI is not found.
+ * Returns null for a clean miss; failures remain distinguishable from absence.
  */
 export async function lookupDoi(
   doi: string,
@@ -123,7 +132,8 @@ export async function lookupDoi(
 ): Promise<AcademicWork | null> {
   const key = cacheKey('crossref-doi', doi);
   const cached = getCached<AcademicWork | null>(key);
-  if (cached !== undefined) return cached;
+  if (cached === null) return cached;
+  if (cached?.publicationStatusCheckedAt && Date.now() - Date.parse(cached.publicationStatusCheckedAt) < 86_400_000) return cached;
 
   await throttle('crossref');
 
@@ -139,23 +149,22 @@ export async function lookupDoi(
       signal: AbortSignal.timeout(API_TIMEOUT_MS),
     });
 
-    // 404 is a definitive "no such DOI" — safe to cache. Other non-OK statuses
-    // (429/5xx) are transient: return null but don't cache, so the next paper
-    // citing this DOI retries rather than inheriting a stale failure.
+    // Cache clean misses only. Never cache a service failure.
     if (res.status === 404) {
       setCached<AcademicWork | null>(key, null);
       return null;
     }
-    if (!res.ok) return null;
+    if (!res.ok) throw new LookupError('crossref', reasonFromStatus(res.status));
 
     const data = await res.json() as { message?: CrossrefItem };
     const item = data?.message;
-    if (!item) return null;
+    if (!item) throw new LookupError('crossref', 'unknown', 'Missing DOI metadata');
 
     const work = itemToAcademicWork(item);
     setCached<AcademicWork | null>(key, work);
     return work;
-  } catch {
-    return null;
+  } catch (err) {
+    if (err instanceof LookupError) throw err;
+    throw new LookupError('crossref', reasonFromFetchError(err));
   }
 }

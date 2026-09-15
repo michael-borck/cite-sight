@@ -10,7 +10,8 @@ export function BatchList({ onRetry }: { onRetry: (paths: string[]) => void }) {
       <button type="button" className="batch-select" onClick={() => selectFile(item.path)} aria-current={selectedPath === item.path ? 'true' : undefined} title={item.path}>
         <span aria-hidden="true">{item.status === 'complete' ? '✓' : item.status === 'failed' ? '!' : item.status === 'processing' ? '↻' : '·'}</span>
         <span><strong>{item.path.split(/[\\/]/).pop()}</strong><small>
-          {item.status === 'complete' && item.result ? `${reviewCount(item.result)} to review · ${item.result.references.unverifiedCount} unavailable`
+          {item.status !== 'processing' && item.result?.claims?.progress?.state === 'partial' ? `${item.result.claims.progress.completed}/${item.result.claims.progress.total} claims saved · ${item.status === 'failed' ? 'resume after error' : 'ready to resume'}`
+            : item.status === 'complete' && item.result ? `${reviewCount(item.result)} to review · ${item.result.references.unverifiedCount} unavailable`
             : item.status === 'processing' ? progress?.stage === 'complete' ? 'Finishing document…' : streamingTotal > 0
               ? `Checking reference ${Math.min(streamingRefs.length + 1, streamingTotal)} of ${streamingTotal}` : progress?.message ?? 'Reading document…'
             : item.status === 'failed' ? item.error : 'Waiting'}

@@ -10,7 +10,8 @@ A desktop app, CLI tool, and web service that loads a student assignment, extrac
 
 ## Features
 
-- **Reference Verification** — Checks every bibliography entry against Crossref, Semantic Scholar, and OpenAlex APIs
+- **Reference Verification** — Searches Crossref, OpenAlex, Semantic Scholar, arXiv, DataCite, Europe PMC, and book/web metadata
+- **Publication notices** — Shows Crossref and Retraction Watch updates separately from the reference's identity match
 - **Citation Format Validation** — Checks APA, MLA, and Chicago formatting rules
 - **Cross-Reference Checking** — Matches in-text citations to bibliography entries, flags orphans
 - **URL Verification** — HTTP checks on referenced URLs, with screenshots as evidence (desktop)
@@ -47,7 +48,9 @@ Four ways to use CiteSight:
 | Output format | Browser dashboard | Desktop dashboard | Browser dashboard | Text or JSON (stdout) |
 
 The standalone build is a single self-contained `.html` file — the whole analysis
-runs in your browser tab and the document never leaves your device. Two checks
+runs in your browser tab. The submission file stays on your device, but external
+lookups send extracted reference titles, authors, identifiers and URLs to providers.
+This is not a zero-network mode. Two checks
 behave differently there (see the table): automatic URL probes and arXiv lookups
 are blocked by browser cross-origin rules, so affected references show as
 *unverified* and each result row has **Open DOI** / **Open cited URL** buttons to
@@ -126,6 +129,11 @@ are not saved in configuration or exported reports; use `--s2-key` or
 `SEMANTIC_SCHOLAR_API_KEY`. `CITESIGHT_EMAIL` overrides the saved email, and
 `CITESIGHT_CONFIG_HOME` selects a different configuration directory.
 Use `config unset email`, `config unset style`, or `config reset` to remove settings.
+
+OpenAlex accepts `--openalex-key` or `OPENALEX_API_KEY`. Desktop and standalone
+have an OpenAlex key field under advanced options; desktop and server also read
+the environment variable. Keys are excluded from exported sessions and CLI
+reports. Get a free key at [OpenAlex settings](https://openalex.org/settings/api).
 
 ## Deploy on a VPS
 
@@ -266,10 +274,10 @@ cite-sight check sources.md --source-list
 ```
 
 **Batch checking and rate limits.** Lookups run one reference at a time and every
-external request is paced to one per second, so checking a folder is slow but
-stays within the citation databases' polite-pool limits; results are cached per
-run, so a work cited across many papers is looked up only once. Always pass
-`--email` (it joins the Crossref/OpenAlex polite pools). Semantic Scholar's
+external request is paced by provider, with a longer interval for arXiv. Results
+are cached so repeated references reuse lookups. Pass `--email` to identify
+Crossref requests and `--openalex-key` for OpenAlex's larger free daily allowance.
+Semantic Scholar's
 keyless tier can still rate-limit a large batch — supply a key with `--s2-key`
 or the `SEMANTIC_SCHOLAR_API_KEY` environment variable (the desktop app and
 server read the same variable). When a lookup is throttled, that reference is
@@ -306,18 +314,141 @@ For each reference in the bibliography:
 
 1. **Parse** — Extract authors, title, year, journal, DOI, URL
 2. **Validate Format** — Check against APA/MLA/Chicago rules
-3. **Verify Existence** (cascade):
-   - DOI → Crossref API
-   - Search Crossref by title + author
-   - Search Semantic Scholar (fallback)
-   - Search OpenAlex (fallback)
-   - If has URL → HTTP status check
+3. **Verify existence and metadata**:
+   - Resolve DOI via Crossref, DataCite, then the DOI registry; resolve ISBN and arXiv identifiers
+   - Search Crossref, OpenAlex, Semantic Scholar, arXiv, DataCite and Europe PMC as needed
+   - Continue beyond partial or ambiguous candidates; retry title-only search when author parsing may have interfered
+   - Compare titles, authors, years, identifiers and available publication details
+   - Check book/web metadata and URL liveness separately; a live page alone does not confirm a citation
+   - Check publication notices, with a separate outcome and check timestamp
 4. **Cross-Reference** — Match bibliography ↔ in-text citations
-5. **Score** — Confidence score (0–1) based on metadata match quality
+5. **Score** — Heuristic match strength from 0 to 1, not a probability of correctness
+
+The offline regression benchmark lives in
+`packages/core/test/verification-benchmark.test.ts`. Provider response fixtures
+and publication-notice tests live in `packages/core/test/provider-contracts.test.ts`.
+These guard known errors, not population-wide accuracy claims.
+Run them with `npm run test:verification`; all provider responses in this suite
+are local fixtures.
+
+## Privacy and claim checking
+
+Desktop and CLI can check cited statements against explicitly mapped local
+source files using a locally installed **llama-cli** executable and **GGUF
+instruction model**. The run forces local-only mode, uses CPU inference and
+verifies the model's quotations against retrieved source passages. Model
+judgements still require review.
+
+Desktop installers include a pinned llama.cpp runtime. Before opening documents,
+go to **Settings → Local claim review**, choose an experimental model and select
+**Download and verify model**. The download is about 1.1 GB and is checked against
+a pinned SHA-256. You can import an already downloaded catalog model instead.
+Setup is remembered on the computer. **Measure CPU speed** runs a short local
+sample to improve runtime estimates.
+
+Qwen 3.5 **2B** and **4B** are offered as experimental options, with automatic
+JSON-compatible runtime settings. Settings shows their timing/quality comparison
+and a **Measure CPU speed** action. The 4B model is the stronger pilot candidate;
+neither is designated assessment-ready from the small synthetic test set. Older
+comparison models remain available. See [recorded CPU benchmarks](docs/benchmarks/README.md).
+
+Run citation extraction, expand **Claim evidence review**, and map source files
+to bibliography rows. Identical reference text shares its mapping across the
+open batch. Select **Review claim evidence locally** for one document or
+**Review claim evidence for mapped documents** for the batch. Every model
+suggestion, including suggested support, remains pending human review.
+PDF, claim JSON/CSV and saved sessions include evidence and version provenance.
+The Claims view separates **Student claim**, **Model suggestion** and **Human
+assessment**. Reviewers record support, lack of support, unresolved or reviewed,
+with a timestamp. Human decisions do not overwrite model findings.
+
+### Planning a laptop batch
+
+Use **Estimate reference runtime** or **Estimate CPU claim runtime** before a
+large run. Preflight scans documents locally and counts references, distinct
+lookup queries and cited statements. The remaining-time range updates as work
+finishes. API rate limits and retries can extend the reference estimate; long
+source passages can extend the CPU estimate. Keep the laptop awake and plugged
+in for unattended runs.
+
+Individual completed claims are checkpointed locally, as well as completed
+documents. **Stop after this document** leaves the rest waiting; **Restore last
+batch** recovers partial results, mappings and pending work. Resume repeats only
+the interrupted/unavailable claims after checking file and model fingerprints.
+Changing the model or mappings requires an explicit restart. Checkpoints include
+source mappings and review excerpts. Settings has a **Clear saved batch
+checkpoint** action that also removes per-claim recovery files.
+
+CLI planning also works without calling any provider or model:
+
+```bash
+cite-sight plan submissions/ --offline
+cite-sight plan submissions/ --claims --seconds-per-claim 10 --json
+```
+
+The first command estimates local reference parsing. Omit `--offline` to budget
+for online reference verification. The second uses a measured CPU rate; omit
+`--seconds-per-claim` for a broad, uncalibrated range. These are planning ranges,
+not deadlines.
+
+For CLI, first inspect the bibliography with `cite-sight check paper.pdf --offline
+--json`. Create `sources.json`, with reference numbers matching the displayed
+bibliography order:
+
+```json
+{"version": 1, "sources": [{"reference": 1, "path": "sources/smith-2020.pdf"}]}
+```
+
+Then run:
+
+```bash
+cite-sight claims paper.pdf --sources sources.json \
+  --runner /path/to/llama-cli --model /path/to/instruct-model.gguf \
+  --max-claims 10 --format html --output claims.html
+```
+
+Run the same CLI command again to resume. It saves each completed claim in
+`paper.pdf.claims-checkpoint.json`; override with `--checkpoint /local/path.json`.
+Use `--restart-claims` to rerun all claims instead of reusing a saved checkpoint.
+
+Source paths are relative to the manifest. Supported source files are PDF, DOCX,
+TXT, MD and QMD. Scanned PDFs need local OCR beforehand. Models must be installed
+before analysis; no downloads occur during a claim run. CLI retains explicit
+local executable/model options. See the
+[local setup, privacy boundaries and limitations](docs/privacy-and-claim-checking.md).
+
+For reference checks alone, use **Local-only mode** on desktop or `--offline` in
+CLI. Disabling only DOI and URL checks still leaves searches enabled when online
+mode is selected. Hosted web uploads go to the server and do not support local
+claim inference.
+
+### Docker API keys
+
+The hosted web UI does not collect personal API keys. Its server reads both
+`SEMANTIC_SCHOLAR_API_KEY` and `OPENALEX_API_KEY` from the environment. Both
+Compose files pass these optional variables through from your shell or Compose
+`.env` file:
+
+```dotenv
+SEMANTIC_SCHOLAR_API_KEY=your-semantic-scholar-key
+OPENALEX_API_KEY=your-openalex-key
+```
+
+These values are runtime configuration, not baked into the Docker image. Desktop
+and standalone HTML have personal key fields; CLI also accepts environment
+variables or command options.
 
 ## Building Releases
 
 Releases are built automatically via GitHub Actions when a version tag is pushed.
+
+Electron's `beforePack` hook prepares the target architecture's runtime using
+`packages/desktop/runtime-lock.json`. Archives are checksum-verified and copied
+outside ASAR with their shared libraries and license. Model weights are never
+bundled in the installer. For development, build core and run
+`npm run prepare:runtime -w packages/desktop` once. On non-native macOS filesystems,
+use a native temporary output directory when packaging to avoid AppleDouble
+resource forks interfering with ASAR integrity checks.
 
 ### Version bump script
 
@@ -347,7 +478,7 @@ Pushing a `v*` tag triggers:
 - **Web**: React 19, Vite
 - **Server**: Express, multer, BullMQ (optional)
 - **CLI**: Commander.js, chalk
-- **APIs**: Crossref, Semantic Scholar, OpenAlex, arXiv, DataCite (all free tier)
+- **APIs**: Crossref, Semantic Scholar, OpenAlex, arXiv, DataCite, Europe PMC, Open Library
 
 ## Hosted data retention
 

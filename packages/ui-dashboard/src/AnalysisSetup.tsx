@@ -33,12 +33,13 @@ export function AnalysisSetup({ options, onChange, disabled, screenshots, creden
       ? 'Checks the references themselves. In-text citation matching is skipped.'
       : 'Checks references and matches them against citations in the assignment.'}</p>
     <details className="advanced-options"><summary>Advanced options</summary>
-      <label><input type="checkbox" checked={options.checkUrls} onChange={(e) => onChange({ checkUrls: e.target.checked })} /> Check linked pages</label>
-      <label><input type="checkbox" checked={options.checkDoi} onChange={(e) => onChange({ checkDoi: e.target.checked })} /> Verify DOIs</label>
-      {screenshots && <label><input type="checkbox" checked={options.screenshotUrls} disabled={!options.checkUrls} onChange={(e) => onChange({ screenshotUrls: e.target.checked })} /> Capture page screenshots</label>}
-      {credentials && <div className="setup-grid">
+      <label><input type="checkbox" checked={!options.offline && options.checkUrls} disabled={options.offline} onChange={(e) => onChange({ checkUrls: e.target.checked })} /> Check linked pages</label>
+      <label><input type="checkbox" checked={!options.offline && options.checkDoi} disabled={options.offline} onChange={(e) => onChange({ checkDoi: e.target.checked })} /> Verify DOIs</label>
+      {screenshots && <label><input type="checkbox" checked={!options.offline && options.screenshotUrls} disabled={options.offline || !options.checkUrls} onChange={(e) => onChange({ screenshotUrls: e.target.checked })} /> Capture page screenshots</label>}
+      {credentials && !options.offline && <div className="setup-grid">
         <label>Contact email, optional<input type="email" value={options.contactEmail ?? ''} onChange={(e) => onChange({ contactEmail: e.target.value || undefined })} placeholder="you@university.edu" /></label>
         <label>Semantic Scholar API key, optional<input type="password" autoComplete="off" value={options.semanticScholarApiKey ?? ''} onChange={(e) => onChange({ semanticScholarApiKey: e.target.value || undefined })} /></label>
+        <label>OpenAlex API key, optional<input type="password" autoComplete="off" value={options.openAlexApiKey ?? ''} onChange={(e) => onChange({ openAlexApiKey: e.target.value || undefined })} /></label>
         <p className="setup-hint">An email and a personal API key can reduce rate limits during large batches.</p>
       </div>}
     </details>

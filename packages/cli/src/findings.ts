@@ -8,6 +8,7 @@ export type FailOnLevel = 'none' | 'suspicious' | 'broken-url' | 'any';
 export const FAIL_ON_LEVELS: readonly FailOnLevel[] = ['none', 'suspicious', 'broken-url', 'any'];
 
 export interface Findings {
+  claims?: number;
   suspicious: number;
   brokenUrls: number;
   notFound: number;
@@ -31,14 +32,16 @@ export function fileFindings(result: AnalysisResult): Findings {
   const notFound = r.notFoundCount;
   const unmatchedInText = r.crossReference.unmatchedInText.length;
   const uncited = r.crossReference.unmatchedBibliography.length;
+  const claims = result.claims?.findings.filter((finding) => !['supported', 'unavailable'].includes(finding.status)).length ?? 0;
   return {
+    ...(result.claims ? { claims } : {}),
     suspicious,
     brokenUrls,
     notFound,
     unmatchedInText,
     uncited,
     formatIssues,
-    any: suspicious + brokenUrls + notFound + unmatchedInText + uncited + formatIssues,
+    any: suspicious + brokenUrls + notFound + unmatchedInText + uncited + formatIssues + claims,
   };
 }
 
@@ -54,6 +57,7 @@ export function meetsThreshold(f: Findings, level: FailOnLevel): boolean {
 /** One-line description of a file's findings, for the batch summary. */
 export function findingsSummary(f: Findings): string {
   const parts: string[] = [];
+  if (f.claims) parts.push(`${f.claims} claim checks need review`);
   if (f.suspicious) parts.push(`${f.suspicious} need review`);
   if (f.notFound) parts.push(`${f.notFound} not found`);
   if (f.brokenUrls) parts.push(`${f.brokenUrls} broken URL${f.brokenUrls > 1 ? 's' : ''}`);

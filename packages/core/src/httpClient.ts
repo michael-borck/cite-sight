@@ -24,6 +24,17 @@ const MAX_REDIRECTS = 5;
 
 let impl: FetchLike | undefined;
 let defaultImpl: FetchLike | undefined;
+let networkBlocks = 0;
+export function assertExternalRequestsAllowed(): void {
+  if (networkBlocks > 0) throw new Error('External requests are disabled for local-only analysis.');
+}
+
+/** Fail closed at the request boundary, including overlapping local-only runs. */
+export async function withoutExternalRequests<T>(action: () => Promise<T>): Promise<T> {
+  networkBlocks++;
+  try { return await action(); }
+  finally { networkBlocks--; }
+}
 
 /** Installed only by the Node entry point; browser imports stay Node-free. */
 export function setDefaultFetch(fetchImpl: FetchLike): void {
@@ -45,11 +56,13 @@ export function setFetch(fetchImpl: FetchLike | undefined): void {
  * host installing one later — or a test stubbing the global — is respected.
  */
 export async function httpFetch(input: string | URL | Request, init?: RequestInit): Promise<Response> {
+  assertExternalRequestsAllowed();
   const original = new Request(input, init);
   const signal = AbortSignal.any([original.signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)]);
   let request = new Request(original, { signal, redirect: 'manual' });
 
   for (let redirects = 0; ; redirects++) {
+    if (networkBlocks > 0) throw new Error('External requests are disabled for local-only analysis.');
     if (isPrivateUrl(request.url)) throw new Error('URL points to a private or reserved network address');
     signal.throwIfAborted();
     const response = await (impl ?? defaultImpl ?? globalThis.fetch)(request.url, {

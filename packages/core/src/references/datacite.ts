@@ -2,6 +2,7 @@ import type { AcademicWork } from '../types.js';
 import { throttle } from './rateLimiter.js';
 import { getCached, setCached, cacheKey } from './lookupCache.js';
 import { httpFetch } from '../httpClient.js';
+import { LookupError, reasonFromStatus, reasonFromFetchError } from './lookupError.js';
 
 /** Hard timeout for a single DataCite API request. */
 const API_TIMEOUT_MS = 10_000;
@@ -17,10 +18,48 @@ interface DataCiteAttributes {
   publicationYear?: number;
   publisher?: string;
   url?: string;
+  types?: { resourceTypeGeneral?: string };
 }
 
 interface DataCiteResponse {
   data?: { attributes?: DataCiteAttributes };
+}
+
+function toWork(a: DataCiteAttributes): AcademicWork {
+  return {
+    title: a.titles?.find((t) => t.title)?.title ?? '',
+    authors: (a.creators ?? []).map((c) => c.name ?? '').filter(Boolean),
+    year: a.publicationYear ?? null, doi: a.doi, url: a.url,
+    source: 'datacite', workType: a.types?.resourceTypeGeneral,
+  };
+}
+
+/** Public title search also finds deposits whose citations omit their DOI. */
+export async function searchDataCite(title: string, mailto?: string): Promise<AcademicWork[]> {
+  if (!title.trim()) return [];
+  const key = cacheKey('datacite-search', title);
+  const cached = getCached<AcademicWork[]>(key);
+  if (cached !== undefined) return cached;
+  await throttle('datacite');
+  // Quote user text as a literal rather than accepting Lucene query operators.
+  const literal = title.replace(/["\\]/g, ' ');
+  const params = new URLSearchParams({ query: `titles.title:"${literal}"`, 'page[size]': '5' });
+  if (mailto) params.set('mailto', mailto);
+  try {
+    const res = await httpFetch(`https://api.datacite.org/dois?${params}`, {
+      signal: AbortSignal.timeout(API_TIMEOUT_MS),
+      headers: { 'User-Agent': 'CiteSight/1.0' + (mailto ? ` (mailto:${mailto})` : '') },
+    });
+    if (!res.ok) throw new LookupError('datacite', reasonFromStatus(res.status));
+    const data = await res.json() as { data?: { attributes?: DataCiteAttributes }[] };
+    if (!Array.isArray(data.data)) throw new LookupError('datacite', 'unknown', 'Malformed search response');
+    const works = data.data.flatMap((item) => item.attributes ? [toWork(item.attributes)] : []);
+    setCached(key, works);
+    return works;
+  } catch (err) {
+    if (err instanceof LookupError) throw err;
+    throw new LookupError('datacite', reasonFromFetchError(err));
+  }
 }
 
 // ============================================================
@@ -35,8 +74,7 @@ interface DataCiteResponse {
  * 10.5281 / 10.6084 / 10.5061 prefixes. A DOI that misses on Crossref often
  * resolves here with full metadata. Free, no API key.
  *
- * Returns null on a clean "not found" (404) or a transient failure (429/5xx/
- * network), mirroring lookupDoi so resolveDoi can fall through cleanly.
+ * Returns null on a clean miss. Throws on service failures so callers can retry.
  */
 export async function lookupDoiDataCite(
   doi: string,
@@ -55,32 +93,22 @@ export async function lookupDoiDataCite(
       signal: AbortSignal.timeout(API_TIMEOUT_MS),
     });
 
-    // 404 = not a DataCite DOI; safe to cache the miss. Other non-OK (429/5xx)
-    // are transient — return null but don't cache, so a later cite retries.
+    // Cache clean misses only.
     if (res.status === 404) {
       setCached<AcademicWork | null>(key, null);
       return null;
     }
-    if (!res.ok) return null;
+    if (!res.ok) throw new LookupError('datacite', reasonFromStatus(res.status));
 
     const data = (await res.json()) as DataCiteResponse;
     const a = data?.data?.attributes;
-    if (!a) return null;
+    if (!a) throw new LookupError('datacite', 'unknown', 'Missing DOI metadata');
 
-    const work: AcademicWork = {
-      title: a.titles?.find((t) => t.title)?.title ?? '',
-      authors: (a.creators ?? []).map((c) => c.name ?? '').filter(Boolean),
-      year: a.publicationYear ?? null,
-      doi: a.doi ?? doi,
-      url: a.url,
-      journal: a.publisher,
-      source: 'datacite',
-    };
+    const work = { ...toWork(a), doi: a.doi ?? doi };
     setCached<AcademicWork | null>(key, work);
     return work;
-  } catch {
-    // Network error or timeout — swallow and return null so resolveDoi falls
-    // through to the next resolver rather than failing the whole lookup.
-    return null;
+  } catch (err) {
+    if (err instanceof LookupError) throw err;
+    throw new LookupError('datacite', reasonFromFetchError(err));
   }
 }

@@ -83,6 +83,7 @@ function workToAcademicWork(work: OAWork): AcademicWork {
 export async function searchOpenAlex(
   query: string,
   mailto?: string,
+  apiKey?: string,
 ): Promise<AcademicWork[]> {
   const key = cacheKey('openalex', query);
   const cached = getCached<AcademicWork[]>(key);
@@ -102,6 +103,7 @@ export async function searchOpenAlex(
       res = await httpFetch(url, {
         headers: {
           'User-Agent': 'CiteSight/1.0' + (mailto ? ` (mailto:${mailto})` : ''),
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
         },
         signal: AbortSignal.timeout(API_TIMEOUT_MS),
       });
@@ -121,6 +123,8 @@ export async function searchOpenAlex(
     // Surface lookup failures (vs genuine empty results) so the verifier can
     // flag a reference as unverifiable rather than confidently "not found".
     reason = reasonFromStatus(res.status);
+    // Exhausting the daily budget will not recover after a short retry.
+    if (res.status === 429 && res.headers.get('X-RateLimit-Remaining') === '0') break;
     // 429 and 5xx are transient — retry; anything else fails immediately.
     if (res.status !== 429 && res.status < 500) break;
   }

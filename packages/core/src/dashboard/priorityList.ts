@@ -17,6 +17,7 @@ export function referenceContentKey(raw: string): string {
 }
 import type { ReferenceAnalysisResult } from '../types.js';
 import type { PriorityItem } from './types.js';
+import { hasReviewFlags } from '../references/explain.js';
 
 /**
  * Build the ordered list of flagged items for the "Things to check" hero.
@@ -65,14 +66,18 @@ export function gatherPriorityItems(
         sourceText: v.reference.raw,
         reason: v.flags.includes('grey_literature')
           ? 'Looks like an organisational/web source; academic databases do not index these. Check its URL or publisher — absence here is expected, not evidence of fabrication.'
-          : 'Crossref, Semantic Scholar, OpenAlex, and arXiv returned no match.',
+          : 'The bibliographic searches returned no matching record.',
         citedUrl: v.reference.url,
         screenshotPath: v.urlCheck?.screenshotPath,
         matchCategory: v.matchCategory,
       });
-    } else if (v.status === 'suspicious') {
+    } else if (v.status === 'suspicious' || (v.status !== 'unverified' && hasReviewFlags(v))) {
       const reason =
-        v.matchCategory === 'match_dubious'
+        v.flags.some((flag) => ['retraction_notice', 'correction_notice', 'expression_of_concern', 'publication_update'].includes(flag))
+          ? 'The source was found, but it has a publication notice. Read the retraction, correction, or other update before relying on it.'
+          : v.flags.includes('ambiguous_match')
+            ? 'Several records fit this citation. Compare their identifiers and publication details.'
+            : v.matchCategory === 'match_dubious'
           ? 'The closest database record appears to be a different work (its authors do not overlap the citation). The citation itself is unmatched — check it at the source.'
           : v.matchCategory === 'conflict'
             ? "The citation's DOI resolves to a different-titled work — the identifier and the citation disagree."

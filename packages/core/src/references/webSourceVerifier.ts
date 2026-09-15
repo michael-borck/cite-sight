@@ -1,6 +1,9 @@
 import type { ParsedReference, AcademicWork } from '../types.js';
 import { isPrivateUrl } from './ssrf.js';
 import { httpFetch } from '../httpClient.js';
+import { LookupError, reasonFromStatus, reasonFromFetchError } from './lookupError.js';
+import { throttle } from './rateLimiter.js';
+import { surnameOf } from './matching.js';
 
 // ============================================================
 // Web Source Verifier — non-academic reference verification
@@ -28,20 +31,30 @@ function extractIsbn(raw: string): string | null {
     || raw.match(/\b(?:ISBN[-:]?\s*)(\d{1,5}[-\s]?\d{1,7}[-\s]?\d{1,7}[-\s]?[\dXx])/i)
     || raw.match(/\b(97[89]\d{10})\b/)
     || raw.match(/\b(\d{9}[\dXx])\b/);
-  return match ? match[1].replace(/[-\s]/g, '') : null;
+  const isbn = match?.[1].replace(/[-\s]/g, '').toUpperCase();
+  if (!isbn) return null;
+  const valid = /^\d{13}$/.test(isbn)
+    ? [...isbn].reduce((sum, digit, i) => sum + Number(digit) * (i % 2 ? 3 : 1), 0) % 10 === 0
+    : /^\d{9}[\dX]$/.test(isbn) && [...isbn].reduce((sum, digit, i) => sum + (digit === 'X' ? 10 : Number(digit)) * (10 - i), 0) % 11 === 0;
+  return valid ? isbn : null;
 }
 
 /** Safe fetch wrapper with timeout. */
 async function safeFetch(url: string, timeoutMs = 8000): Promise<Response | null> {
+  const service = new URL(url).hostname;
   try {
+    await throttle(service);
     const res = await httpFetch(url, {
       signal: AbortSignal.timeout(timeoutMs),
       headers: { 'User-Agent': 'CiteSight/1.0 (academic-reference-checker)' },
       redirect: 'follow',
     });
+    if (res.status === 404 || res.status === 410) return null;
+    if (!res.ok) throw new LookupError(service, reasonFromStatus(res.status));
     return res;
-  } catch {
-    return null;
+  } catch (err) {
+    if (err instanceof LookupError) throw err;
+    throw new LookupError(service, reasonFromFetchError(err));
   }
 }
 
@@ -111,12 +124,7 @@ async function verifyBookByIsbn(isbn: string): Promise<AcademicWork | null> {
 
 /** Reduce an author string ("Eyal, N." | "Nir Eyal") to a bare surname. */
 function authorSurname(author?: string): string {
-  if (!author) return '';
-  const cleaned = author.replace(/[^A-Za-z,'\-\s]/g, '').trim();
-  if (!cleaned) return '';
-  if (cleaned.includes(',')) return cleaned.split(',')[0].trim();
-  const tokens = cleaned.split(/\s+/).filter(Boolean);
-  return tokens[tokens.length - 1] ?? '';
+  return surnameOf(author ?? '');
 }
 
 async function verifyBookBySearch(title: string, author?: string): Promise<AcademicWork | null> {
@@ -124,9 +132,10 @@ async function verifyBookBySearch(title: string, author?: string): Promise<Acade
   // strings — the comma + trailing initials drive matches to zero. Query the
   // title together with the author's bare *surname* only.
   const surname = authorSurname(author);
-  const q = [title, surname].filter(Boolean).join(' ');
+  const params = new URLSearchParams({ title, limit: '5' });
+  if (surname) params.set('author', surname);
   const res = await safeFetch(
-    `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=5`,
+    `https://openlibrary.org/search.json?${params}`,
   );
   if (!res || !res.ok) return null;
 
@@ -148,7 +157,7 @@ async function verifyBookBySearch(title: string, author?: string): Promise<Acade
   const sn = surname.toLowerCase();
   const byAuthor = sn
     ? data.docs.find((d) =>
-        (d.author_name ?? []).some((a) => a.toLowerCase().split(/\s+/).pop() === sn),
+        (d.author_name ?? []).some((a) => surnameOf(a) === sn),
       )
     : undefined;
   const doc = byAuthor ?? data.docs.find((d) => d.title);
@@ -199,11 +208,11 @@ async function verifyWebPage(url: string): Promise<AcademicWork | null> {
   const html = await res.text();
 
   const title =
-    extractMetaContent(html, ['og:title', 'twitter:title']) ?? extractHtmlTitle(html);
+    extractMetaContent(html, ['citation_title', 'dc.title', 'og:title', 'twitter:title']) ?? extractHtmlTitle(html);
   if (!title) return null;
 
-  const author = extractMetaContent(html, ['article:author', 'author', 'dc.creator']);
-  const dateStr = extractMetaContent(html, ['article:published_time', 'date', 'dc.date']);
+  const author = extractMetaContent(html, ['citation_author', 'article:author', 'author', 'dc.creator']);
+  const dateStr = extractMetaContent(html, ['citation_publication_date', 'article:published_time', 'date', 'dc.date']);
   const yearMatch = dateStr?.match(/\d{4}/);
 
   return {
@@ -227,7 +236,7 @@ async function verifyWebPage(url: string): Promise<AcademicWork | null> {
  *
  * Returns an AcademicWork if the source could be verified, or null.
  */
-export async function verifyWebSource(ref: ParsedReference): Promise<AcademicWork | null> {
+export async function verifyWebSource(ref: ParsedReference, isbnOnly = false): Promise<AcademicWork | null> {
   const isbn = extractIsbn(ref.raw);
 
   // ISBN found → try Open Library first, regardless of URL
@@ -235,6 +244,7 @@ export async function verifyWebSource(ref: ParsedReference): Promise<AcademicWor
     const bookResult = await verifyBookByIsbn(isbn);
     if (bookResult) return bookResult;
   }
+  if (isbnOnly) return null;
 
   if (!ref.url) {
     // No URL — try Open Library search for potential book references

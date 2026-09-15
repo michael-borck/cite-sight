@@ -55,8 +55,8 @@ describe('lookupDoiDataCite', () => {
   it('does not cache a transient failure (429) — it is retried', async () => {
     const fetchMock = vi.fn(async () => jsonResponse({}, 429));
     vi.stubGlobal('fetch', fetchMock);
-    await lookupDoiDataCite('10.5281/zenodo.999');
-    await lookupDoiDataCite('10.5281/zenodo.999');
+    await expect(lookupDoiDataCite('10.5281/zenodo.999')).rejects.toMatchObject({ reason: 'rate_limited' });
+    await expect(lookupDoiDataCite('10.5281/zenodo.999')).rejects.toMatchObject({ reason: 'rate_limited' });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 

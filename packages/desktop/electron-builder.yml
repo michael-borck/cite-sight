@@ -6,6 +6,12 @@ directories:
 files:
   - dist/**/*
   - package.json
+  - '!**/._*'
+beforePack: ./scripts/before-pack.cjs
+extraResources:
+  - from: resources/runtime/${arch}
+    to: claim-runtime
+    filter: ['**/*', '!**/._*']
 publish:
   provider: github
 # electron-builder's own notarize wrapper has been buggy across 24.x/26.x.

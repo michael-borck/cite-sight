@@ -12,26 +12,22 @@ import { resolveDoi } from './doiResolver.js';
 import { searchCrossref } from './crossref.js';
 import { searchSemanticScholar } from './semanticScholar.js';
 import { searchOpenAlex } from './openAlex.js';
+import { searchDataCite } from './datacite.js';
+import { searchEuropePmc } from './europePmc.js';
+import { checkPublicationUpdates } from './publicationUpdates.js';
 import { extractArxivId, lookupArxivId, searchArxiv } from './arxiv.js';
 import { checkUrl } from './urlChecker.js';
 import { verifyWebSource } from './webSourceVerifier.js';
 import { LookupError, type LookupFailureReason } from './lookupError.js';
+import { normalizeTitle, authorCorroboration, yearCorroboration, titleTokenConflict, bibliographicConflicts, characterSimilarity, subtitleVariant } from './matching.js';
 
 // ============================================================
 // Title similarity (Jaccard on word sets)
 // ============================================================
 
-function normalizeTitle(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 /**
- * Compute Jaccard similarity between two title strings.
- * Returns a value in [0, 1].
+ * Word overlap with a bounded edit-distance rescue for nearly identical titles.
+ * This heuristic score is in [0, 1], not a calibrated probability.
  */
 export function titleSimilarity(a: string, b: string): number {
   if (!a || !b) return 0;
@@ -43,7 +39,9 @@ export function titleSimilarity(a: string, b: string): number {
   const intersection = new Set([...setA].filter((w) => setB.has(w)));
   const union = new Set([...setA, ...setB]);
 
-  return intersection.size / union.size;
+  const overlap = intersection.size / union.size;
+  const characters = characterSimilarity(normalizeTitle(a), normalizeTitle(b));
+  return !titleTokenConflict(a, b) && characters >= 0.94 ? Math.max(overlap, characters) : overlap;
 }
 
 /**
@@ -75,34 +73,9 @@ export function titleContainment(a: string, b: string): { containment: number; s
 // *author* and *year*, not just its title.
 // ============================================================
 
-/** Reduce an author string ("Vaswani, A." | "Ashish Vaswani") to a surname. */
-function surnameOf(name: string): string {
-  const cleaned = name.trim().replace(/[^A-Za-z,'\-\s]/g, '');
-  if (!cleaned) return '';
-  if (cleaned.includes(',')) return cleaned.split(',')[0].trim().toLowerCase();
-  const tokens = cleaned.split(/\s+/).filter(Boolean);
-  return (tokens[tokens.length - 1] ?? '').toLowerCase();
-}
-
-type Corroboration = 'match' | 'mismatch' | 'unknown';
-
-/** Does any of the reference's authors appear among the matched work's authors? */
-function authorCorroboration(refAuthors: string[], workAuthors: string[]): Corroboration {
-  if (refAuthors.length === 0 || workAuthors.length === 0) return 'unknown';
-  const refSurnames = refAuthors.map(surnameOf).filter((s) => s.length >= 2);
-  const workSurnames = new Set(workAuthors.map(surnameOf).filter((s) => s.length >= 2));
-  if (refSurnames.length === 0 || workSurnames.size === 0) return 'unknown';
-  return refSurnames.some((s) => workSurnames.has(s)) ? 'match' : 'mismatch';
-}
-
-function yearCorroboration(refYear: number | null, workYear: number | null | undefined): Corroboration {
-  if (!refYear || !workYear) return 'unknown';
-  return Math.abs(refYear - workYear) <= 1 ? 'match' : 'mismatch';
-}
-
 // Title-similarity bands.
 const TITLE_FLOOR = 0.3; // below this, the match is discarded (→ not_found)
-const TITLE_STRONG = 0.8;
+const TITLE_STRONG = 0.9;
 const TITLE_MODERATE = 0.6;
 
 interface MatchAssessment {
@@ -126,8 +99,16 @@ function assessAcademicMatch(
 ): MatchAssessment {
   const author = authorCorroboration(ref.authors, work.authors);
   const year = yearCorroboration(ref.year, work.year);
-  const flags: string[] = [];
+  const flags: string[] = bibliographicConflicts(ref, work);
   if (author === 'mismatch') flags.push('author_mismatch');
+  if (year === 'mismatch') flags.push('year_mismatch');
+  if (ref.title && work.title && titleTokenConflict(ref.title, work.title)) flags.push('title_token_mismatch');
+  if (doiHadMetadata || !doiResolved) {
+    if (flags.includes('title_token_mismatch') || author === 'mismatch') {
+      if (doiResolved && titleSim < 0.7) flags.push('doi_title_mismatch');
+      return { status: 'suspicious', confidence: 0.35, flags };
+    }
+  }
 
   // --- DOI path: the reference carried a DOI that resolved ---
   if (doiResolved) {
@@ -143,14 +124,9 @@ function assessAcademicMatch(
     // title is (almost) wholly contained in the other. The latter is the
     // common case where a registry stores only the main title and the citation
     // adds a subtitle (or vice versa); a low Jaccard there is not a mismatch.
-    const { containment, smallerSize } = titleContainment(ref.title, work.title);
-    const subsetMatch =
-      (smallerSize >= 4 && containment >= 0.8) || // longer titles: near-full overlap
-      (smallerSize >= 2 && containment >= 0.999); // short titles: require full containment
-    if (titleSim >= 0.7 || subsetMatch) {
-      // Exact-ish title match is strongest; a subset match is slightly weaker.
-      const base = titleSim >= 0.7 ? 0.97 : 0.9;
-      return { status: 'verified', confidence: author === 'mismatch' ? Math.min(base, 0.85) : base, flags };
+    if (titleSim >= TITLE_MODERATE || subtitleVariant(ref.title, work.title)) {
+      if (titleSim < TITLE_STRONG) flags.push('title_variant');
+      return { status: flags.length || author !== 'match' ? 'likely_valid' : 'verified', confidence: flags.length ? 0.7 : 0.97, flags };
     }
     // DOI resolves to a genuinely DIFFERENT-titled work: a real DOI grafted
     // onto a mismatched (often fabricated) citation.
@@ -160,44 +136,14 @@ function assessAcademicMatch(
 
   // --- Search-match path (no resolving DOI) ---
 
-  // Containment rescue: registries store clean titles, while citations reach
-  // the matcher longer (venue/volume/pages glued on by an author–date parse)
-  // or shorter (subtitle omitted). Word-overlap deflates in both cases even
-  // when one title sits wholly inside the other. Direction decides safety:
-  //  - cited ⊂ record: subtitle omission — safe with a corroborating author.
-  //  - record ⊂ cited: safe ONLY when the cited title's excess tokens look
-  //    like venue debris (numbers, "pp", "vol"). Prose excess is the
-  //    fabricated-elaboration pattern ("Attention is NOT all you need: a
-  //    critical re-examination …"), which contains the real title yet must
-  //    stay suspicious — containment cannot tell negation from decoration.
-  if (author === 'match') {
-    const { containment, smallerSize } = titleContainment(ref.title, work.title);
-    if (smallerSize >= 4 && containment >= 0.8) {
-      const tokens = (t: string) =>
-        new Set(t.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean));
-      const refSet = tokens(ref.title);
-      const workSet = tokens(work.title);
-      const citedIsShorter = refSet.size <= workSet.size;
-      let excessOk = citedIsShorter;
-      if (!citedIsShorter) {
-        const excess = [...refSet].filter((w) => !workSet.has(w));
-        const venueish = excess.filter((w) => /^\d+$|^pp?$|^vol$|^no$/.test(w));
-        excessOk = excess.length === 0 || venueish.length / excess.length >= 0.5;
-      }
-      if (excessOk) {
-        return year === 'mismatch'
-          ? { status: 'likely_valid', confidence: 0.7, flags }
-          : { status: 'verified', confidence: 0.9, flags };
-      }
-    }
+  // Explicit subtitle differences can explain low overlap, but need review.
+  if (author === 'match' && titleSim < TITLE_STRONG && subtitleVariant(ref.title, work.title)) {
+    flags.push('title_variant');
+    return { status: 'likely_valid', confidence: 0.7, flags };
   }
 
   if (titleSim >= TITLE_STRONG) {
-    if (author === 'mismatch' && year === 'mismatch') {
-      // Same title but wrong author AND year → a different work, or fabricated.
-      return { status: 'suspicious', confidence: 0.4, flags };
-    }
-    const corroborated = author === 'match' || year === 'match';
+    const corroborated = author === 'match' && flags.length === 0;
     return corroborated
       ? { status: 'verified', confidence: 0.92, flags }
       : { status: 'likely_valid', confidence: 0.8, flags };
@@ -207,6 +153,7 @@ function assessAcademicMatch(
     // Partial title match: trust it only when the author corroborates and the
     // year doesn't contradict.
     if (author === 'match' && year !== 'mismatch') {
+      flags.push('title_variant');
       return { status: 'likely_valid', confidence: 0.7, flags };
     }
     return { status: 'suspicious', confidence: 0.4, flags };
@@ -285,7 +232,8 @@ function categorize(
 ): MatchCategory {
   if (flags.includes('grey_literature')) return 'not_indexed_expected';
   if (!matched) return 'none';
-  if (flags.includes('doi_title_mismatch')) return 'conflict';
+  if (flags.includes('doi_title_mismatch') || flags.includes('doi_mismatch')) return 'conflict';
+  if (flags.includes('ambiguous_match')) return 'match_dubious';
   if (status === 'suspicious') {
     // A matched-but-suspicious verdict with no author overlap means the best
     // candidate is probably a different work; the citation itself is
@@ -295,7 +243,7 @@ function categorize(
       : 'metadata_drift';
   }
   if (flags.includes('edition_difference')) return 'variant_record';
-  if (flags.includes('year_mismatch') || flags.includes('author_mismatch')) return 'metadata_drift';
+  if (flags.some((flag) => flag.endsWith('_mismatch')) || flags.includes('title_variant')) return 'metadata_drift';
   return 'exact';
 }
 
@@ -304,9 +252,11 @@ function categorize(
 // ============================================================
 
 export interface VerifyOptions {
+  offline?: boolean;
   mailto?: string;
   citationStyle: CitationStyle;
   semanticScholarApiKey?: string;
+  openAlexApiKey?: string;
   /**
    * Whether to HTTP-check referenced URLs (step 7). Defaults to true. Browser
    * hosts pass false: cross-origin probes from a web page are blocked by CORS
@@ -327,12 +277,17 @@ async function verifySingleReference(
 
   // --- Step 1: Format validation ---
   const formatIssues: FormatIssue[] = validateFormat(ref, effectiveStyle);
+  if (options.offline) return {
+    reference: ref, status: 'format_only', matchCategory: 'none', formatIssues,
+    confidenceScore: 0, flags: ['offline'], evidence: { existence: 'unknown', metadata: 'unknown' },
+  };
 
   let matched: AcademicWork | undefined;
   let doiResolved = false;
   let doiHadMetadata = false;
   let similarity = 0;
   let apiErrored = false; // a lookup threw — distinct from "no results"
+  let isWebSource = false;
 
   // Capture *why* a lookup failed so the verdict can name it (e.g. "rate-limited
   // on Semantic Scholar"). A rate-limit reason is preferred over others because
@@ -360,6 +315,14 @@ async function verifySingleReference(
   // which the verdict logic downstream interprets.
   let bestScore = 0;
   let matchedCorroborated = false;
+  const candidates = new Map<string, { work: AcademicWork; score: number }>();
+  const ambiguous = (): boolean => {
+    const scores = [...candidates.values()].sort((a, b) => b.score - a.score);
+    return scores.length > 1 && scores[0].score - scores[1].score < 0.08;
+  };
+  const strongMatch = (): boolean => Boolean(matched && similarity >= 0.9 && matchedCorroborated &&
+    yearCorroboration(ref.year, matched.year) !== 'mismatch' &&
+    !titleTokenConflict(ref.title, matched.title) && !bibliographicConflicts(ref, matched).length && !ambiguous());
   const considerResults = (results: AcademicWork[]): void => {
     for (const work of results) {
       const sim = titleSimilarity(ref.title, work.title);
@@ -369,7 +332,11 @@ async function verifySingleReference(
       const score =
         sim +
         (author === 'match' ? 0.25 : author === 'mismatch' ? -0.2 : 0) +
-        (year === 'match' ? 0.1 : year === 'mismatch' ? -0.05 : 0);
+        (year === 'match' ? 0.1 : year === 'mismatch' ? -0.15 : 0) -
+        bibliographicConflicts(ref, work).length * 0.1 +
+        (ref.journal && work.journal && normalizeTitle(ref.journal) === normalizeTitle(work.journal) ? 0.1 : 0);
+      const id = work.doi?.toLowerCase() ?? [normalizeTitle(work.title), work.authors.map(normalizeTitle).sort().join('|'), work.year].join(':');
+      if (!candidates.has(id) || candidates.get(id)!.score < score) candidates.set(id, { work, score });
       if (score > bestScore) {
         bestScore = score;
         similarity = sim;
@@ -394,7 +361,17 @@ async function verifySingleReference(
     }
   }
 
-  // --- Step 2b: arXiv ID resolution ---
+  // Resolve an explicit, checksum-valid ISBN before general academic searches.
+  if (!matched && ref.raw) {
+    try {
+      const book = await verifyWebSource(ref, true);
+      if (book && authorCorroboration(ref.authors, book.authors) === 'match' && titleSimilarity(ref.title, book.title) >= TITLE_MODERATE) {
+        matched = book;
+        similarity = titleSimilarity(ref.title, book.title);
+        isWebSource = true;
+      }
+    } catch (err) { noteFailure(err); }
+  }
   // A reference that names its arXiv ID identifies the preprint as
   // authoritatively as a DOI identifies a published work — and preprints are
   // exactly what the Crossref-first cascade cannot see (arXiv registers with
@@ -408,10 +385,7 @@ async function verifySingleReference(
         if (work) {
           const sim = titleSimilarity(ref.title, work.title);
           if (sim >= TITLE_FLOOR) {
-            matched = work;
-            similarity = sim;
-            matchedCorroborated =
-              authorCorroboration(ref.authors, work.authors) === 'match';
+            considerResults([work]);
           }
         }
       } catch (err) {
@@ -420,37 +394,36 @@ async function verifySingleReference(
     }
   }
 
-  // --- Steps 3–6: academic search cascade (Crossref → OpenAlex → Semantic Scholar → arXiv) ---
-  // OpenAlex precedes Semantic Scholar: it aggregates Crossref+PubMed and more,
-  // is reliably available on the free polite pool, and S2's keyless tier is the
-  // flakiest source. The loop keeps going past a weak (above-floor but
-  // below-moderate) match so a stronger candidate from a later source can win —
-  // and past an UNCORROBORATED match of any strength: a strong-titled record
-  // whose authors don't overlap the citation is likely the wrong work (a review
-  // of the book, a similarly-titled chapter), and the right one may live in the
-  // next index. Only a corroborated moderate-or-better match ends the search.
-  if (!matched && searchQuery.length > 3) {
+  // Continue past partial or ambiguous candidates. Stop only at a strong title
+  // with corroborating authors and no known metadata conflicts.
+  if (!doiResolved && !isWebSource && !strongMatch() && searchQuery.length > 3) {
     for (const search of [
       () => searchCrossref(searchQuery, options.mailto),
-      () => searchOpenAlex(searchQuery, options.mailto),
+      () => searchOpenAlex(searchQuery, options.mailto, options.openAlexApiKey),
       () => searchSemanticScholar(searchQuery, options.semanticScholarApiKey),
       // Last resort: preprint-only works (ICLR/NeurIPS papers cited by venue,
       // arXiv-only reports) reach here when the big indexes offered nothing
       // corroborated; a title search on arXiv is what finally finds them.
       () => searchArxiv(ref.title),
+      () => searchDataCite(ref.title, options.mailto),
+      () => searchEuropePmc(ref.title),
     ]) {
-      if (matched && similarity >= TITLE_MODERATE && matchedCorroborated) break;
+      if (strongMatch()) break;
       try {
         considerResults(await search());
       } catch (err) {
         noteFailure(err);
       }
     }
+    // A parsing error in the author block must not make the title undiscoverable.
+    if (!strongMatch() && ref.title && searchQuery !== ref.title) {
+      try { considerResults(await searchCrossref(ref.title, options.mailto)); }
+      catch (err) { noteFailure(err); }
+    }
   }
 
   // --- Step 6: Web source verification (non-academic fallback) ---
-  let isWebSource = false;
-  if (!matched && (ref.url || ref.raw)) {
+  if (!doiResolved && !strongMatch() && (ref.url || ref.raw)) {
     try {
       const webResult = await verifyWebSource(ref);
       if (webResult) {
@@ -464,7 +437,8 @@ async function verifySingleReference(
         const { containment, smallerSize } = titleContainment(ref.title, webResult.title);
         const authorOk = authorCorroboration(ref.authors, webResult.authors) === 'match';
         const containmentMatch = authorOk && smallerSize >= 1 && containment >= 0.8;
-        if (sim >= TITLE_FLOOR || containmentMatch || !ref.title) {
+        if ((sim >= TITLE_FLOOR || containmentMatch || !ref.title) &&
+            (!matched || (authorOk && Math.max(sim, containmentMatch ? 0.6 : 0) > similarity))) {
           matched = webResult;
           // A containment+author match is as trustworthy as a moderate word
           // overlap for a structured source; floor the similarity so the verdict
@@ -500,6 +474,13 @@ async function verifySingleReference(
     status = confidenceScore >= 0.7 ? 'likely_valid' : similarity >= TITLE_FLOOR ? 'likely_valid' : 'suspicious';
     flags = flags.filter((f) => f !== 'no_doi');
     flags.push('web_source');
+    const author = authorCorroboration(ref.authors, matched.authors);
+    if (author === 'mismatch') flags.push('author_mismatch');
+    if (titleTokenConflict(ref.title, matched.title)) flags.push('title_token_mismatch');
+    if (author === 'mismatch' || flags.includes('title_token_mismatch') || similarity < TITLE_MODERATE) {
+      status = 'suspicious';
+      confidenceScore = 0.35;
+    }
   } else if (matched) {
     const assessment = assessAcademicMatch(ref, matched, similarity, doiResolved, doiHadMetadata);
     status = assessment.status;
@@ -536,40 +517,35 @@ async function verifySingleReference(
       flags.push(`${failure.reason}:${failure.service}`);
     }
   } else if (looksGreyLiterature(ref)) {
-    // Grey literature: scholarly indexes returning nothing is expected, so a
-    // clean miss must not read as "possibly fabricated". A live URL is the
-    // evidence that counts for this class; without one, the reference is
-    // uncheckable here rather than missing.
+    // Index coverage is incomplete for grey literature. URL liveness alone
+    // cannot establish that a page contains the cited document.
     flags.push('grey_literature');
-    if (urlCheck && (urlCheck.status === 'live' || urlCheck.status === 'redirect')) {
-      status = 'likely_valid';
-      confidenceScore = 0.55;
-    } else {
-      status = 'not_found';
-      confidenceScore = 0;
-    }
+    status = 'not_found';
+    confidenceScore = 0;
+    if (urlCheck && (urlCheck.status === 'live' || urlCheck.status === 'redirect')) flags.push('url_only');
   } else {
     // Nothing matched and every lookup answered cleanly — a genuine miss.
     status = 'not_found';
     confidenceScore = 0;
   }
 
-  if (urlCheck && (urlCheck.status === 'dead' || urlCheck.status === 'timeout' || urlCheck.status === 'error')) {
+  if (urlCheck?.status === 'dead') {
     flags = [...flags, 'broken_url'];
   }
 
-  // Edition tolerance: a (near-)identical title with a corroborating author
-  // but a >1-year gap is a reissue/edition of the same work (a 1979 original
-  // matched to its 2013 classic-edition record), not a wrong citation —
-  // citing the original edition is standard scholarly practice. Rename the
-  // flag so presentation explains the difference instead of alleging error.
-  if (
-    matched &&
-    flags.includes('year_mismatch') &&
-    similarity >= 0.9 &&
-    authorCorroboration(ref.authors, matched.authors) === 'match'
-  ) {
-    flags = flags.map((f) => (f === 'year_mismatch' ? 'edition_difference' : f));
+  if (!doiResolved && !isWebSource && ambiguous()) {
+    flags.push('ambiguous_match');
+    if (status === 'verified') status = 'likely_valid';
+    confidenceScore = Math.min(confidenceScore, 0.65);
+  }
+
+  const publicationCheck = matched && !isWebSource ? await checkPublicationUpdates(matched, options.mailto, options.checkDoi !== false) : undefined;
+  if (publicationCheck?.status === 'unavailable') flags.push('publication_check_unavailable');
+  for (const update of publicationCheck?.updates ?? []) {
+    if (update.type === 'retraction') flags.push('retraction_notice');
+    else if (update.type === 'correction' || update.type === 'erratum') flags.push('correction_notice');
+    else if (update.type === 'expression-of-concern') flags.push('expression_of_concern');
+    else flags.push('publication_update');
   }
 
   return {
@@ -580,7 +556,12 @@ async function verifySingleReference(
     matchedWork: matched,
     urlCheck,
     confidenceScore,
-    flags,
+    flags: [...new Set(flags)],
+    publicationCheck,
+    evidence: {
+      existence: matched ? 'found' : apiErrored ? 'unknown' : 'not_found',
+      metadata: !matched || !matched.title ? 'unknown' : flags.some((f) => f.endsWith('_mismatch')) ? 'conflict' : status === 'verified' ? 'match' : 'partial',
+    },
     // Only report a lookup failure when it actually decided the verdict. If an
     // earlier service was rate-limited but a later one still matched the work,
     // the reference is verified — the failure is irrelevant and must not leak.
@@ -597,11 +578,10 @@ async function verifySingleReference(
  *
  * Runs the full cascade for each reference:
  *  1. Format validation
- *  2. DOI resolution via Crossref
- *  3. Search Crossref
- *  4. Search Semantic Scholar
- *  5. Search OpenAlex
- *  6. URL check (if URL present)
+ *  2. DOI / ISBN / arXiv identifier resolution
+ *  3. Crossref, OpenAlex, Semantic Scholar, arXiv, DataCite, Europe PMC search
+ *  4. Web and book metadata fallback
+ *  5. URL liveness and publication notices
  *
  * Lookups are processed one reference at a time, and every external request is
  * paced by the shared rate limiter, so the request rate stays polite even

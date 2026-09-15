@@ -27,6 +27,7 @@
     "dev:core": "npm run dev -w packages/core",
     "lint": "eslint packages/*/src/**/*.ts packages/*/src/**/*.tsx",
     "test:core": "npm test -w packages/core",
+    "test:verification": "npm exec -w packages/core -- vitest run test/verification-benchmark.test.ts test/provider-contracts.test.ts",
     "test:cli": "npm test -w packages/cli",
     "test:server": "npm test -w packages/server",
     "test:ui": "npm test -w packages/ui-dashboard",

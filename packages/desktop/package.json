@@ -17,6 +17,7 @@
     "electron": "electron .",
     "start": "npm run build && electron .",
     "package": "electron-builder",
+    "prepare:runtime": "node scripts/prepare-runtime.mjs",
     "test": "vitest run"
   },
   "dependencies": {

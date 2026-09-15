@@ -1,5 +1,6 @@
 import type { ReferenceAnalysisResult, VerificationStatus } from '../types.js';
 import type { Verdict } from './types.js';
+import { hasReviewFlags } from '../references/explain.js';
 
 const VERIFIED_STATUSES: VerificationStatus[] = ['verified', 'likely_valid'];
 const TO_CHECK_STATUSES: VerificationStatus[] = ['suspicious', 'not_found'];
@@ -34,6 +35,7 @@ export function computeVerdict(
 
     if (VERIFIED_STATUSES.includes(v.status)) {
       verified++;
+      if (!isDismissed && hasReviewFlags(v)) suspect++;
     } else if (v.status === 'format_only') {
       unverifiable++;
     } else if (!isDismissed && TO_CHECK_STATUSES.includes(v.status)) {

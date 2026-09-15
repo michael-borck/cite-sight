@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { resolveDoi } from '../src/references/doiResolver.js';
 import { httpFetch } from '../src/httpClient.js';
+import { lookupDoi } from '../src/references/crossref.js';
+import { lookupDoiDataCite } from '../src/references/datacite.js';
+import { LookupError } from '../src/references/lookupError.js';
 
 vi.mock('../src/references/crossref.js', () => ({ lookupDoi: vi.fn(async () => null) }));
 vi.mock('../src/references/datacite.js', () => ({ lookupDoiDataCite: vi.fn(async () => null) }));
@@ -9,6 +12,17 @@ vi.mock('../src/httpClient.js', () => ({ httpFetch: vi.fn() }));
 afterEach(() => vi.resetAllMocks());
 
 describe('DOI registry fallback', () => {
+  it('continues to DataCite after a Crossref failure', async () => {
+    vi.mocked(lookupDoi).mockRejectedValue(new LookupError('crossref', 'rate_limited'));
+    vi.mocked(lookupDoiDataCite).mockResolvedValue({ title: 'A dataset', authors: [], year: 2024, source: 'datacite' });
+    expect(await resolveDoi('10.5281/zenodo.1')).toMatchObject({ source: 'datacite' });
+    expect(httpFetch).not.toHaveBeenCalled();
+  });
+  it('preserves failed metadata lookups if the registry also finds nothing', async () => {
+    vi.mocked(lookupDoi).mockRejectedValue(new LookupError('crossref', 'timeout'));
+    vi.mocked(httpFetch).mockResolvedValue(new Response(null, { status: 404 }));
+    await expect(resolveDoi('10.9999/audit')).rejects.toMatchObject({ service: 'crossref', reason: 'timeout' });
+  });
   it.each([403, 429, 503])('does not accept HTTP %s as registration', async (status) => {
     vi.mocked(httpFetch).mockResolvedValue(new Response(null, { status }));
     await expect(resolveDoi('10.9999/audit')).rejects.toMatchObject({ service: 'doi.org' });

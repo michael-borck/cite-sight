@@ -15,21 +15,20 @@ import { LookupError, reasonFromFetchError, reasonFromStatus } from './lookupErr
  *
  * Strategy:
  *  1. Primary: Crossref REST API (authoritative, structured metadata)
- *  2. Fallback: dx.doi.org HEAD redirect to capture at least the canonical URL
- *     when Crossref has no record (e.g. non-Crossref DOIs).
+ *  2. DataCite metadata, including repository deposits.
+ *  3. doi.org redirect to confirm registration without requesting the publisher.
  */
 export async function resolveDoi(
   doi: string,
   mailto?: string,
 ): Promise<AcademicWork | null> {
-  // --- Primary: Crossref ---
-  const crossrefResult = await lookupDoi(doi, mailto);
-  if (crossrefResult) return crossrefResult;
-
-  // --- Secondary: DataCite (datasets, software, repository deposits such as
-  // Zenodo/Figshare/Dryad — DOIs Crossref does not hold). ---
-  const dataciteResult = await lookupDoiDataCite(doi, mailto);
-  if (dataciteResult) return dataciteResult;
+  let failure: unknown;
+  for (const lookup of [lookupDoi, lookupDoiDataCite]) {
+    try {
+      const result = await lookup(doi, mailto);
+      if (result) return result;
+    } catch (err) { failure ??= err; }
+  }
 
   // Inspect the registry's redirect without probing the publisher. A service
   // error is not proof of registration, and a publisher's 404 says nothing
@@ -44,7 +43,10 @@ export async function resolveDoi(
         headers: { 'User-Agent': 'CiteSight/1.0' + (mailto ? ` (mailto:${mailto})` : '') },
       });
       await res.body?.cancel();
-      if (res.status === 404 || res.status === 410) return null;
+      if (res.status === 404 || res.status === 410) {
+        if (failure) throw failure;
+        return null;
+      }
       const location = res.headers.get('location');
       if (![301, 302, 303, 307, 308].includes(res.status) || !location) {
         throw new LookupError('doi.org', reasonFromStatus(res.status));

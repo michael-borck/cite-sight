@@ -24,10 +24,11 @@ describe('CLI saved settings and reports', () => {
   });
 
   it('writes shareable HTML and a retry manifest without API keys', () => {
-    run(['check', 'paper.txt', '--format', 'html', '--output', 'reports/', '--s2-key', 'test-secret-value']);
+    run(['check', 'paper.txt', '--format', 'html', '--output', 'reports/', '--s2-key', 'test-secret-value', '--openalex-key', 'openalex-secret-value']);
     expect(readFileSync(join(directory, 'reports/index.html'), 'utf8')).toContain('<!doctype html>');
     const text = readFileSync(join(directory, 'reports/results.json'), 'utf8');
     expect(text).not.toContain('test-secret-value');
+    expect(text).not.toContain('openalex-secret-value');
     expect(JSON.parse(text).files[0].file).toBe(join(directory, 'paper.txt'));
   });
 

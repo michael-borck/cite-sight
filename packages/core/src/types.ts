@@ -5,6 +5,7 @@
 // --- Processing Options ---
 
 export interface ProcessingOptions {
+  offline?: boolean; // Skip all external reference services, including metadata fallbacks.
   documentType?: 'assignment' | 'reference-list';
   citationStyle: 'auto' | 'apa' | 'mla' | 'chicago';
   checkUrls: boolean;
@@ -13,6 +14,7 @@ export interface ProcessingOptions {
   screenshotUrls: boolean;
   contactEmail?: string; // for Crossref / OpenAlex polite pool
   semanticScholarApiKey?: string; // lifts keyless rate-limiting on Semantic Scholar
+  openAlexApiKey?: string;
 }
 
 // --- File Extraction ---
@@ -22,6 +24,7 @@ export interface ExtractedDocument {
   fileName: string;
   fileType: string;
   pageCount?: number;
+  pages?: { page: number; text: string }[];
 }
 
 // --- References ---
@@ -68,9 +71,25 @@ export interface AcademicWork {
   volume?: string;
   issue?: string;
   pages?: string;
-  source: 'crossref' | 'datacite' | 'semantic_scholar' | 'openalex' | 'arxiv' | 'youtube' | 'vimeo' | 'open_library' | 'web_metadata';
+  source: 'crossref' | 'datacite' | 'semantic_scholar' | 'openalex' | 'europe_pmc' | 'arxiv' | 'youtube' | 'vimeo' | 'open_library' | 'web_metadata';
   url?: string;
   citationCount?: number;
+  workType?: string;
+  publicationUpdates?: PublicationUpdate[];
+  publicationStatusCheckedAt?: string;
+}
+
+export interface PublicationUpdate {
+  type: string;
+  doi?: string;
+  source: string;
+  date?: string;
+}
+
+export interface PublicationCheck {
+  status: 'checked' | 'unavailable' | 'not_available';
+  updates: PublicationUpdate[];
+  checkedAt?: string;
 }
 
 export type UrlStatus = 'live' | 'dead' | 'blocked' | 'redirect' | 'timeout' | 'error' | 'no_url';
@@ -126,8 +145,13 @@ export interface ReferenceVerification {
   formatIssues: FormatIssue[];
   matchedWork?: AcademicWork;
   urlCheck?: UrlCheckResult;
-  confidenceScore: number; // 0-1
+  confidenceScore: number; // Heuristic match strength, 0-1; not a probability.
+  evidence?: {
+    existence: 'found' | 'not_found' | 'unknown';
+    metadata: 'match' | 'partial' | 'conflict' | 'unknown';
+  };
   flags: string[];
+  publicationCheck?: PublicationCheck;
   // Set only when status is 'unverified': which service failed and why, so the
   // report can say "rate-limited on Semantic Scholar" rather than "not found".
   unavailable?: {
@@ -163,6 +187,9 @@ export interface ReferenceAnalysisResult {
 // --- Full Pipeline Result ---
 
 export interface AnalysisResult {
+  offline?: boolean;
+  inputSha256?: string;
+  claims?: ClaimAnalysis;
   fileName: string;
   extractedText: string;
   references: ReferenceAnalysisResult;
@@ -170,11 +197,12 @@ export interface AnalysisResult {
   reviews?: Record<string, { decision: ReviewDecision; reviewedAt: string }>;
 }
 
-export type ReviewDecision = 'reviewed' | 'citation_error' | 'acceptable_variation' | 'unresolved' | 'suspected_fabrication';
+export type ReviewDecision = 'reviewed' | 'citation_error' | 'acceptable_variation' | 'unresolved' | 'suspected_fabrication' | 'claim_supported' | 'claim_not_supported';
 
 // --- Progress Reporting ---
 
 export type AnalysisStage =
+  | 'checking_claims'
   | 'extracting'
   | 'extracting_references'
   | 'verifying_references'
@@ -182,9 +210,89 @@ export type AnalysisStage =
   | 'complete';
 
 export interface ProgressUpdate {
+  restored?: number;
+  completed?: number;
+  total?: number;
+  eta?: RuntimeEstimate;
   stage: AnalysisStage;
   progress: number; // 0-100
   message: string;
 }
 
 export type ProgressCallback = (update: ProgressUpdate) => void;
+
+export type ClaimStatus = 'supported' | 'partially_supported' | 'contradicted' | 'insufficient_evidence' | 'unavailable';
+
+export interface ClaimEvidence {
+  quote: string;
+  passageId: string;
+  page?: number; // Physical PDF page, one-based; not the printed page label.
+  start: number; // Offsets in the extracted page, or document text for non-PDFs.
+  end: number;
+}
+
+export interface ClaimFinding {
+  id: string;
+  claim: string;
+  position: number;
+  citation: string;
+  referenceIndex?: number;
+  status: ClaimStatus;
+  reason: string;
+  evidence: ClaimEvidence[];
+  source?: { fileName: string; sha256: string };
+}
+
+export interface ClaimAnalysis {
+  progress?: { state: 'partial' | 'complete'; completed: number; total: number; reused: number };
+  timing?: { inferenceMs: number; inferenceCount: number };
+  provenance?: ClaimProvenance;
+  version: 1;
+  mode: 'local-only';
+  model: string;
+  checkedAt: string;
+  findings: ClaimFinding[];
+  warnings: string[];
+  omittedCount: number;
+}
+
+export interface RuntimeEstimate { minMs: number; maxMs: number; basis: 'planning' | 'observed' }
+export interface BatchPlan {
+  offline: boolean;
+  mode: 'references' | 'claims';
+  files: { path: string; references: number; claims: number; error?: string }[];
+  references: number;
+  uniqueReferences: number;
+  claims: number;
+  scanMs: number;
+  estimate: RuntimeEstimate;
+}
+
+export interface ClaimProvenance {
+  runtimeVersion: string;
+  runtimeSha256: string;
+  modelSha256: string;
+  modelId?: string;
+  modelRevision?: string;
+  platform: string;
+  arch: string;
+  promptVersion: string;
+  parameters: { temperature: number; seed: number; contextSize: number; maxTokens: number; device: string; reasoning?: 'auto' | 'off' | 'on'; chatTemplate?: 'model-default' | 'chatml' };
+}
+
+export interface ClaimSourceBinding {
+  reference: number; // One-based bibliography row shown in the UI/CLI.
+  path: string;
+  referenceText?: string; // Reject a stale mapping if the parsed reference changed.
+}
+
+export interface LocalClaimOptions {
+  reasoning?: 'off' | 'on';
+  chatTemplate?: 'chatml';
+  runnerPath: string;
+  modelPath: string;
+  sources: ClaimSourceBinding[];
+  expectedDocumentHash?: string;
+  maxClaims?: number;
+  timeoutMs?: number;
+}

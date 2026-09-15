@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { basename } from 'node:path';
+import { createHash } from 'node:crypto';
 
 import { analyzeDocument } from './pipeline.js';
 import type {
@@ -27,5 +28,6 @@ export async function analyzePipeline(
   onReference?: (verification: ReferenceVerification, index: number, total: number) => void,
 ): Promise<AnalysisResult> {
   const bytes = await readFile(filePath);
-  return analyzeDocument(bytes, basename(filePath), options, onProgress, onReference);
+  const result = await analyzeDocument(bytes, basename(filePath), options, onProgress, onReference);
+  return { ...result, inputSha256: createHash('sha256').update(bytes).digest('hex') };
 }

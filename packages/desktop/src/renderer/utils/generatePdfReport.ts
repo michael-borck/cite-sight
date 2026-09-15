@@ -6,6 +6,7 @@ import type {
 } from '@michaelborck/cite-sight-core';
 import { referenceContentKey } from '@michaelborck/cite-sight-core/dashboard';
 import { DISCLAIMER } from '@michaelborck/cite-sight-core/disclaimer';
+import { claimReportLines } from '@michaelborck/cite-sight-core/browser';
 import { reviewEntries } from '@michaelborck/cite-sight-core/review';
 
 // ── Colours ──────────────────────────────────────────────────────────────────
@@ -191,7 +192,7 @@ function drawReferencesTable(
     { label: 'Title', w: contentW - 100 },
     { label: 'Status', w: 28 },
     { label: 'DOI', w: 36 },
-    { label: 'Conf.', w: 14 },
+    { label: 'Match', w: 14 },
     { label: 'URL', w: 12 },
   ];
 
@@ -268,7 +269,7 @@ function drawReferencesTable(
     cx += cols[3].w;
 
     setColour(doc, BLACK);
-    doc.text((v.confidenceScore * 100).toFixed(0) + '%', cx + 1.5, y);
+    doc.text(v.confidenceScore.toFixed(2), cx + 1.5, y);
     cx += cols[4].w;
 
     const urlStatus = v.urlCheck?.status ?? 'no_url';
@@ -423,6 +424,11 @@ export async function downloadPdfReport(results: AnalysisResult[], dismissedKeys
     y = drawOverview(doc, result, y, margin, contentW);
     y = drawReferencesTable(doc, result.references.verifications, screenshots, y, margin, contentW, dismissedKeys, result.reviews);
     y = drawCrossReferences(doc, result, y, margin, contentW);
+    if (result.claims) {
+      y = drawSectionTitle(doc, 'Local claim checks', y, margin);
+      doc.setFontSize(9); doc.setFont('helvetica', 'normal'); setColour(doc, BLACK);
+      for (const line of claimReportLines(result.claims)) y = printWrapped(doc, line, margin, y, contentW, 4.5, margin) + 3;
+    }
     const reviews = reviewEntries(result);
     if (reviews.length) {
       y = drawSectionTitle(doc, 'Review decisions', y, margin);
