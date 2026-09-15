@@ -26,6 +26,10 @@ mac:
       arch: [x64, arm64]
     - target: zip
       arch: [x64, arm64]
+  # Label the Intel build explicitly. Without ${arch} in the name it ships as
+  # "CiteSight-x.y.z.dmg", sorts after the arm64 file on the release page, and
+  # Intel users click the arm64 DMG first — then hit "not supported on this Mac".
+  artifactName: "${productName}-${version}-${arch}.${ext}"
   category: public.app-category.education
   hardenedRuntime: true
   notarize: false

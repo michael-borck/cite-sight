@@ -30,7 +30,7 @@ Four ways to use CiteSight:
 
 | Method | Best for | Install |
 |--------|----------|---------|
-| **Desktop app** | Offline use, URL screenshots | [Download for your platform](https://github.com/michael-borck/cite-sight/releases/latest) |
+| **Desktop app** | Offline use, URL screenshots | [Download for your platform](https://github.com/michael-borck/cite-sight/releases/latest) — Mac (M-series): `…-arm64.dmg` · Mac (Intel): `…-x64.dmg` · Windows: `…-Setup.exe` · Linux: `…AppImage` |
 | **Standalone HTML** | No install — one file, double-click, runs on this device | [Download `cite-sight-standalone.html`](https://github.com/michael-borck/cite-sight/releases/latest) |
 | **CLI** | Automation, CI pipelines | `npm install -g cite-sight` |
 | **Docker** | VPS hosting, shared access | `docker pull michaelborck/cite-sight` |
