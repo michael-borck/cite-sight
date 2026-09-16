@@ -1,7 +1,7 @@
 import electronUpdater from 'electron-updater';
 const { autoUpdater } = electronUpdater;
 import type { BrowserWindow } from 'electron';
-import { app, ipcMain } from 'electron';
+import { app, dialog, ipcMain } from 'electron';
 import { desktopTask, isLocalOnly, onlineOperation } from './privacy.js';
 
 let win: BrowserWindow | undefined;
@@ -104,11 +104,39 @@ export function initAutoUpdater(window: BrowserWindow): void {
 /** Menu-invoked check: same guards as the background check, and the existing
  *  update-available banner is the notification. */
 export async function menuUpdateCheck(): Promise<void> {
-  if (!app.isPackaged || checkInFlight) return;
-  if (!win || win.isDestroyed() || isLocalOnly()) return;
+  if (!app.isPackaged || !win || win.isDestroyed()) return;
+  const show = (message: string, detail?: string): void => {
+    void dialog.showMessageBox(win!, { type: 'info', message, detail, buttons: ['OK'] });
+  };
+  if (isLocalOnly()) {
+    show('Update checks are disabled in Local-only mode', 'Untick Local-only mode under Settings, then check again.');
+    return;
+  }
+  if (checkInFlight) return;
   checkInFlight = true;
-  try { await onlineOperation(() => autoUpdater.checkForUpdates()); }
-  catch { /* offline, local-only, or a task is running */ }
-  finally { checkInFlight = false; }
+  try {
+    const result = await onlineOperation(() => autoUpdater.checkForUpdates());
+    const latest = result?.updateInfo?.version;
+    const updateAvailable = Boolean(latest && latest !== autoUpdater.currentVersion.version);
+    if (!updateAvailable) {
+      show(`You're on the latest version (${autoUpdater.currentVersion.version})`, 'CiteSight checked for updates just now.');
+      return;
+    }
+    // The update-available banner is already up; the dialog offers to skip ahead.
+    const { response } = await dialog.showMessageBox(win, {
+      type: 'info',
+      message: `Version ${latest} is available`,
+      detail: `You are running ${autoUpdater.currentVersion.version}. Download it now? The update is installed when CiteSight next restarts.`,
+      buttons: ['Download now', 'Later'], defaultId: 0, cancelId: 1,
+    });
+    if (response === 0) {
+      await onlineOperation(() => autoUpdater.downloadUpdate());
+      // 'update-downloaded' fires the Restart banner when it lands.
+    }
+  } catch {
+    show('Could not check for updates', 'You may be offline, or an analysis or another check is in progress. Try again shortly.');
+  } finally {
+    checkInFlight = false;
+  }
 }
 
