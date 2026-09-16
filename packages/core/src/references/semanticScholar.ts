@@ -31,6 +31,7 @@ interface S2Journal {
 interface S2Paper {
   paperId?: string;
   title?: string;
+  abstract?: string;
   authors?: S2Author[];
   year?: number | null;
   externalIds?: S2ExternalIds;
@@ -51,6 +52,7 @@ function paperToAcademicWork(paper: S2Paper): AcademicWork {
     year: paper.year ?? null,
     doi: paper.externalIds?.DOI,
     journal: paper.journal?.name,
+    abstract: paper.abstract || undefined,
     source: 'semantic_scholar',
     citationCount: paper.citationCount,
   };
@@ -61,7 +63,7 @@ function paperToAcademicWork(paper: S2Paper): AcademicWork {
 // ============================================================
 
 const FIELDS =
-  'title,authors,year,externalIds,journal,citationCount';
+  'title,authors,year,externalIds,journal,citationCount,abstract';
 
 /** Back-off delays before each retry. Semantic Scholar's keyless tier returns
  *  HTTP 429 aggressively under burst load; a short wait usually clears it. */

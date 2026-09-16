@@ -31,6 +31,7 @@ interface CrossrefItem {
   page?: string;
   'is-referenced-by-count'?: number;
   type?: string;
+  abstract?: string;
   'updated-by'?: { DOI?: string; type?: string; source?: string; updated?: { 'date-time'?: string } }[];
 }
 
@@ -66,6 +67,7 @@ function itemToAcademicWork(item: CrossrefItem): AcademicWork {
     source: 'crossref',
     citationCount: item['is-referenced-by-count'],
     workType: item.type,
+    abstract: item.abstract ? item.abstract.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() || undefined : undefined,
     // updated-by describes notices ABOUT this work. update-to instead describes
     // what a notice updates; treating that as a retraction would flag the notice.
     publicationUpdates: (item['updated-by'] ?? []).map((update) => ({

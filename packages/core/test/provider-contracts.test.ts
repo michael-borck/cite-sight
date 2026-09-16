@@ -5,7 +5,7 @@ import { setMinRequestInterval } from '../src/references/rateLimiter.js';
 import { searchDataCite } from '../src/references/datacite.js';
 import { searchEuropePmc } from '../src/references/europePmc.js';
 import { searchOpenAlex } from '../src/references/openAlex.js';
-import { lookupDoi } from '../src/references/crossref.js';
+import { lookupDoi, searchCrossref } from '../src/references/crossref.js';
 import { checkPublicationUpdates } from '../src/references/publicationUpdates.js';
 import { verifyReferences } from '../src/references/verifier.js';
 import { verifyWebSource } from '../src/references/webSourceVerifier.js';
@@ -66,6 +66,21 @@ describe('provider contracts with offline response fixtures', () => {
     }], { citationStyle: 'unknown', checkUrls: false });
     expect(result.status).toBe('verified');
     expect(result.matchedWork?.source).toBe('datacite');
+  });
+
+  it('reconstructs OpenAlex abstracts from the inverted index', async () => {
+    setFetch(async () => json({ results: [{ id: 'w1', title: 'Trial', display_name: 'Trial',
+      abstract_inverted_index: { spaced: [0], practice: [1], improved: [2], recall: [3] },
+      authorships: [], publication_year: 2020 }] }));
+    const works = await searchOpenAlex('Trial');
+    expect(works[0].abstract).toBe('spaced practice improved recall');
+  });
+
+  it('strips Crossref JATS tags from abstracts', async () => {
+    setFetch(async () => json({ message: { items: [{ title: ['JATS study'], DOI: '10.1234/jats',
+      abstract: '<jats:p>Background.</jats:p> <jats:sec><jats:title>Methods</jats:title><p>We ran a  trial.</p></jats:sec>', author: [] }] } }));
+    const works = await searchCrossref('JATS study');
+    expect(works[0].abstract).toBe('Background. Methods We ran a trial.');
   });
 
   it('sends the OpenAlex key only in the authorization header, never the cache', async () => {

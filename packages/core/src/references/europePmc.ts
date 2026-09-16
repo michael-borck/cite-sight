@@ -13,6 +13,7 @@ interface Publication {
   authorList?: { author?: { fullName?: string; lastName?: string; firstName?: string; collectiveName?: string }[] };
   journalInfo?: { journal?: { title?: string }; volume?: string; issue?: string };
   pageInfo?: string;
+  abstractText?: string;
   pubTypeList?: { pubType?: string[] };
 }
 
@@ -41,6 +42,7 @@ export async function searchEuropePmc(title: string): Promise<AcademicWork[]> {
       doi: item.doi, source: 'europe_pmc', journal: item.journalInfo?.journal?.title,
       volume: item.journalInfo?.volume, issue: item.journalInfo?.issue, pages: item.pageInfo,
       workType: item.pubTypeList?.pubType?.join('; '),
+      abstract: item.abstractText ? item.abstractText.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() || undefined : undefined,
       url: item.id && item.source ? `https://europepmc.org/article/${encodeURIComponent(item.source)}/${encodeURIComponent(item.id)}` : undefined,
     }));
     setCached(key, works);

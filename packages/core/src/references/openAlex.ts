@@ -35,6 +35,7 @@ interface OALocation {
 interface OAWork {
   id?: string;
   title?: string;
+  abstract_inverted_index?: Record<string, number[]>;
   display_name?: string;
   authorships?: OAAuthorships[];
   publication_year?: number | null;
@@ -47,6 +48,19 @@ interface OAWork {
 // ============================================================
 // Parser
 // ============================================================
+
+/** OpenAlex ships abstracts as an inverted index: word -> positions.
+ *  Rebuild the reading order. */
+export function abstractFromInvertedIndex(index?: Record<string, number[]>): string | undefined {
+  if (!index) return undefined;
+  const positions = Object.values(index).flat();
+  if (!positions.length) return undefined;
+  const words: string[] = new Array(Math.max(...positions));
+  for (const [word, idxs] of Object.entries(index)) {
+    for (const position of idxs) words[position] = word;
+  }
+  return words.filter(Boolean).join(' ').trim() || undefined;
+}
 
 function workToAcademicWork(work: OAWork): AcademicWork {
   // OpenAlex DOIs come as full URLs: "https://doi.org/10.xxx/yyy"
@@ -67,6 +81,7 @@ function workToAcademicWork(work: OAWork): AcademicWork {
     year: work.publication_year ?? null,
     doi: doi || undefined,
     journal,
+    abstract: abstractFromInvertedIndex(work.abstract_inverted_index),
     source: 'openalex',
     citationCount: work.cited_by_count,
   };

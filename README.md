@@ -388,7 +388,11 @@ comparison models remain available. See [recorded CPU benchmarks](docs/benchmark
 
 Run citation extraction, expand **Claim evidence review**, and map source files
 to bibliography rows. Identical reference text shares its mapping across the
-open batch. Select **Review claim evidence locally** for one document or
+open batch. Unmapped references with a **publisher abstract** from the online
+lookups are checked against the abstract and labelled "Publisher abstract" —
+weaker than full text, but zero-effort coverage. CiteSight never scrapes
+Google Scholar or bulk-downloads paywalled PDFs; provider lookups honour
+documented rate limits (see the app's "Where the evidence comes from" panel). Select **Review claim evidence locally** for one document or
 **Review claim evidence for mapped documents** for the batch. Every model
 suggestion, including suggested support, remains pending human review.
 PDF, claim JSON/CSV and saved sessions include evidence and version provenance.

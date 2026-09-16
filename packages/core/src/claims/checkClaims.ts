@@ -90,6 +90,7 @@ export async function analyzeClaimsFile(
     let textBudget = 32 * 1024 * 1024;
     let inferenceMs = 0;
     let inferenceCount = 0;
+    let abstractWarningShown = false;
     const snapshot = (state: 'partial' | 'complete'): AnalysisResult => ({ ...result, extractedText: '', processingTime: Date.now() - started,
       claims: { version: 1, mode: 'local-only', model: runner.name, provenance: runner.provenance,
         timing: { inferenceMs, inferenceCount }, progress: { state, completed, total: findings.length, reused }, checkedAt,
@@ -115,7 +116,39 @@ export async function analyzeClaimsFile(
       let settled = false;
       try {
         const binding = bindings.find((item) => item.reference - 1 === finding.referenceIndex);
-        if (!binding) { settled = true; continue; }
+        if (!binding) {
+          // No local source mapped, but the online verification may have
+          // brought back the publisher abstract. Abstract-level evidence is
+          // weaker than full text — labelled as such on the finding.
+          const matched = finding.referenceIndex !== undefined
+            ? result.references.verifications[finding.referenceIndex]?.matchedWork
+            : undefined;
+          const abstract = matched?.abstract;
+          if (abstract && abstract.trim().length >= 160) {
+            const passages = sourcePassages({ text: abstract, fileName: 'publisher-abstract', fileType: 'txt' });
+            finding.source = {
+              fileName: `Publisher abstract (${matched!.source})`,
+              sha256: createHash('sha256').update(abstract).digest('hex'),
+            };
+            const retrieval = retrievePassages(finding.claim.replace(finding.citation, ''), passages);
+            if (!retrieval.length) { finding.reason = 'The abstract does not mention the claim\'s topic. The full text may — it was not supplied.'; settled = true; continue; }
+            const inferenceStart = Date.now();
+            try { Object.assign(finding, validateClaimResponse(await runner.infer(claimPrompt(finding.claim, retrieval), signal), retrieval)); }
+            catch (error) {
+              signal?.throwIfAborted();
+              finding.status = 'unavailable';
+              finding.reason = error instanceof Error ? error.message : 'Local inference failed.';
+            }
+            finally { inferenceMs += Date.now() - inferenceStart; inferenceCount++; }
+            if (!abstractWarningShown) {
+              warnings.push('Some findings rest on publisher abstracts only, not full text — the article body may contain qualifying detail. Source entries named "Publisher abstract" indicate these.');
+              abstractWarningShown = true;
+            }
+            settled = true;
+            continue;
+          }
+          settled = true; continue;
+        }
         const path = localPath(binding.path);
         if (!loaded.has(path)) {
           try {

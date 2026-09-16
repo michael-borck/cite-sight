@@ -254,6 +254,28 @@ are not an OS sandbox for an arbitrary executable or a guarantee about cloud
 sync software on the computer. For a strict institutional deployment, distribute
 approved binaries/models and verify a complete run with network egress blocked.
 
+## Where claim evidence comes from (and what we don't do)
+
+Three layers, in increasing depth:
+
+1. **Publisher abstracts** — during online reference verification, matched
+   works may carry the publisher abstract from the open scholarly APIs
+   (Crossref, OpenAlex, Semantic Scholar, Europe PMC). When no local source
+   is mapped, the claim run uses the abstract and labels the finding
+   "Publisher abstract (...)". Abstracts cover findings and conclusions,
+   not methods detail or page-level quotes. Abstracts arrive only via the
+   APIs' documented endpoints, under their rate limits and terms.
+2. **Your mapped local files** — full-text evidence, exactly as described
+   above. Nothing is downloaded; you obtained the file yourself.
+3. **Human judgement** — every suggestion requires a reviewer decision.
+
+**We do not scrape Google Scholar** — its Terms of Service prohibit
+automated access, so CiteSight will never query it programmatically or
+bulk-download paywalled PDFs. Scholar links in the UI open in *your*
+browser, on your initiative, as a manual check. Provider lookups honour
+rate limits (one request per second per service, longer for arXiv) and
+identify themselves via the User-Agent and your contact email.
+
 ## Online verification and Docker
 
 When desktop or CLI online verification is enabled, reference titles, authors,

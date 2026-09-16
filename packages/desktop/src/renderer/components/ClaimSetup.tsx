@@ -50,6 +50,16 @@ export function ClaimSetup({ path, result, onOpenSettings }: { path: string; res
     {!ready && <p>After the one-time download, the steps here are: map each reference list entry to its source file, then start the review.</p>}
     {onOpenSettings && <button type="button" onClick={onOpenSettings}>Open local claim settings</button>}
     <p>Scanned PDFs need local OCR first. Only detected cited statements are checked; this is not a check of every claim in the document.</p>
+    <details>
+      <summary>Where the evidence comes from (and what we don't do)</summary>
+      <p>Three layers, in increasing depth:</p>
+      <ol>
+        <li><strong>Publisher abstracts</strong> — fetched from open scholarly APIs (Crossref, OpenAlex, Semantic Scholar, Europe PMC) during the online reference check. Findings based on these are labelled "Publisher abstract" and cover only what an abstract says.</li>
+        <li><strong>Your own source files</strong> — the mapped PDFs and documents in this panel. Full-text evidence, entirely on this Mac.</li>
+        <li><strong>Your judgement</strong> — every suggestion needs a human decision; the tool never records one by itself.</li>
+      </ol>
+      <p>What we deliberately don't do: scrape Google Scholar (its Terms of Service prohibit it), bulk-download paywalled PDFs, or upload any part of a submission. Lookups go directly to the open scholarly APIs, honour their rate limits, and identify themselves via your contact email. Claim model runs are offline and CPU-only.</p>
+    </details>
     <fieldset disabled={isProcessing || !ready}>
       <legend>Step 2 — map sources, then review</legend>
       <label>Maximum cited statements <input type="number" min={1} max={200} value={maxClaims} onChange={(event) => setMaxClaims(Number(event.target.value))} /></label>

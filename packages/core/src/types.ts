@@ -75,6 +75,10 @@ export interface AcademicWork {
   url?: string;
   citationCount?: number;
   workType?: string;
+  /** Publisher abstract when the provider supplies one (OpenAlex, Semantic
+   *  Scholar, Europe PMC, Crossref). Enables abstract-level claim evidence
+   *  without downloading any file. */
+  abstract?: string;
   publicationUpdates?: PublicationUpdate[];
   publicationStatusCheckedAt?: string;
 }

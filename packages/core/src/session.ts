@@ -64,7 +64,7 @@ export function isAnalysisResult(value: unknown): value is AnalysisResult {
     if (item.matchedWork) {
       if (!record(item.matchedWork) || typeof item.matchedWork.title !== 'string' || !strings(item.matchedWork.authors) ||
           !(item.matchedWork.year === null || Number.isInteger(item.matchedWork.year))) return false;
-      if (!['doi', 'url', 'journal', 'volume', 'issue', 'pages', 'source'].every((key) => item.matchedWork && record(item.matchedWork) && (item.matchedWork[key] === undefined || typeof item.matchedWork[key] === 'string'))) return false;
+      if (!['doi', 'url', 'journal', 'volume', 'issue', 'pages', 'source', 'abstract'].every((key) => item.matchedWork && record(item.matchedWork) && (item.matchedWork[key] === undefined || typeof item.matchedWork[key] === 'string'))) return false;
       if (item.matchedWork.publicationUpdates !== undefined && !publicationUpdates(item.matchedWork.publicationUpdates)) return false;
     }
     if (item.urlCheck && (!record(item.urlCheck) || typeof item.urlCheck.url !== 'string' || typeof item.urlCheck.status !== 'string')) return false;
