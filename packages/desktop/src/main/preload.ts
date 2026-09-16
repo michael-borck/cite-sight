@@ -61,6 +61,11 @@ contextBridge.exposeInMainWorld('citeSight', {
     return ipcRenderer.invoke('cite-sight:select-folder') as Promise<string[]>;
   },
 
+  onMenuAction: (callback: (action: string) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, action: string) => callback(action);
+    ipcRenderer.on('cite-sight:menu-action', listener);
+    return () => ipcRenderer.removeListener('cite-sight:menu-action', listener);
+  },
   onProgress: (callback: (update: ProgressUpdate) => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent, update: ProgressUpdate) => callback(update);
     ipcRenderer.on('cite-sight:progress', listener);

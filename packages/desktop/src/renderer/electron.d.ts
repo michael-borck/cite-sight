@@ -35,6 +35,7 @@ declare global {
       setDismissal: (contentKey: string, dismissed: boolean) => Promise<void>;
       selectFiles: () => Promise<string[]>;
       selectFolder: () => Promise<string[]>;
+      onMenuAction: (callback: (action: string) => void) => () => void;
       onProgress: (callback: (update: ProgressUpdate) => void) => () => void;
       onReference: (callback: (data: { verification: ReferenceVerification; index: number; total: number }) => void) => () => void;
       onUpdateAvailable: (callback: (info: { version: string; releaseNotes?: string }) => void) => void;

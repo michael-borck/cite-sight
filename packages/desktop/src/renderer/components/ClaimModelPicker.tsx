@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CLAIM_MODELS } from '@michaelborck/cite-sight-core/browser';
 import { useStore } from '../store';
+import { deviceLabel } from '../platform';
 
 interface Choice { id: string; label: string; note: string }
 const CHOICES: Choice[] = [
@@ -35,7 +36,7 @@ export function ClaimModelPicker({ disabled = false }: { disabled?: boolean }) {
   }
 
   return <div className="claim-model-picker">
-    <p><strong>Experimental research preview.</strong> Claim checking runs entirely on this Mac — offline, CPU-only.
+    <p><strong>Experimental research preview.</strong> Claim checking runs entirely on {deviceLabel()} — offline, CPU-only.
       It only <em>suggests</em> evidence matches; every suggestion needs your review. Nothing is uploaded.</p>
     <fieldset disabled={blocked}>
       <legend>Choose a model <span className="hint">(one-time download, verified against a pinned checksum)</span></legend>

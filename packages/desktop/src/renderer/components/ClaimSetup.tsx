@@ -4,6 +4,7 @@ import { makeReviewSession } from '@michaelborck/cite-sight-core/session';
 import { durationRange } from '@michaelborck/cite-sight-core/browser';
 import { ClaimModelPicker } from './ClaimModelPicker';
 import { useStore } from '../store';
+import { deviceLabel } from '../platform';
 
 export function ClaimSetup({ path, result, onOpenSettings }: { path: string; result: AnalysisResult; onOpenSettings?: () => void }) {
   const { isProcessing, options, progress, setProcessing, updateOptions, updateResult, setError, claimInstallation, claimSources, setClaimSource } = useStore();
@@ -52,7 +53,7 @@ export function ClaimSetup({ path, result, onOpenSettings }: { path: string; res
   return <details className="desktop-settings" open={running || undefined}>
     <summary>Claim evidence review <strong>(Experimental)</strong></summary>
     <p><strong>What this is:</strong> the app compares each cited statement in this essay against the source file you choose,
-      on this Mac, offline, on the CPU. It <em>suggests</em> a verdict with quoted evidence; <strong>you decide</strong> whether
+      on {deviceLabel()}, offline, on the CPU. It <em>suggests</em> a verdict with quoted evidence; <strong>you decide</strong> whether
       the evidence supports the claim. It is a research preview, not a verified judge.</p>
     <ClaimModelPicker disabled={isProcessing} />
     {!ready && <p>After the one-time download, the steps here are: map each reference list entry to its source file, then start the review.</p>}
@@ -63,7 +64,7 @@ export function ClaimSetup({ path, result, onOpenSettings }: { path: string; res
       <p>Three layers, in increasing depth:</p>
       <ol>
         <li><strong>Publisher abstracts</strong> — fetched from open scholarly APIs (Crossref, OpenAlex, Semantic Scholar, Europe PMC) during the online reference check. Findings based on these are labelled "Publisher abstract" and cover only what an abstract says.</li>
-        <li><strong>Your own source files</strong> — the mapped PDFs and documents in this panel. Full-text evidence, entirely on this Mac.</li>
+        <li><strong>Your own source files</strong> — the mapped PDFs and documents in this panel. Full-text evidence, entirely on {deviceLabel()}.</li>
         <li><strong>Your judgement</strong> — every suggestion needs a human decision; the tool never records one by itself.</li>
       </ol>
       <p>What we deliberately don't do: scrape Google Scholar (its Terms of Service prohibit it), bulk-download paywalled PDFs, or upload any part of a submission. Lookups go directly to the open scholarly APIs, honour their rate limits, and identify themselves via your contact email. Claim model runs are offline and CPU-only.</p>

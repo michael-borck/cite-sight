@@ -141,14 +141,24 @@ export function App() {
     } catch (err) { state.setError(err instanceof Error ? err.message : 'Could not open this session.'); }
   }
 
+  // Session actions are shared by the header buttons and the File menu
+  // (menu accelerators Cmd/Ctrl+O, Cmd/Ctrl+S arrive via onMenuAction).
+  async function restoreBatch() {
+    if (useStore.getState().isProcessing) return;
+    try {
+      const saved = await window.citeSight.loadBatchCheckpoint();
+      if (saved) { state.restoreSession(saved); setClock(undefined); setNotice('Batch restored. Reference verification runs online by default; tick Local-only mode first if this batch must stay offline.'); }
+      else setNotice('No saved batch checkpoint was found.');
+    } catch (error) { state.setError(String(error)); }
+  }
   useEffect(() => {
-    const shortcut = (event: KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
-      if (event.key.toLowerCase() === 's') { event.preventDefault(); void saveReview(); }
-      if (event.key.toLowerCase() === 'o') { event.preventDefault(); void openReview(); }
-    };
-    window.addEventListener('keydown', shortcut);
-    return () => window.removeEventListener('keydown', shortcut);
+    const off = window.citeSight?.onMenuAction?.((action) => {
+      if (action === 'open-review-session') void openReview();
+      else if (action === 'save-session') void saveReview();
+      else if (action === 'restore-last-batch') void restoreBatch();
+      else if (action === 'settings') setSettings((value) => !value);
+    });
+    return () => off?.();
   }, []);
 
   return <div className="app">
@@ -161,24 +171,34 @@ export function App() {
       </div>
       <div className="batch-toolbar">
         <button type="button" className="btn btn-secondary" disabled={isProcessing} onClick={() => void openReview()}>Open review session</button>
-        <button type="button" className="btn btn-secondary" disabled={isProcessing} onClick={async () => {
-          try { const saved = await window.citeSight.loadBatchCheckpoint(); if (saved) { state.restoreSession(saved); setClock(undefined); setNotice('Batch restored. Reference verification runs online by default; tick Local-only mode first if this batch must stay offline.'); } else setNotice('No saved batch checkpoint was found.'); }
-          catch (error) { state.setError(String(error)); }
-        }}>Restore last batch</button>
+        <button type="button" className="btn btn-secondary" disabled={isProcessing} onClick={() => void restoreBatch()}>Restore last batch</button>
         <button type="button" className="btn btn-secondary" disabled={!batch.length} onClick={() => void saveReview()}>Save review session</button>
         <button type="button" className="btn btn-secondary" aria-expanded={settings} onClick={() => setSettings(!settings)}>Settings</button>
       </div>
     </div></header>
     <main className="app-main"><div className="container">
-      {settings && <section className="desktop-settings"><h2>Settings</h2><p>Check settings are remembered on this device.</p>
-        <p>Saved sessions contain citation results, review decisions, file paths and any checked claim excerpts and source quotations. Full document text and API keys are excluded.</p>
-        <LocalClaimSettings /><ProcessingOptions /><DataPrivacyPanel onDismissalsCleared={() => setPersistedDismissals([])} />
-        <p>Batch recovery stores completed documents and individual claim results, source paths and review excerpts locally. Clearing recovery also removes saved per-claim checkpoints.</p>
-        <button type="button" disabled={isProcessing} onClick={async () => {
-          try { await window.citeSight.clearBatchCheckpoint(); setNotice('Saved batch checkpoint removed. The open batch remains in memory.'); }
-          catch (error) { state.setError(String(error)); }
-        }}>Clear saved batch checkpoint</button>
-      </section>}
+      {settings && <div className="settings-overlay" role="dialog" aria-modal="true" aria-label="Settings">
+        <div className="settings-overlay-card">
+          <div className="settings-overlay-header">
+            <h2>Settings</h2>
+            <button type="button" className="settings-overlay-close" aria-label="Close settings" onClick={() => setSettings(false)}>×</button>
+          </div>
+          <div className="settings-overlay-body">
+            <p>Check settings are remembered on this device. Saved sessions contain citation results, review decisions, file paths and any checked claim excerpts and source quotations. Full document text and API keys are excluded.</p>
+            <LocalClaimSettings />
+            <ProcessingOptions />
+            <DataPrivacyPanel onDismissalsCleared={() => setPersistedDismissals([])} />
+            <section className="desktop-settings">
+              <h3>Batch recovery</h3>
+              <p>Batch recovery stores completed documents and individual claim results, source paths and review excerpts locally. Clearing recovery also removes saved per-claim checkpoints.</p>
+              <button type="button" disabled={isProcessing} onClick={async () => {
+                try { await window.citeSight.clearBatchCheckpoint(); setNotice('Saved batch checkpoint removed. The open batch remains in memory.'); }
+                catch (error) { state.setError(String(error)); }
+              }}>Clear saved batch checkpoint</button>
+            </section>
+          </div>
+        </div>
+      </div>}
       {notice && <p role="status">{notice}</p>}
       {isProcessing && !activePath && filePaths.length > 0 && <p role="status">{progress?.message ?? 'Preparing the batch locally...'}</p>}
       {error && <p role="alert" className="error-message">{error}<button onClick={() => state.setError(null)} aria-label="Dismiss error">×</button></p>}

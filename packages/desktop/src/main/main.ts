@@ -104,8 +104,23 @@ function buildApplicationMenu(): void {
   const rateLimits = HELP_TOPICS.find((t) => t.id === 'rate-limits')!.body;
   const evidence = HELP_TOPICS.find((t) => t.id === 'evidence')!.body;
 
+  const menuAction = (action: string) => () => {
+    const focused = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+    if (focused && !focused.isDestroyed()) focused.webContents.send('cite-sight:menu-action', action);
+  };
+
   const template: Electron.MenuItemConstructorOptions[] = [
     ...(isMac ? [{ role: 'appMenu' as const }] : []),
+    {
+      label: 'File',
+      submenu: [
+        { label: 'Open Review Session…', accelerator: 'CmdOrCtrl+O', click: menuAction('open-review-session') },
+        { label: 'Save Review Session', accelerator: 'CmdOrCtrl+S', click: menuAction('save-session') },
+        { label: 'Restore Last Batch', click: menuAction('restore-last-batch') },
+        { type: 'separator' },
+        { label: 'Settings', accelerator: 'CmdOrCtrl+,', click: menuAction('settings') },
+      ],
+    },
     {
       label: 'Help',
       submenu: [
