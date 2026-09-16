@@ -1,6 +1,6 @@
 {
   "name": "@michaelborck/cite-sight-core",
-  "version": "0.10.8",
+  "version": "0.10.9",
   "description": "Core analysis library for CiteSight academic integrity checking",
   "type": "module",
   "license": "MIT",
@@ -47,6 +47,11 @@
       "import": "./dist/dashboard/index.js",
       "require": "./dist/dashboard/index.js",
       "types": "./dist/dashboard/index.d.ts"
+    },
+    "./help": {
+      "types": "./dist/help.d.ts",
+      "import": "./dist/help.js",
+      "require": "./dist/help.js"
     },
     "./disclaimer": {
       "import": "./dist/disclaimer.js",

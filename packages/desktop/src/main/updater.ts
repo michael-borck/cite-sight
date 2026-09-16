@@ -6,6 +6,7 @@ import { desktopTask, isLocalOnly, onlineOperation } from './privacy.js';
 
 let win: BrowserWindow | undefined;
 let initialized = false;
+let checkInFlight = false;
 
 function send(channel: string, ...args: unknown[]): void {
   if (win && !win.isDestroyed()) win.webContents.send(channel, ...args);
@@ -81,7 +82,6 @@ export function initAutoUpdater(window: BrowserWindow): void {
   // analysis, or while another online operation is in flight.
   const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
   const FIRST_CHECK_DELAY_MS = 60 * 1000;
-  let checkInFlight = false;
   const backgroundCheck = async (): Promise<void> => {
     if (checkInFlight || !app.isPackaged) return;
     if (!win || win.isDestroyed()) return;
@@ -100,3 +100,15 @@ export function initAutoUpdater(window: BrowserWindow): void {
   setTimeout(backgroundCheck, FIRST_CHECK_DELAY_MS);
   setInterval(backgroundCheck, UPDATE_CHECK_INTERVAL_MS);
 }
+
+/** Menu-invoked check: same guards as the background check, and the existing
+ *  update-available banner is the notification. */
+export async function menuUpdateCheck(): Promise<void> {
+  if (!app.isPackaged || checkInFlight) return;
+  if (!win || win.isDestroyed() || isLocalOnly()) return;
+  checkInFlight = true;
+  try { await onlineOperation(() => autoUpdater.checkForUpdates()); }
+  catch { /* offline, local-only, or a task is running */ }
+  finally { checkInFlight = false; }
+}
+

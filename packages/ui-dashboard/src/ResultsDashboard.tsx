@@ -15,6 +15,7 @@ import { ReviewActions, ReviewContext } from './ReviewActions';
 import { OverviewPanel } from './Overview';
 import { ScreenshotContext, ScreenshotThumbnail } from './Screenshot';
 import { OfflineContext } from './OfflineContext';
+import { HelpOverlay, SectionHelp } from './HelpOverlay';
 import { ClaimResults } from './ClaimResults';
 import './ResultsDashboard.css';
 
@@ -300,7 +301,9 @@ function ReferencesPanel({ results, dismissed, onReverify, rechecking }: PanelPr
   return (
     <div className="panel-card">
       <div className="panel-header">
-        <h3>Reference Verification</h3>
+        <h3>Reference Verification
+          <SectionHelp text="Verified/Likely valid = a real record matched. Needs review = matched but details disagree (often a hand-typed typo). Not found = nothing matched. Unverified = the lookup failed (rate limit/timeout) — retry, not a confirmed miss." />
+        </h3>
         <span className="meta">{references.detectedStyle} style</span>
       </div>
       <div className="panel-body">
@@ -377,7 +380,9 @@ function CrossReferencesPanel({ results }: PanelProps) {
   return (
     <div className="panel-card">
       <div className="panel-header">
-        <h3>Cross-Reference Check</h3>
+        <h3>Cross-Reference Check
+          <SectionHelp text="Compares in-text citations with the reference list. Orphans appear in one place only. 'Possible spelling mismatch' pairs a citation with the entry it most likely refers to — common when references are hand-typed." />
+        </h3>
       </div>
       <div className="panel-body">
         <div className="cross-section">
@@ -469,6 +474,7 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
   const [overrides, setOverrides] = useState<Map<number, ReferenceVerification>>(new Map());
   const [rechecking, setRechecking] = useState<Set<number>>(new Set());
   const [retryError, setRetryError] = useState('');
+  const [helpOpen, setHelpOpen] = useState(false);
   const [reviews, setReviews] = useState(results.reviews ?? {});
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
@@ -602,6 +608,7 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
 
   const body: ReactNode = (
     <div className="results-shell">
+      {helpOpen && <HelpOverlay onClose={() => setHelpOpen(false)} />}
       <aside className="results-sidebar">
         <div className="sidebar-filename">{results.fileName}</div>
         <nav className="sidebar-nav">
@@ -622,6 +629,9 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
             );
           })}
         </nav>
+        <button type="button" className="sidebar-help" onClick={() => setHelpOpen(true)}>
+          ? Help &amp; about
+        </button>
       </aside>
 
       <main className="results-content">

@@ -1,11 +1,12 @@
-import { app, BrowserWindow, shell } from 'electron';
+import { app, BrowserWindow, Menu, shell, dialog } from 'electron';
 import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { registerIpcHandlers } from './ipc.js';
 import { loadLookupCache } from './cacheStore.js';
-import { initAutoUpdater } from './updater.js';
+import { initAutoUpdater, menuUpdateCheck } from './updater.js';
 import { allowRendererRequest, isLocalOnly } from './privacy.js';
+import { HELP_TOPICS, ACKNOWLEDGEMENTS, HELP_FOOTER } from '@michaelborck/cite-sight-core';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -87,7 +88,50 @@ function createWindow(): BrowserWindow {
   return win;
 }
 
+function showTopicDialog(title: string, body: string): void {
+  const focused = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+  void dialog.showMessageBox(focused, { type: 'info', title, message: title, detail: body, buttons: ['OK'] });
+}
+
+function buildApplicationMenu(): void {
+  const isMac = process.platform === 'darwin';
+  const aboutBody = [
+    'CiteSight checks student citations: reference verification against open scholarly databases, cross-reference matching with typo-tolerant suggestions, and an experimental local claim-evidence review.',
+    '',
+    'Every finding is a suggestion for the marker; the final academic judgement is yours.',
+  ].join('\n');
+  const acknowledgements = ACKNOWLEDGEMENTS.map((a) => `${a.name} — ${a.what}`).join('\n');
+  const rateLimits = HELP_TOPICS.find((t) => t.id === 'rate-limits')!.body;
+  const evidence = HELP_TOPICS.find((t) => t.id === 'evidence')!.body;
+
+  const template: Electron.MenuItemConstructorOptions[] = [
+    ...(isMac ? [{ role: 'appMenu' as const }] : []),
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'About CiteSight',
+          click: () => showTopicDialog('About CiteSight', `${aboutBody}\n\n${HELP_FOOTER}\n\nAcknowledgements:\n${acknowledgements}`),
+        },
+        { type: 'separator' },
+        { label: 'Rate Limits & Pacing', click: () => showTopicDialog('Rate limits and pacing', rateLimits) },
+        { label: 'Where Claim Evidence Comes From', click: () => showTopicDialog('Where claim evidence comes from', evidence) },
+        { type: 'separator' },
+        {
+          label: 'Online Documentation',
+          click: () => { if (!isLocalOnly()) void shell.openExternal('https://github.com/michael-borck/cite-sight#readme'); },
+        },
+        { type: 'separator' },
+        { label: 'Check for Updates…', click: () => { void menuUpdateCheck(); } },
+      ],
+    },
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+  void aboutBody; void acknowledgements;
+}
+
 app.whenReady().then(() => {
+  buildApplicationMenu();
   loadLookupCache();
   const mainWindow = createWindow();
   registerIpcHandlers(mainWindow);

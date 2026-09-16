@@ -6,3 +6,4 @@ export { OverviewPanel } from './Overview';
 export { StreamingResults } from './StreamingResults';
 export type { StreamingResultsProps } from './StreamingResults';
 export { AnalysisSetup } from './AnalysisSetup';
+export { HelpOverlay, SectionHelp } from './HelpOverlay';

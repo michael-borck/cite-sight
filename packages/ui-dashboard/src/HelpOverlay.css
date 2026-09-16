@@ -1,0 +1,26 @@
+/* ---- Help overlay & section popovers ---- */
+.sidebar-help { margin: auto 12px 12px; padding: 6px 10px; font: inherit; font-size: 13px;
+  color: var(--ink-faint, #6b7280); background: transparent; border: 1px solid #d7dce3; border-radius: 6px; cursor: pointer; }
+.sidebar-help:hover { color: var(--ink, #172b3a); border-color: #aab2bd; }
+.help-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); display: flex;
+  align-items: center; justify-content: center; z-index: 1000; }
+.help-overlay-card { background: white; border-radius: 10px; width: min(640px, 92vw); max-height: 82vh;
+  display: flex; flex-direction: column; box-shadow: 0 18px 50px rgba(15, 23, 42, 0.3); }
+.help-overlay-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px;
+  border-bottom: 1px solid #e5e8ee; }
+.help-overlay-header h3 { margin: 0; font-size: 16px; }
+.help-overlay-close, .section-help-close { border: none; background: transparent; font-size: 18px;
+  cursor: pointer; color: #6b7280; line-height: 1; }
+.help-overlay-body { overflow-y: auto; padding: 8px 18px 18px; }
+.help-topic { border-bottom: 1px solid #eef0f4; padding: 8px 0; }
+.help-topic summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+.help-topic p, .help-topic li { font-size: 13.5px; line-height: 1.55; color: #33415c; }
+.help-topic ul { padding-left: 18px; margin: 6px 0; }
+.section-help { position: relative; display: inline-block; margin-left: 6px; }
+.section-help-btn { width: 18px; height: 18px; border-radius: 50%; border: 1px solid #b9c0ca;
+  background: transparent; color: #6b7280; font-size: 11px; line-height: 1; cursor: pointer; padding: 0; }
+.section-help-btn:hover { color: #172b3a; border-color: #172b3a; }
+.section-help-pop { position: absolute; left: 0; top: 24px; z-index: 40; width: min(340px, 78vw);
+  background: #172b3a; color: #f1f5f9; font-size: 12.5px; line-height: 1.5; padding: 10px 12px;
+  border-radius: 8px; box-shadow: 0 10px 26px rgba(15, 23, 42, 0.35); text-align: left; }
+.section-help-close { position: absolute; top: 4px; right: 6px; color: #cbd5e1; }

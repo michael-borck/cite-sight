@@ -23,6 +23,7 @@ export {
   STANDALONE_LIMITS_NOTICE,
   STANDALONE_LIMITS_SHORT,
 } from './disclaimer.js';
+export { HELP_TOPICS, ACKNOWLEDGEMENTS, HELP_FOOTER, type HelpTopic } from './help.js';
 export {
   extractFromBytes,
   extractPdf,

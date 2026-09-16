@@ -24,6 +24,7 @@ export { benchmarkClaims } from './claims/benchmark.js';
 export { analyzeDocument } from './pipeline.js';
 export { MANIFEST } from './manifest.js';
 export { DISCLAIMER, ATTRIBUTION, PACING_NOTE, DISCLAIMER_SHORT, HOSTED_LIMITS_NOTICE, HOSTED_LIMITS_SHORT } from './disclaimer.js';
+export { HELP_TOPICS, ACKNOWLEDGEMENTS, HELP_FOOTER, type HelpTopic } from './help.js';
 export { extract } from './extractors/fromFile.js';
 export {
   extractFromBytes,

@@ -2,7 +2,7 @@
 
 import { program, type Command } from 'commander';
 import chalk from 'chalk';
-import { analyzePipeline, analyzeClaimsFile, readClaimSources, planFiles, unitSourceList, claimOverlapFromResults, durationRange, claimSuggestionLabel, MANIFEST, explainVerification, DISCLAIMER, ATTRIBUTION } from '@michaelborck/cite-sight-core';
+import { analyzePipeline, analyzeClaimsFile, readClaimSources, planFiles, unitSourceList, claimOverlapFromResults, durationRange, claimSuggestionLabel, MANIFEST, explainVerification, DISCLAIMER, ATTRIBUTION, HELP_TOPICS, ACKNOWLEDGEMENTS, HELP_FOOTER } from '@michaelborck/cite-sight-core';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import type { AnalysisResult, ProcessingOptions, ProgressCallback } from '@michaelborck/cite-sight-core';
 import { readFileSync } from 'node:fs';
@@ -716,6 +716,26 @@ config.command('path').description('Show the settings file location').action(() 
 config.command('reset').description('Remove saved settings').action(() => { resetConfig(); console.log('Settings reset.'); });
 
 // Family contract: cite-sight manifest
+program.command('about [topic]').description('What CiteSight does, statuses, rate limits, evidence sources, privacy — plus acknowledgements')
+  .option('--list', 'List available topic ids')
+  .action(async (topic: string | undefined, opts: { list?: boolean }) => {
+    if (opts.list) { for (const t of HELP_TOPICS) console.log(`${t.id.padEnd(12)} ${t.title}`); return; }
+    const selected = topic ? HELP_TOPICS.filter((t) => t.id === topic) : HELP_TOPICS;
+    if (topic && !selected.length) {
+      console.error(chalk.red(`Unknown topic "${topic}". Available: ${HELP_TOPICS.map((t) => t.id).join(', ')}`));
+      process.exit(EXIT_ERROR);
+    }
+    for (const t of selected) {
+      console.log(chalk.bold.underline(t.title));
+      for (const line of wrapText(t.body, 78)) console.log(`  ${line}`);
+      console.log('');
+    }
+    console.log(chalk.bold.underline('Acknowledgements'));
+    for (const a of ACKNOWLEDGEMENTS) console.log(`  ${a.name} — ${a.what}`);
+    console.log('');
+    for (const line of wrapText(HELP_FOOTER, 78)) console.log(chalk.gray(line));
+  });
+
 program
   .command('manifest')
   .description('Print the capability manifest as JSON (lens analyser family)')

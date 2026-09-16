@@ -1,5 +1,6 @@
 import type { ClaimAnalysis } from '@michaelborck/cite-sight-core';
 import { claimCsv, claimSuggestionLabel } from '@michaelborck/cite-sight-core/browser';
+import { SectionHelp } from './HelpOverlay';
 import { ReviewActions } from './ReviewActions';
 import { useContext } from 'react';
 import { ReviewContext } from './ReviewActions';
@@ -14,7 +15,9 @@ export function ClaimResults({ analysis }: { analysis: ClaimAnalysis }) {
   const reviewContext = useContext(ReviewContext);
   const assessments = analysis.findings.map((_finding, index) => reviewContext?.result.reviews?.[reviewKey(reviewContext.result, `claim:${index}`)]);
   return <section className="panel-card">
-    <h3>Claim evidence review (Experimental)</h3>
+    <h3>Claim evidence review (Experimental)
+      <SectionHelp text="Layer 1: publisher abstracts from the online lookups (labelled 'Publisher abstract'). Layer 2: your mapped files or the unit source library — full-text evidence on this machine. Layer 3: your judgement — every suggestion needs a decision. No Google Scholar scraping, no uploads." />
+    </h3>
     <p><strong>Experimental research preview.</strong> These are model suggestions, not determinations. Compare the passages and record your judgement. Model: {analysis.model}. Checked: {analysis.checkedAt}.</p>
     {analysis.progress && <p role="status">{analysis.progress.state === 'partial' ? 'Partial run' : 'Completed run'}: {analysis.progress.completed}/{analysis.progress.total} claims saved; {analysis.progress.reused} restored without repeating inference.
       {analysis.progress.state === 'partial' ? ' Unfinished claims have not been assessed. Resume from desktop or CLI.' : ''}</p>}
