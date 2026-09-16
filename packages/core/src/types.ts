@@ -297,6 +297,8 @@ export interface ClaimSourceBinding {
 export interface LocalClaimOptions {
   reasoning?: 'off' | 'on';
   chatTemplate?: 'chatml';
+  /** Coordinator's unit source folder; content-matched where no source is mapped. */
+  libraryPath?: string;
   runnerPath: string;
   modelPath: string;
   sources: ClaimSourceBinding[];

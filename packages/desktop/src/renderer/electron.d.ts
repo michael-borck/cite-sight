@@ -17,7 +17,7 @@ declare global {
       removeClaimModel: () => Promise<ClaimInstallationStatus>;
       cancelClaimInstall: () => Promise<void>;
       onClaimInstallProgress: (callback: (progress: Partial<ClaimInstallationStatus>) => void) => () => void;
-      selectClaimFile: (kind: 'source') => Promise<string | null>;
+      selectClaimFile: (kind: 'source' | 'library') => Promise<string | null>;
       checkClaims: (path: string, config: ClaimRequest, options: ProcessingOptions) => Promise<AnalysisResult>;
       cancelClaims: () => Promise<void>;
       onClaimCheckpoint: (callback: (data: { path: string; result: AnalysisResult }) => void) => () => void;

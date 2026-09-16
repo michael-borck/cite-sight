@@ -2,7 +2,8 @@
 
 import { program, type Command } from 'commander';
 import chalk from 'chalk';
-import { analyzePipeline, analyzeClaimsFile, readClaimSources, planFiles, durationRange, claimSuggestionLabel, MANIFEST, explainVerification, DISCLAIMER, ATTRIBUTION } from '@michaelborck/cite-sight-core';
+import { analyzePipeline, analyzeClaimsFile, readClaimSources, planFiles, unitSourceList, claimOverlapFromResults, durationRange, claimSuggestionLabel, MANIFEST, explainVerification, DISCLAIMER, ATTRIBUTION } from '@michaelborck/cite-sight-core';
+import { writeFileSync, mkdirSync } from 'node:fs';
 import type { AnalysisResult, ProcessingOptions, ProgressCallback } from '@michaelborck/cite-sight-core';
 import { readFileSync } from 'node:fs';
 import { SUPPORTED_EXTENSIONS, collectInputs } from './inputs.js';
@@ -327,6 +328,7 @@ function makeProgressCallback(verbose: boolean): ProgressCallback {
 
 interface AnalysisOpts {
   offline?: boolean;
+  library?: string;
   style?: string;
   urls?: boolean;
   doi?: boolean;
@@ -659,6 +661,7 @@ addAnalysisOptions(program.command('claims <document>').description('Check cited
   .requiredOption('--model <path>', 'Local GGUF instruction model, installed beforehand')
   .requiredOption('--runner <path>', 'Path to a trusted llama-cli executable with --offline and --single-turn support')
   .option('--max-claims <count>', 'Maximum cited statements to check, 1-200', '50')
+  .option('--library <dir>', 'Unit source folder: entries without a mapped source are content-matched against these files')
   .option('--model-timeout <seconds>', 'Timeout per local inference, at most 600 seconds', '180')
   .option('--checkpoint <path>', 'Per-claim checkpoint; default: <document>.claims-checkpoint.json. Reuse it to resume')
   .option('--restart-claims', 'Explicitly replace an old checkpoint and run every claim again')
@@ -678,6 +681,7 @@ addAnalysisOptions(program.command('claims <document>').description('Check cited
       result = await analyzeClaimsFile(resolve(document), {
         sources: await readClaimSources(raw.sources), modelPath: raw.model, runnerPath: raw.runner,
         maxClaims: Number(raw.maxClaims), timeoutMs: Number(raw.modelTimeout) * 1000,
+        libraryPath: raw.library ? resolve(raw.library) : undefined,
       }, options, (update) => {
         if (opts.verbose || update.stage === 'checking_claims') process.stderr.write(update.message + (update.eta ? ` Remaining: ${durationRange(update.eta)} (${update.eta.basis}).` : '') + '\n');
       }, controller.signal, { path: checkpointPath, restart: opts.restartClaims });
@@ -717,6 +721,47 @@ program
   .description('Print the capability manifest as JSON (lens analyser family)')
   .action(() => {
     console.log(JSON.stringify(MANIFEST, null, 2));
+  });
+
+program.command('library plan <paths...>').description('Scan submissions and list common vs unique references — the shopping list of sources to collect for the unit')
+  .option('--output <file>', 'Write the shopping list as JSON (e.g. unit-sources.json)')
+  .option('--offline', 'Skip online verification while scanning', true)
+  .action(async (paths: string[], opts: { output?: string; offline?: boolean }) => {
+    const options = toProcessingOptions({ offline: opts.offline !== false } as AnalysisOpts);
+    const outcomes: { file: string; references: Parameters<typeof unitSourceList>[0][number]['references'] }[] = [];
+    for (const file of collectInputs(paths)) {
+      try {
+        const result = await analyzePipeline(file, { ...options, offline: true, checkUrls: false, checkDoi: false, screenshotUrls: false });
+        outcomes.push({ file, references: result.references.references });
+      } catch (err) { console.error(chalk.red(`${file}: ${err instanceof Error ? err.message : String(err)}`)); }
+    }
+    const entries = unitSourceList(outcomes);
+    if (opts.output) {
+      mkdirSync(resolve(opts.output, '..'), { recursive: true });
+      writeFileSync(resolve(opts.output), JSON.stringify({ version: 1, generatedAt: new Date().toISOString(), submissions: outcomes.length, entries }, null, 2));
+      console.log(`Shopping list written to ${resolve(opts.output)}`);
+    }
+    console.log(`${outcomes.length} submissions · ${entries.length} distinct works · ${entries.filter((e) => e.count > 1).length} cited by more than one submission.`);
+    console.log('Common works (collect these first):');
+    for (const entry of entries.filter((e) => e.count > 1)) console.log(`  ${chalk.yellow(String(entry.count) + '×')} ${entry.title}${entry.year ? ` (${entry.year})` : ''}`);
+    const uniques = entries.filter((e) => e.count === 1);
+    console.log(`Unique to one submission: ${uniques.length}${uniques.length ? chalk.gray(' — see the JSON output for the full list') : ''}`);
+  });
+
+program.command('claim-overlap <report>').description('Flag similar claims on shared references across submissions (a signal, not proof)')
+  .option('--threshold <similarity>', '0-1 word-overlap threshold for "similar" (default 0.6)', '0.6')
+  .action(async (report: string, opts: { threshold?: string }) => {
+    const saved = readReport(report);
+    const withClaims = saved.outcomes.filter((o) => o.result?.claims);
+    if (withClaims.length < 2) { console.log('Need at least two submissions with claim results in this report (run `cite-sight claims` with --output first).'); process.exit(EXIT_OK); }
+    const pairs = claimOverlapFromResults(withClaims.filter((o) => o.result).map((o) => ({ file: o.file, result: o.result! })), Number(opts.threshold));
+    if (!pairs.length) { console.log(`No similar claim pairs found across ${withClaims.length} submissions (threshold ${opts.threshold}).`); return; }
+    console.log(`${pairs.length} similar claim pair(s) across shared references — a signal to assess, not proof of collusion:`);
+    for (const pair of pairs) {
+      console.log(`\n  ${chalk.yellow(pair.fileA.split(/[\\/]/).pop())} ↔ ${pair.fileB.split(/[\\/]/).pop()} (similarity ${pair.similarity.toFixed(2)})`);
+      console.log(`  A: ${pair.claimA}`);
+      console.log(`  B: ${pair.claimB}`);
+    }
   });
 
 program.parseAsync(process.argv).catch((err: unknown) => {

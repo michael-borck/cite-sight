@@ -371,6 +371,14 @@ verifies the model's quotations against retrieved source passages. Model
 judgements still require review.
 
 Desktop installers include a pinned llama.cpp runtime. Open the
+**Unit source library (Layer 2).** A coordinator collects the unit's common
+readings once into one folder (`cite-sight library plan submissions/ --output
+unit-sources.json` lists which works are common across submissions — collect
+those first). Claim checking then content-matches unmapped entries against that
+folder automatically — filenames don't matter. Markers can also compare claims
+across submissions: `cite-sight claim-overlap results.json` flags similar
+claims on the same shared reference — a signal to assess, never proof.
+
 **Claim evidence review (Experimental)** panel on a checked document — or
 **Settings → Local claim review** — pick **Faster** (2B, ~1.3 GB) or
 **More accurate** (4B, ~2.7 GB), and select **Download and verify model**.

@@ -26,7 +26,7 @@ beforeAll(() => {
 afterAll(() => rmSync(directory, { recursive: true, force: true }));
 
 it('refuses to execute paths supplied by IPC without native picker authorization', async () => {
-  await expect(invoke('select-claim-file', 'runner')).rejects.toThrow(/managed in Settings/);
+  await expect(invoke('select-claim-file', 'runner')).rejects.toThrow(/Invalid file kind/);
   await expect(invoke('check-claims', '/essay.txt', { sources: [{ reference: 1, path: '/forged/source' }] }, {})).rejects.toThrow(/file pickers/);
   expect(analyzeClaimsFile).not.toHaveBeenCalled();
 });

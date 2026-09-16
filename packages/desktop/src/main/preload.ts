@@ -19,7 +19,7 @@ contextBridge.exposeInMainWorld('citeSight', {
     ipcRenderer.on('cite-sight:claim-install-progress', listener);
     return () => ipcRenderer.removeListener('cite-sight:claim-install-progress', listener);
   },
-  selectClaimFile: (kind: 'source'): Promise<string | null> => ipcRenderer.invoke('cite-sight:select-claim-file', kind),
+  selectClaimFile: (kind: 'source' | 'library'): Promise<string | null> => ipcRenderer.invoke('cite-sight:select-claim-file', kind),
   checkClaims: (path: string, config: ClaimRequest, options: ProcessingOptions): Promise<AnalysisResult> => ipcRenderer.invoke('cite-sight:check-claims', path, config, options),
   cancelClaims: (): Promise<void> => ipcRenderer.invoke('cite-sight:cancel-claims'),
   onClaimCheckpoint: (callback: (data: { path: string; result: AnalysisResult }) => void): (() => void) => {

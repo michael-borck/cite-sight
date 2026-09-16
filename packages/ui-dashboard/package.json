@@ -1,6 +1,6 @@
 {
   "name": "@michaelborck/cite-sight-ui",
-  "version": "0.10.7",
+  "version": "0.10.8",
   "private": true,
   "type": "module",
   "description": "Shared React report dashboard for CiteSight (web + desktop)",

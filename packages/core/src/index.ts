@@ -13,6 +13,8 @@ export { analyzeClaimsFile, readClaimSources } from './claims/checkClaims.js';
 export { readClaimCheckpoint } from './claims/checkpoint.js';
 export { planFiles } from './claims/planning.js';
 export { findDuplicateReferences } from './references/duplicates.js';
+export { unitSourceList, claimOverlap, claimOverlapFromResults, type UnitSourceEntry, type ClaimOverlapPair } from './claims/unitSources.js';
+export { buildLibraryIndex, matchLibraryEntry, scoreLibraryFile, type LibraryEntry } from './claims/library.js';
 export { unitEstimate, remainingEstimate, durationRange } from './claims/timing.js';
 export { claimReportLines, claimCsv, claimSuggestionLabel } from './claims/report.js';
 export { CLAIM_MODELS, CLAIM_RUNTIME_VERSION, CLAIM_PROMPT_VERSION } from './claims/modelCatalog.js';

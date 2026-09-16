@@ -8,6 +8,7 @@ import { withoutExternalRequests } from '../httpClient.js';
 import type { AnalysisResult, ClaimFinding, ClaimSourceBinding, LocalClaimOptions, ProcessingOptions, ProgressCallback } from '../types.js';
 import { claimPrompt, extractClaims, retrievePassages, sourcePassages, validateClaimResponse, type Passage } from './evidence.js';
 import { createLocalRunner, localPath } from './localRunner.js';
+import { buildLibraryIndex, matchLibraryEntry } from './library.js';
 import { unitEstimate } from './timing.js';
 import { readClaimCheckpoint, writeClaimCheckpoint, type ClaimCheckpoint, type ClaimCheckpointOptions } from './checkpoint.js';
 
@@ -64,6 +65,8 @@ export async function analyzeClaimsFile(
     const allClaims = extractClaims(result);
     const findings = allClaims.slice(0, maxClaims);
     const warnings = ['Findings compare cited statements with user-supplied files. Source identity and model judgements require human review.'];
+    const library = options.libraryPath ? await buildLibraryIndex(localPath(options.libraryPath)) : [];
+    if (library.length) warnings.push(`Unit source library: ${library.length} file(s) will be content-matched where no source is mapped.`);
     if (!findings.length) warnings.push('No supported cite-bearing sentences were detected. This does not mean the submission has no unsupported claims.');
     if (allClaims.length > maxClaims) warnings.push(`Only the first ${maxClaims} cited statements were checked.`);
     const signature = createHash('sha256').update(JSON.stringify({
@@ -117,9 +120,30 @@ export async function analyzeClaimsFile(
       try {
         const binding = bindings.find((item) => item.reference - 1 === finding.referenceIndex);
         if (!binding) {
-          // No local source mapped, but the online verification may have
-          // brought back the publisher abstract. Abstract-level evidence is
-          // weaker than full text — labelled as such on the finding.
+          // Layer 2: content-match the entry against the coordinator's unit
+          // source library. Preference order is mapped file, library, abstract.
+          const reference = finding.referenceIndex !== undefined
+            ? result.references.references[finding.referenceIndex]
+            : undefined;
+          const libraryFile = reference && library.length ? matchLibraryEntry(library, reference) : undefined;
+          if (libraryFile) {
+            finding.source = { fileName: `Unit library: ${libraryFile.fileName}`, sha256: libraryFile.sha256 };
+            const retrieval = retrievePassages(finding.claim.replace(finding.citation, ''), libraryFile.passages);
+            if (!retrieval.length) { finding.reason = 'The matched library source does not discuss the claim\'s topic in the retrieved passages.'; settled = true; continue; }
+            const inferenceStart = Date.now();
+            try { Object.assign(finding, validateClaimResponse(await runner.infer(claimPrompt(finding.claim, retrieval), signal), retrieval)); }
+            catch (error) {
+              signal?.throwIfAborted();
+              finding.status = 'unavailable';
+              finding.reason = error instanceof Error ? error.message : 'Local inference failed.';
+            }
+            finally { inferenceMs += Date.now() - inferenceStart; inferenceCount++; }
+            settled = true;
+            continue;
+          }
+          // Layer 1: no local source mapped, but the online verification may
+          // have brought back the publisher abstract. Abstract-level evidence
+          // is weaker than full text — labelled as such on the finding.
           const matched = finding.referenceIndex !== undefined
             ? result.references.verifications[finding.referenceIndex]?.matchedWork
             : undefined;

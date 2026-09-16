@@ -50,7 +50,7 @@ function collectFiles(dir: string): string[] {
 let mainWindow: BrowserWindow;
 let handlersRegistered = false;
 let claimController: AbortController | undefined;
-const selectedClaimFiles = { source: new Set<string>() };
+const selectedClaimFiles = { source: new Set<string>(), library: new Set<string>() };
 let installation: ClaimInstallation | undefined;
 function claimInstallation(): ClaimInstallation {
   return installation ??= new ClaimInstallation(app.getPath('userData'), app.isPackaged
@@ -96,9 +96,16 @@ export function registerIpcHandlers(window: BrowserWindow): void {
     if (typeof value !== 'boolean') throw new Error('Invalid network mode.');
     setLocalOnly(value);
   });
-  ipcMain.handle('cite-sight:select-claim-file', async (_event, kind: keyof typeof selectedClaimFiles) => {
-    if (kind !== 'source') throw new Error('Executables and models are managed in Settings.');
-    const selection = await dialog.showOpenDialog(mainWindow, { title: `Select local ${kind}`, properties: ['openFile'],
+  ipcMain.handle('cite-sight:select-claim-file', async (_event, kind: 'source' | 'library') => {
+    if (kind !== 'source' && kind !== 'library') throw new Error('Invalid file kind.');
+    if (kind === 'library') {
+      const selection = await dialog.showOpenDialog(mainWindow, { title: 'Select the unit source folder', properties: ['openDirectory'] });
+      if (selection.canceled || !selection.filePaths[0]) return null;
+      const path = realpathSync(selection.filePaths[0]);
+      selectedClaimFiles.library.add(path);
+      return path;
+    }
+    const selection = await dialog.showOpenDialog(mainWindow, { title: 'Select local source', properties: ['openFile'],
       filters: [{ name: 'Source document', extensions: ['pdf', 'docx', 'txt', 'md', 'qmd'] }],
     });
     if (selection.canceled || !selection.filePaths[0]) return null;
@@ -110,6 +117,9 @@ export function registerIpcHandlers(window: BrowserWindow): void {
   ipcMain.handle('cite-sight:check-claims', (_event, filePath: string, config: ClaimRequest, options: ProcessingOptions) => desktopTask(true, async () => {
     if (!config || !Array.isArray(config.sources) || config.sources.some((source) => !source || !selectedClaimFiles.source.has(source.path))) {
       throw new Error('Select source files using the desktop file pickers.');
+    }
+    if (config.libraryPath && !selectedClaimFiles.library.has(config.libraryPath)) {
+      throw new Error('The unit source folder must be chosen with the desktop folder picker.');
     }
     claimController = new AbortController();
     try {

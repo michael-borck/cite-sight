@@ -11,7 +11,15 @@ export function ClaimSetup({ path, result, onOpenSettings }: { path: string; res
   const [running, setRunning] = useState(false);
   const [maxClaims, setMaxClaims] = useState(result.claims?.progress?.total || 50);
   const [restart, setRestart] = useState(false);
+  const [library, setLibrary] = useState('');
   const ready = Boolean(claimInstallation?.ready);
+
+  async function pickLibrary() {
+    try {
+      const selected = await window.citeSight.selectClaimFile('library');
+      if (selected) setLibrary(selected);
+    } catch (error) { setError(error instanceof Error ? error.message : 'Could not select the folder.'); }
+  }
 
   async function pick(reference: number) {
     try {
@@ -33,7 +41,7 @@ export function ClaimSetup({ path, result, onOpenSettings }: { path: string; res
       if (files.length) await window.citeSight.saveBatchCheckpoint?.(makeReviewSession(files, { ...options, offline: true }, path));
       const checked = await window.citeSight.checkClaims(path, {
         sources, expectedDocumentHash: result.inputSha256,
-        maxClaims, restart,
+        maxClaims, restart, libraryPath: library || undefined,
       }, { ...options, offline: true });
       updateResult(path, { ...checked, reviews: useStore.getState().batch.find((file) => file.path === path)?.result?.reviews ?? result.reviews });
       setRestart(false);
@@ -64,6 +72,9 @@ export function ClaimSetup({ path, result, onOpenSettings }: { path: string; res
       <legend>Step 2 — map sources, then review</legend>
       <label>Maximum cited statements <input type="number" min={1} max={200} value={maxClaims} onChange={(event) => setMaxClaims(Number(event.target.value))} /></label>
       <label><input type="checkbox" checked={restart} onChange={(event) => setRestart(event.target.checked)} /> Restart all claims instead of resuming. Use after changing the model or source mappings.</label>
+      <label><button type="button" onClick={() => void pickLibrary()}>Use a unit source library folder</button>{' '}
+        <span>{library ? library.split(/[\\/]/).pop() : 'No library folder'}</span></label>
+      <p className="download-fine">Optional: entries without a mapped source are content-matched against the files in this folder (the coordinator's shared readings).</p>
       <ol>{result.references.references.map((reference, index) => <li key={index}>
         <span>{reference.raw}</span>{' '}
         <button type="button" onClick={() => void pick(index + 1)}>Choose source for reference {index + 1}</button>{' '}
