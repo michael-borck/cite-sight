@@ -11,7 +11,7 @@ import { ResultsDashboard, StreamingResults } from '@michaelborck/cite-sight-ui'
 import { UpdateNotification } from './components/UpdateNotification';
 import { downloadPdfReport } from './utils/generatePdfReport';
 import { downloadCsvReport } from './utils/generateCsvReport';
-import { exportBibtex } from '@michaelborck/cite-sight-core/browser';
+import { exportBibtex, unitSourceList, claimOverlapFromResults } from '@michaelborck/cite-sight-core/browser';
 import { DISCLAIMER } from '@michaelborck/cite-sight-core/disclaimer';
 import { useStore } from './store';
 import { runBatch } from './batch';
@@ -64,6 +64,10 @@ export function App() {
     if (!latest.batch.length) return;
     try { await window.citeSight.saveBatchCheckpoint?.(makeReviewSession(withSourceMappings(latest), latest.options, latest.selectedPath)); }
     catch { latest.setError('Could not save the batch checkpoint. Export your results before closing the app.'); }
+  }
+  function downloadJson(data: unknown, name: string): void {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+    const link = document.createElement('a'); link.href = url; link.download = name; link.click(); URL.revokeObjectURL(url);
   }
   function withSourceMappings(latest: ReturnType<typeof useStore.getState>) {
     return latest.batch.map((file) => ({ ...file, claimSources: file.result?.references.references.flatMap((reference, index) => latest.claimSources[reference.raw]
@@ -224,6 +228,20 @@ export function App() {
           {isProcessing && <button className="btn btn-secondary" disabled={cancelRequested} onClick={state.requestCancel}>{cancelRequested ? 'Stopping after this document…' : 'Stop after this document'}</button>}
           <button className="btn btn-secondary" disabled={isProcessing} onClick={state.reset}>New batch</button>
           {results.length > 0 && <>
+            <button type="button" className="btn btn-secondary" title="List common vs unique references across this batch — the coordinator's shopping list"
+              onClick={() => {
+                const entries = unitSourceList(results.map((result) => ({ file: result.fileName, references: result.references.references })));
+                downloadJson({ version: 1, generatedAt: new Date().toISOString(), submissions: results.length, entries }, 'unit-sources.json');
+                setNotice(`Shopping list: ${entries.filter((entry: { count: number }) => entry.count > 1).length} work(s) cited by more than one submission of ${entries.length} total.`);
+              }}>Unit shopping list</button>
+            <button type="button" className="btn btn-secondary" title="Similar claims on shared references across submissions — a signal, not proof"
+              disabled={results.filter((result) => result.claims).length < 2}
+              onClick={() => {
+                const pairs = claimOverlapFromResults(results.filter((result) => result.claims).map((result) => ({ file: result.fileName, result })));
+                if (!pairs.length) { setNotice('No similar claim pairs found on shared references.'); return; }
+                downloadJson({ version: 1, generatedAt: new Date().toISOString(), pairs }, 'claim-overlap.json');
+                setNotice(`Claim overlap: ${pairs.length} similar pair(s) on shared references — a signal to assess, not proof.`);
+              }}>Claim overlap</button>
             <button className="btn btn-secondary" onClick={() => void downloadPdfReport(results, new Set(persistedDismissals))}>Export PDF</button>
             <button className="btn btn-secondary" onClick={() => downloadCsvReport(results, new Set(persistedDismissals))}>Export CSV</button>
             <button className="btn btn-secondary" onClick={() => {

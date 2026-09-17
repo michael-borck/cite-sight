@@ -16,6 +16,7 @@ export { analyzeDocument } from './pipeline.js';
 export { unitEstimate, remainingEstimate, durationRange } from './claims/timing.js';
 export { claimReportLines, claimCsv, claimSuggestionLabel } from './claims/report.js';
 export { CLAIM_MODELS, CLAIM_RUNTIME_VERSION } from './claims/modelCatalog.js';
+export { unitSourceList, claimOverlapFromResults, type UnitSourceEntry, type ClaimOverlapPair } from './claims/unitSources.js';
 export { MANIFEST } from './manifest.js';
 export {
   DISCLAIMER,

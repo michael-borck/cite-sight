@@ -1,11 +1,12 @@
-import { readFile, mkdir, readdir, cp, rm, writeFile, chmod, lstat } from 'node:fs/promises';
+import { mkdir, readdir, cp, rm, writeFile, chmod, lstat } from 'node:fs/promises';
 import { basename, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { downloadArtifact, hashFile } from '../../core/dist/claims/artifacts.js';
+import { RUNTIME_LOCK } from '../../core/dist/claims/cliSetup.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const lock = JSON.parse(await readFile(join(root, 'runtime-lock.json'), 'utf8'));
+const lock = RUNTIME_LOCK;
 const platform = process.argv[2] ?? process.platform;
 const arch = process.argv[3] ?? process.arch;
 const artifact = lock.artifacts[`${platform}-${arch}`];

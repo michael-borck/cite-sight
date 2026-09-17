@@ -63,6 +63,17 @@ console.log(JSON.stringify({status:'supported', reason:'The source states the fi
   });
 });
 
+it('exports BibTeX and plans a unit shopping list without network', () => {
+  const bib = spawnSync(process.execPath, [cli, 'check', 'paper.txt', '--offline', '--bibtex', 'refs.bib'], { cwd: directory, encoding: 'utf8', timeout: 10_000 });
+  expect(bib.status, bib.stderr).toBe(0);
+  expect(readFileSync(join(directory, 'refs.bib'), 'utf8')).toContain('exported by CiteSight');
+  const plan = spawnSync(process.execPath, [cli, 'library', 'plan', 'paper.txt', '--output', 'unit-sources.json', '--json'], { cwd: directory, encoding: 'utf8', timeout: 10_000 });
+  expect(plan.status, plan.stderr).toBe(0);
+  const list = JSON.parse(readFileSync(join(directory, 'unit-sources.json'), 'utf8'));
+  expect(list.submissions).toBe(1);
+  expect(Array.isArray(list.entries)).toBe(true);
+});
+
 it('exposes a real offline reference-check command independently of claim inference', () => {
   const output = spawnSync(process.execPath, [cli, 'check', 'paper.txt', '--offline', '--json'], { cwd: directory, encoding: 'utf8', timeout: 10_000 });
   expect(output.status, output.stderr).toBe(0);

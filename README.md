@@ -520,6 +520,24 @@ Pushing a `v*` tag triggers:
 - **npm publish** — `@michaelborck/cite-sight-core` + `cite-sight` CLI
 - **Docker images** — pushed to Docker Hub and GitHub Container Registry (amd64 + arm64)
 
+## Automating & integrating
+
+- **Node library** — `npm install @michaelborck/cite-sight-core` gives typed
+  functions (`analyzeDocument`, `verifyReferences`, `analyzeClaimsFile`,
+  `planFiles`, `unitSourceList`, `claimOverlapFromResults`, …) — the same
+  engine the CLI and desktop use. See the exported types in `packages/core`.
+- **Python** — `pip install cite-sight-py`: a thin wrapper that shells out to
+  the CLI and returns parsed JSON (`check`, `claims`, `library_plan`,
+  `claim_overlap`). Requires the CLI; source in `packages/python`.
+- **HTTP** — run the server (`docker run -p 3000:3000 michaelborck/cite-sight`)
+  and POST documents to `/api/analyze`.
+- **Claim runtime on CLI** — `cite-sight setup-claims runtime` and
+  `setup-claims model <id>` download the pinned, checksum-verified runtime and
+  an approved model into the CiteSight config folder. `claims` uses them
+  automatically. CiteSight never probes system llama-cli or Ollama installs —
+  the managed install is used everywhere so behaviour is identical; experts
+  can still override with `--runner`.
+
 ## Technology Stack
 
 - **Core**: TypeScript, pdfjs-dist, mammoth

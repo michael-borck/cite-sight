@@ -2,7 +2,8 @@
 
 import { program, type Command } from 'commander';
 import chalk from 'chalk';
-import { analyzePipeline, analyzeClaimsFile, readClaimSources, planFiles, unitSourceList, claimOverlapFromResults, durationRange, claimSuggestionLabel, MANIFEST, explainVerification, DISCLAIMER, ATTRIBUTION, HELP_TOPICS, ACKNOWLEDGEMENTS, HELP_FOOTER } from '@michaelborck/cite-sight-core';
+import { analyzePipeline, analyzeClaimsFile, readClaimSources, planFiles, unitSourceList, claimOverlapFromResults, durationRange, claimSuggestionLabel, MANIFEST, explainVerification, DISCLAIMER, ATTRIBUTION, HELP_TOPICS, ACKNOWLEDGEMENTS, HELP_FOOTER,
+  exportBibtex, installCliRuntime, installCliModel, resolveManagedClaimSetup, CLAIM_MODELS } from '@michaelborck/cite-sight-core';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import type { AnalysisResult, ProcessingOptions, ProgressCallback } from '@michaelborck/cite-sight-core';
 import { readFileSync } from 'node:fs';
@@ -10,7 +11,7 @@ import { SUPPORTED_EXTENSIONS, collectInputs } from './inputs.js';
 import { configPath, readConfig, resetConfig, updateConfig } from './config.js';
 import { isOutputDirectory, readReport, renderReport, writeReports, type FileOutcome, type ReportFormat } from './reports.js';
 import { retryOutcomes } from './retry.js';
-import { resolve, sep } from 'node:path';
+import { resolve, sep, dirname, basename, join } from 'node:path';
 import {
   type FailOnLevel,
   type Findings,
@@ -329,6 +330,8 @@ function makeProgressCallback(verbose: boolean): ProgressCallback {
 interface AnalysisOpts {
   offline?: boolean;
   library?: string;
+  bibtex?: string;
+  screenshots?: boolean;
   style?: string;
   urls?: boolean;
   doi?: boolean;
@@ -377,6 +380,41 @@ function toProcessingOptions(opts: AnalysisOpts, defaults: Partial<ProcessingOpt
     semanticScholarApiKey: opts.s2Key ?? process.env.SEMANTIC_SCHOLAR_API_KEY,
     openAlexApiKey: opts.openalexKey ?? process.env.OPENALEX_API_KEY,
   };
+}
+
+/** Optional Playwright screenshots for live URLs (CLI `--screenshots`).
+ *  Playwright is deliberately not a dependency — loaded dynamically and
+ *  skipped with guidance when absent. */
+async function captureScreenshots(file: string, result: AnalysisResult, outputRoot: string): Promise<number> {
+  let chromium: NonNullable<Awaited<ReturnType<typeof import('playwright')>>['chromium']> | undefined;
+  try {
+    ({ chromium } = await import('playwright'));
+  } catch {
+    console.error(chalk.gray('  --screenshots: Playwright is not installed. Install with: npm install -g playwright && npx playwright install chromium'));
+    return 0;
+  }
+  if (!chromium) return 0;
+  const dir = resolve(outputRoot, 'screenshots');
+  const { mkdirSync } = await import('node:fs');
+  mkdirSync(dir, { recursive: true });
+  const browser = await chromium.launch();
+  let saved = 0;
+  try {
+    const page = await browser.newPage();
+    for (const [index, v] of result.references.verifications.entries()) {
+      if (v.urlCheck?.status !== 'live' || !v.urlCheck.url) continue;
+      try {
+        await page.goto(v.urlCheck.url, { timeout: 20_000 });
+        const path = join(dir, `${basename(file).replace(/\.[^.]+$/, '')}-${index + 1}.png`);
+        await page.screenshot({ path, fullPage: false });
+        v.urlCheck.screenshotPath = path;
+        saved++;
+      } catch { /* skip this URL */ }
+    }
+  } finally {
+    await browser.close();
+  }
+  return saved;
 }
 
 /** Analyse one file. Never throws — failures come back on `error`. */
@@ -483,6 +521,11 @@ async function runAnalysis(paths: string[], opts: AnalysisOpts): Promise<void> {
     const outcome = await analyzeOne(file, options, onProgress);
     outcomes.push(outcome);
 
+    if (opts.screenshots && outcome.result) {
+      const saved = await captureScreenshots(outcome.file, outcome.result, output ?? process.cwd());
+      if (saved > 0) console.error(chalk.gray(`  Saved ${saved} URL screenshot(s) to ${resolve(output ?? process.cwd(), 'screenshots')}`));
+    }
+
     if (human) {
       if (outcome.error) {
         console.error(chalk.red(`\nError: ${outcome.error}`));
@@ -506,6 +549,14 @@ function finishAnalysis(outcomes: FileOutcome[], opts: AnalysisOpts, options: Pr
   const format = outputFormat(opts);
 
   // --- JSON output ---
+  if (opts.bibtex) {
+    const verifications = outcomes.flatMap((o) => o.result?.references.verifications ?? []);
+    const bib = exportBibtex(verifications);
+    mkdirSync(resolve(opts.bibtex, '..'), { recursive: true });
+    writeFileSync(resolve(opts.bibtex), bib, 'utf8');
+    process.stderr.write(`BibTeX exported to ${resolve(opts.bibtex)}\n`);
+  }
+
   if (opts.output) {
     const written = writeReports(outcomes, opts.output, format, options);
     process.stderr.write(`Saved ${written.length} report file${written.length === 1 ? '' : 's'} to ${resolve(opts.output)}\n`);
@@ -607,6 +658,8 @@ function addAnalysisOptions(cmd: Command): Command {
       return value;
     })
     .option('--output <path>', 'Save to a report file or directory; directories include a retryable JSON report')
+    .option('--bibtex <file>', 'Also export verified references as a BibTeX (.bib) file')
+    .option('--screenshots', 'Capture page screenshots for live URLs. Requires the optional Playwright package: npm install -g playwright && npx playwright install chromium', false)
     .option('--verbose', 'Log progress line by line', false)
     .option('--minimal', 'Condensed report: summary and verdicts only, no per-issue detail', false);
 }
@@ -658,8 +711,8 @@ addAnalysisOptions(program.command('retry <report>').description('Retry failed f
 
 addAnalysisOptions(program.command('claims <document>').description('Check cited statements against mapped local source files using a local GGUF model'))
   .requiredOption('--sources <manifest>', 'JSON source mappings with version 1 and sources [{reference: 1, path: "source.pdf"}]')
-  .requiredOption('--model <path>', 'Local GGUF instruction model, installed beforehand')
-  .requiredOption('--runner <path>', 'Path to a trusted llama-cli executable with --offline and --single-turn support')
+  .option('--model <path>', 'Local GGUF model; defaults to the managed install from `cite-sight model install`')
+  .option('--runner <path>', 'Expert override: path to your own llama-cli (must support --offline/--single-turn/--json-schema/--device none)')
   .option('--max-claims <count>', 'Maximum cited statements to check, 1-200', '50')
   .option('--library <dir>', 'Unit source folder: entries without a mapped source are content-matched against these files')
   .option('--model-timeout <seconds>', 'Timeout per local inference, at most 600 seconds', '180')
@@ -676,10 +729,23 @@ addAnalysisOptions(program.command('claims <document>').description('Check cited
     process.once('SIGINT', cancel);
     process.once('SIGTERM', cancel);
     process.stderr.write(`Per-claim resume checkpoint: ${checkpointPath}\n`);
+    let runnerPath = raw.runner;
+    let modelPath = raw.model;
+    if (!runnerPath || !modelPath) {
+      const managed = await resolveManagedClaimSetup(configPath());
+      if (!managed) {
+        console.error(chalk.red('No managed claim runtime/model installed, and no --runner/--model given.'));
+        console.error('Install them once with:  cite-sight runtime install && cite-sight model install qwen3.5-4b-q4km');
+        process.exit(EXIT_ERROR);
+      }
+      runnerPath ??= managed.runnerPath;
+      modelPath ??= managed.modelPath;
+      process.stderr.write(`Using managed runtime ${managed.runnerPath} and model ${managed.modelId}\n`);
+    }
     let result: AnalysisResult;
     try {
       result = await analyzeClaimsFile(resolve(document), {
-        sources: await readClaimSources(raw.sources), modelPath: raw.model, runnerPath: raw.runner,
+        sources: await readClaimSources(raw.sources), modelPath, runnerPath,
         maxClaims: Number(raw.maxClaims), timeoutMs: Number(raw.modelTimeout) * 1000,
         libraryPath: raw.library ? resolve(raw.library) : undefined,
       }, options, (update) => {
@@ -716,6 +782,35 @@ config.command('path').description('Show the settings file location').action(() 
 config.command('reset').description('Remove saved settings').action(() => { resetConfig(); console.log('Settings reset.'); });
 
 // Family contract: cite-sight manifest
+const claimSetup = program.command('setup-claims').description('One-time setup of the local claim-review engine (managed runtime + model; offline, CPU-only)');
+
+claimSetup.command('runtime').description('Download the pinned llama.cpp runtime, checksum-verified, into the CiteSight config folder')
+  .action(async () => {
+    const installed = await installCliRuntime(resolve(dirname(configPath())), (message) => process.stderr.write(message + '\n'));
+    console.log(`Runtime ${installed.version} installed at ${installed.runtimePath}`);
+  });
+
+claimSetup.command('model <catalogId>').description('Download an approved experimental GGUF model (e.g. qwen3.5-4b-q4km)')
+  .option('--list', 'List catalog models with their synthetic smoke results')
+  .action(async (catalogId: string | undefined, opts: { list?: boolean }) => {
+    if (opts.list) {
+      for (const model of CLAIM_MODELS) {
+        console.log(`${model.id.padEnd(22)} ${model.name} · ${(model.bytes / 1e9).toFixed(2)} GB · experimental`);
+        if (model.smokeResult) console.log(`  smoke: ${model.smokeResult.correct}/${model.smokeResult.total} label agreement (synthetic, not validation)`);
+      }
+      return;
+    }
+    const model = CLAIM_MODELS.find((entry) => entry.id === catalogId);
+    if (!model) {
+      console.error(chalk.red(`Unknown model "${catalogId}". Available: ${CLAIM_MODELS.map((m) => m.id).join(', ')}`));
+      process.exit(EXIT_ERROR);
+    }
+    console.log(`${model.name} — ${model.license}. Download ${(model.bytes / 1e9).toFixed(2)} GB; verified against a pinned SHA-256.`);
+    console.log('Experimental: synthetic smoke results do not justify grading use — pilot with human review.');
+    const installed = await installCliModel(resolve(dirname(configPath())), model, (message) => process.stderr.write(message + '\n'));
+    console.log(`Installed at ${installed.modelPath}`);
+  });
+
 program.command('about [topic]').description('What CiteSight does, statuses, rate limits, evidence sources, privacy — plus acknowledgements')
   .option('--list', 'List available topic ids')
   .action(async (topic: string | undefined, opts: { list?: boolean }) => {
@@ -743,7 +838,9 @@ program
     console.log(JSON.stringify(MANIFEST, null, 2));
   });
 
-program.command('library plan <paths...>').description('Scan submissions and list common vs unique references — the shopping list of sources to collect for the unit')
+const library = program.command('library').description('Unit source tools — collect the unit\'s readings once, reuse them everywhere');
+
+library.command('plan <paths...>').description('Scan submissions and list common vs unique references — the shopping list of sources to collect for the unit')
   .option('--output <file>', 'Write the shopping list as JSON (e.g. unit-sources.json)')
   .option('--offline', 'Skip online verification while scanning', true)
   .action(async (paths: string[], opts: { output?: string; offline?: boolean }) => {
@@ -756,10 +853,11 @@ program.command('library plan <paths...>').description('Scan submissions and lis
       } catch (err) { console.error(chalk.red(`${file}: ${err instanceof Error ? err.message : String(err)}`)); }
     }
     const entries = unitSourceList(outcomes);
-    if (opts.output) {
-      mkdirSync(resolve(opts.output, '..'), { recursive: true });
-      writeFileSync(resolve(opts.output), JSON.stringify({ version: 1, generatedAt: new Date().toISOString(), submissions: outcomes.length, entries }, null, 2));
-      console.log(`Shopping list written to ${resolve(opts.output)}`);
+    const outputFile = opts.output ?? program.opts().output as string | undefined;
+    if (outputFile) {
+      mkdirSync(resolve(outputFile, '..'), { recursive: true });
+      writeFileSync(resolve(outputFile), JSON.stringify({ version: 1, generatedAt: new Date().toISOString(), submissions: outcomes.length, entries }, null, 2));
+      console.log(`Shopping list written to ${resolve(outputFile)}`);
     }
     console.log(`${outcomes.length} submissions · ${entries.length} distinct works · ${entries.filter((e) => e.count > 1).length} cited by more than one submission.`);
     console.log('Common works (collect these first):');
