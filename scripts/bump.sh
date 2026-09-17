@@ -86,6 +86,10 @@ npm pkg set "dependencies.@michaelborck/cite-sight-core=^$VERSION"
 # the TS source (core/src/manifest.ts) served at /manifest and via the CLI, and
 # the language-neutral manifest.json the family table generator reads.
 
+echo "Updating Python wrapper version (packages/python/pyproject.toml)..."
+node -e "const fs=require('fs');const f='$ROOT_DIR/packages/python/pyproject.toml';fs.writeFileSync(f,fs.readFileSync(f,'utf8').replace(/^version = .*/,'version = \"$VERSION\"'))" 
+rm -f "$ROOT_DIR/packages/python/pyproject.toml.bak"
+
 echo "Updating manifest version (core/src/manifest.ts, manifest.json)..."
 sed -i.bak -E "s/(version: ')[0-9]+\.[0-9]+\.[0-9]+(')/\1$VERSION\2/" "$ROOT_DIR/packages/core/src/manifest.ts"
 sed -i.bak -E "s/(\"version\": \")[0-9]+\.[0-9]+\.[0-9]+(\")/\1$VERSION\2/" "$ROOT_DIR/manifest.json"

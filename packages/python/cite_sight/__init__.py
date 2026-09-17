@@ -15,11 +15,18 @@ from pathlib import Path
 from typing import Any, Iterable
 
 __version__ = "0.12.0"
-__all__ = ["CiteSightError", "check", "claims", "library_plan", "claim_overlap", "about"]
+__all__ = ["CiteSightError", "is_cli_available", "check", "claims", "library_plan", "claim_overlap", "about"]
 
 
 class CiteSightError(RuntimeError):
     """The cite-sight CLI is missing, or exited non-zero."""
+
+
+def is_cli_available() -> bool:
+    """True when the cite-sight CLI can be found. Call this before showing
+    claim-checking UI in your own tool; all wrapper functions raise
+    CiteSightError with install instructions when it is missing."""
+    return bool(os.environ.get("CITESIGHT_CLI") or shutil.which("cite-sight"))
 
 
 def _cli() -> str:
