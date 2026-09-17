@@ -42,10 +42,10 @@ Four ways to use CiteSight:
 |---------|-------------|---------|-----------------|-----|
 | File input | Single file or pasted references | Files or folders | Multiple files | Files, folders or globs |
 | File types | PDF, DOCX, TXT, MD, QMD, JSON | PDF, DOCX, TXT, MD, QMD | PDF, DOCX, TXT, MD, QMD | PDF, DOCX, TXT, MD, QMD, JSON |
-| URL screenshots | — | Yes | — | — |
+| URL screenshots | — | Yes | Opt-in (`--screenshots` + Playwright) | — |
 | URL liveness checks | Yes | Yes | Manual (open in tab) | Yes |
 | arXiv lookups | Yes | Yes | — (browser-blocked) | Yes |
-| Report exports | PDF, CSV | PDF, CSV, BibTeX | PDF, CSV, BibTeX | HTML, JSON, text |
+| Report exports | PDF, CSV | PDF, CSV, BibTeX | PDF, CSV, BibTeX | HTML, JSON, text, BibTeX (`--bibtex`) |
 | Output format | Browser dashboard | Desktop dashboard | Browser dashboard | Text or JSON (stdout) |
 
 The standalone build is a single self-contained `.html` file — the whole analysis
@@ -290,6 +290,13 @@ cite-sight check paper.pdf --minimal
 # CiteSight also auto-skips that check for lists of at least three references
 # when no in-text citations are detected. Orphaned citations are still reported.
 cite-sight check sources.md --source-list
+
+# Export verified references as BibTeX (for Zotero/Mendeley/LaTeX):
+cite-sight check papers/ --bibtex references.bib
+
+# Capture screenshots of live cited pages — opt-in, needs Playwright:
+npm install -g playwright && npx playwright install chromium
+cite-sight check papers/ --screenshots --output reports/
 ```
 
 **Build troubleshooting**
