@@ -533,7 +533,7 @@ Pushing a `v*` tag triggers:
   functions (`analyzeDocument`, `verifyReferences`, `analyzeClaimsFile`,
   `planFiles`, `unitSourceList`, `claimOverlapFromResults`, …) — the same
   engine the CLI and desktop use. See the exported types in `packages/core`.
-- **Python** — `pip install cite-sight-py`: a thin wrapper that shells out to
+- **Python** — `pip install citesight`: a thin wrapper that shells out to
   the CLI and returns parsed JSON (`check`, `claims`, `library_plan`,
   `claim_overlap`). Requires the CLI; source in `packages/python`.
 - **HTTP** — run the server (`docker run -p 3000:3000 michaelborck/cite-sight`)

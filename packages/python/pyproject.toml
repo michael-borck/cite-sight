@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "cite-sight-py"
+name = "citesight"
 version = "0.12.0"
 description = "Python wrapper for the CiteSight CLI (citation verification and local claim evidence review)"
 readme = "README.md"

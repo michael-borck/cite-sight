@@ -1,4 +1,4 @@
-# cite-sight-py
+# citesight
 
 Python wrapper for the [CiteSight](https://github.com/michael-borck/cite-sight) CLI —
 citation verification and (experimental) local claim-evidence review for student work.
@@ -6,7 +6,7 @@ citation verification and (experimental) local claim-evidence review for student
 ## Install
 
 1. Node.js 20+, then: `npm install -g cite-sight`
-2. This package: `pip install cite-sight-py` (or from this folder: `pip install .`)
+2. This package: `pip install citesight` (or from this folder: `pip install .`)
 
 ## Use
 
