@@ -527,6 +527,30 @@ Pushing a `v*` tag triggers:
 - **npm publish** — `@michaelborck/cite-sight-core` + `cite-sight` CLI
 - **Docker images** — pushed to Docker Hub and GitHub Container Registry (amd64 + arm64)
 
+## Capability Matrix
+
+| Feature | Desktop | CLI | Python | Web / Standalone |
+|---|---|---|---|---|
+| **Reference verification** | ✅ | ✅ | ✅ | ✅ |
+| **Publisher abstracts** (OpenAlex/S2/Europe PMC/Crossref) | ✅ | ✅ | ✅ | — |
+| **Near-match suggestions** (hand-typed typos) | ✅ | ✅ | ✅ | — |
+| **Duplicate reference detection** | ✅ | ✅ | ✅ | — |
+| **Publication notices** (retractions/corrections) | ✅ | ✅ | ✅ | — |
+| **Claim evidence review** (local AI model) | ✅ | ✅ | ✅ | — |
+| **Publisher abstract layer** for claims | ✅ | ✅ | ✅ | — |
+| **Unit source library** (auto-match) | ✅ | ✅ | ✅ | — |
+| **Cross-submission claim overlap** | ✅ | ✅ | ✅ | — |
+| **Per-claim resume** (after shutdown) | ✅ | ✅ | — | — |
+| **Batch planning** (runtime estimates) | ✅ | ✅ | ✅ | — |
+| **URL screenshots** | ✅ built-in | opt-in Playwright | — | — |
+| **BibTeX export** | ✅ | ✅ `--bibtex` | — | ✅ |
+| **PDF export** | ✅ | — | — | — |
+| **Review sessions** (save/resume) | ✅ | reports | reports | ✅ |
+| **Local-only mode** | ✅ | ✅ `--offline` | ✅ `offline=True` | ✅ |
+| **Managed runtime + model install** | ✅ auto | ✅ `setup-claims` | via CLI | — |
+| **Auto-update** | ✅ | — | — | — |
+| **Native help menu** | ✅ | ✅ `about` | — | About page |
+
 ## Automating & integrating
 
 - **Node library** — `npm install @michaelborck/cite-sight-core` gives typed
@@ -535,7 +559,9 @@ Pushing a `v*` tag triggers:
   engine the CLI and desktop use. See the exported types in `packages/core`.
 - **Python** — `pip install citesight`: a thin wrapper that shells out to
   the CLI and returns parsed JSON (`check`, `claims`, `library_plan`,
-  `claim_overlap`). Requires the CLI; source in `packages/python`.
+  `claim_overlap`). Common options are typed parameters; `extra_args` covers
+  the rest, and `run()` gives full CLI access. Requires the CLI; source in
+  `packages/python`.
 - **HTTP** — run the server (`docker run -p 3000:3000 michaelborck/cite-sight`)
   and POST documents to `/api/analyze`.
 - **Claim runtime on CLI** — `cite-sight setup-claims runtime` and

@@ -43,6 +43,23 @@ def _cli() -> str:
     return found
 
 
+def run(args: Iterable[str], *, timeout: float | None = None, as_json: bool = True) -> dict[str, Any] | str:
+    """Run any cite-sight command and return the parsed JSON (or raw text).
+
+    Escape hatch for options the typed functions don't cover — gives full
+    access to every CLI capability. Example:
+        run(["check", "essay.pdf", "--screenshots", "--verbose"], as_json=False)
+    """
+    result = subprocess.run([_cli(), *args], capture_output=True, text=True, timeout=timeout)
+    if as_json:
+        import json as _json
+        try:
+            return _json.loads(result.stdout)
+        except json.JSONDecodeError:
+            pass
+    return result.stdout
+
+
 def _run(args: list[str], *, timeout: float | None) -> dict[str, Any]:
     result = subprocess.run(
         [_cli(), *args],
@@ -58,8 +75,14 @@ def _run(args: list[str], *, timeout: float | None) -> dict[str, Any]:
         raise CiteSightError(f"cite-sight returned non-JSON output: {exc}") from exc
 
 
+def _as_path_list(paths: str | Path | Iterable[str | Path]) -> list[str]:
+    if isinstance(paths, (str, Path)):
+        return [str(paths)]
+    return [str(p) for p in paths]
+
+
 def check(
-    paths: Iterable[str | Path],
+    paths: str | Path | Iterable[str | Path],
     *,
     style: str | None = None,
     email: str | None = None,
@@ -75,7 +98,7 @@ def check(
     `status`, `flags`, `matchedWork`, `publicationCheck`, plus
     `crossReference` (orphan/near-match suggestions) and `detectedStyle`.
     """
-    args = ["check", *[str(p) for p in paths], "--json"]
+    args = ["check", *_as_path_list(paths), "--json"]
     if style:
         args += ["--style", style]
     if email:
@@ -88,6 +111,10 @@ def check(
         args += ["--fail-on", fail_on]
     if bibtex:
         args += ["--bibtex", bibtex]
+    if screenshots:
+        args.append("--screenshots")
+    if extra_args:
+        args += [str(a) for a in extra_args]
     return _run(args, timeout=timeout)
 
 
@@ -132,7 +159,7 @@ def library_plan(
 ) -> dict[str, Any]:
     """Common vs unique references across submissions — the coordinator's
     shopping list of sources to collect once per unit."""
-    args = ["library", "plan", *[str(p) for p in paths]]
+    args = ["library", "plan", *_as_path_list(paths)]
     if output:
         args += ["--output", str(output)]
     return _run(args, timeout=timeout)
