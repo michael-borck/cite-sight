@@ -11,7 +11,7 @@ import {
   type ProgressUpdate,
   type ReferenceVerification,
 } from '@michaelborck/cite-sight-core/browser';
-import { ResultsDashboard, StreamingResults } from '@michaelborck/cite-sight-ui';
+import { ResultsDashboard, StreamingResults, describeRejection } from '@michaelborck/cite-sight-ui';
 import {
   ATTRIBUTION,
   DISCLAIMER,
@@ -31,6 +31,7 @@ const ACCEPTED_FILE_TYPES = {
 };
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB — mirrors the desktop limit
+const REJECTION_LIMITS = { maxBytes: MAX_FILE_SIZE, extensions: 'PDF, DOCX, TXT, MD or QMD' };
 
 // URL liveness checks are OFF in this build and not offered: a web page's
 // cross-origin probes are blocked by CORS for nearly every publisher, so the
@@ -314,7 +315,7 @@ export function App() {
                             <div key={file.name} className="error-item">
                               <strong>{file.name}</strong>
                               {errors.map((e) => (
-                                <span key={e.code}> - {e.message}</span>
+                                <span key={e.code}> - {describeRejection(e.code, e.message, REJECTION_LIMITS)}</span>
                               ))}
                             </div>
                           ))}

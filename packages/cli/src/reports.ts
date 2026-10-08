@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, extname, join, resolve } from 'node:path';
-import type { AnalysisResult, ProcessingOptions } from '@michaelborck/cite-sight-core';
-import { ATTRIBUTION, DISCLAIMER, explainVerification, REVIEW_LABELS, reviewKey, reviewCount, claimReportLines } from '@michaelborck/cite-sight-core';
+import type { AnalysisResult, ProcessingOptions, VerificationStatus } from '@michaelborck/cite-sight-core';
+import { ATTRIBUTION, DISCLAIMER, STATUS_HINTS, STATUS_LABELS, explainVerification, REVIEW_LABELS, reviewKey, reviewCount, claimReportLines } from '@michaelborck/cite-sight-core';
 import { isAnalysisResult } from '@michaelborck/cite-sight-core/session';
 import { reviewEntries } from '@michaelborck/cite-sight-core/review';
 
@@ -53,17 +53,44 @@ ${reviewEntries(result).length ? `<h3>Review decisions</h3><ul>${reviewEntries(r
   }).join('')}<footer><p>${escape(DISCLAIMER)}</p><p>${escape(ATTRIBUTION)}</p></footer></body></html>`;
 }
 
+/**
+ * Plain-text report. Three things this format has to get right on its own,
+ * because a .txt file has no layout to lean on:
+ *
+ *  - a status legend, since `[not_found]` on its own does not say whether a
+ *    database answered and found nothing or our lookup failed;
+ *  - near-matches, which the terminal and HTML reports both carry — dropping
+ *    them here silently deleted a whole class of finding (the likely typo);
+ *  - no stacked blank lines. Each block used to end in '\n' and then be joined
+ *    with '\n', producing four to six consecutive newlines per reference.
+ */
 function textReport(outcomes: FileOutcome[]): string {
-  return outcomes.map((outcome) => {
-    if (!outcome.result) return `${outcome.file}\nCould not check: ${outcome.error}\n`;
-    const refs = outcome.result.references;
-    return `${outcome.file}\n${refs.verifiedCount} verified or likely valid; ${reviewCount(outcome.result)} need review; ${refs.unverifiedCount} unavailable\n` +
-      (outcome.result.claims ? claimReportLines(outcome.result.claims).join('\n') + '\n' : '') +
-      refs.verifications.map((v) => `[${v.status}] ${v.reference.raw}\n${explainVerification(v).map((issue) => `  ${issue.label}: ${issue.detail ?? ''}`).join('\n')}\n${v.formatIssues.map((issue) => `  ${issue.field}: ${issue.message}`).join('\n')}`).join('\n') + '\n' +
-      refs.crossReference.unmatchedInText.map((cite) => `No reference list match: ${cite.raw}`).join('\n') + '\n' +
-      refs.crossReference.unmatchedBibliography.map((ref) => `Not cited in the text: ${ref.raw}`).join('\n') + '\n' +
-      reviewEntries(outcome.result).map((review) => `Review decision: ${review.label}: ${review.source}`).join('\n') + '\n';
-  }).join('\n') + `\n${DISCLAIMER}\n${ATTRIBUTION}\n`;
+  const blocks = outcomes.map((outcome) => {
+    if (!outcome.result) return `${outcome.file}\nCould not check: ${outcome.error}`;
+    const result = outcome.result;
+    const refs = result.references;
+    const lines: string[] = [
+      outcome.file,
+      `${refs.verifiedCount} verified or likely valid; ${reviewCount(result)} need review; ${refs.unverifiedCount} unavailable`,
+    ];
+    if (result.claims) lines.push(...claimReportLines(result.claims));
+    for (const v of refs.verifications) {
+      lines.push(`[${STATUS_LABELS[v.status]}] ${v.reference.raw}`);
+      for (const issue of explainVerification(v)) lines.push(`  ${issue.label}: ${issue.detail ?? ''}`.trimEnd());
+      for (const issue of v.formatIssues) lines.push(`  ${issue.field}: ${issue.message}`);
+    }
+    for (const cite of refs.crossReference.unmatchedInText) lines.push(`No reference list match: ${cite.raw}`);
+    for (const ref of refs.crossReference.unmatchedBibliography) lines.push(`Not cited in the text: ${ref.raw}`);
+    for (const { cite, reference } of refs.crossReference.nearMatches ?? []) {
+      lines.push(`Possible spelling mismatch: ${cite.raw} <-> ${reference.raw}`);
+    }
+    for (const review of reviewEntries(result)) lines.push(`Review decision: ${review.label}: ${review.source}`);
+    return lines.join('\n');
+  });
+  const legend = (Object.keys(STATUS_HINTS) as VerificationStatus[])
+    .map((status) => `  ${STATUS_LABELS[status]} = ${STATUS_HINTS[status]}`)
+    .join('\n');
+  return `${blocks.join('\n\n')}\n\nStatus legend:\n${legend}\n\n${DISCLAIMER}\n${ATTRIBUTION}\n`;
 }
 
 export function renderReport(outcomes: FileOutcome[], format: ReportFormat, options?: ProcessingOptions): string {

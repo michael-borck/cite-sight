@@ -44,7 +44,7 @@ export { searchEuropePmc } from './references/europePmc.js';
 export { resolveDoi } from './references/doiResolver.js';
 export { checkUrl } from './references/urlChecker.js';
 export { verifyReferences } from './references/verifier.js';
-export { explainVerification, hasReviewFlags } from './references/explain.js';
+export { explainVerification, hasReviewFlags, STATUS_LABELS, STATUS_HINTS } from './references/explain.js';
 export type { FlagExplanation } from './references/explain.js';
 export { clearLookupCache } from './references/lookupCache.js';
 export { setMinRequestInterval } from './references/rateLimiter.js';

@@ -115,7 +115,11 @@
 .chip-not_found { background: var(--notfound-bg);   color: var(--notfound); }
 .chip-suspect   { background: var(--suspicious-bg); color: var(--suspicious); }
 .chip-orphan    { background: var(--accent-bg);     color: var(--accent); }
-.chip-unverified { background: var(--muted-bg, #f0f0f2); color: var(--muted, #6b7280); }
+/* Amber + dashed, matching the reference table. Unverified used to be grey here
+   and in the streaming view while the table showed amber with a dashed border,
+   which threw away the deliberate "this is retryable, not a confirmed miss"
+   signal on two of the three surfaces. */
+.chip-unverified { background: var(--amber-bg); color: var(--amber-dark); box-shadow: inset 0 0 0 1px var(--amber); }
 
 .priority-empty {
   color: var(--ink-muted);

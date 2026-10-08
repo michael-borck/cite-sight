@@ -81,11 +81,68 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
   from `index.css` for every text token, checks all three copies ship the
   corrected palette, and asserts the opacity-as-state rules stay gone.
 
-## Batch 3 — next up (not started)
+## Batch 3 — report correctness and consistency
+
+- [x] **The plain-text CLI report was silently dropping `nearMatches`** — the
+  "likely a typo, not a fake" suggestion appeared in the terminal and HTML
+  reports but never in a saved `.txt`. That is a whole class of finding missing
+  from the artefact a marker is most likely to keep.
+- [x] **Status legend in the text report.** It printed raw `[not_found]` /
+  `[unverified]` tokens with no explanation, which is exactly the distinction a
+  grader must not get wrong: "not found" means every database answered and found
+  nothing, "unverified" means our lookup failed.
+- [x] **No more stacked blank lines** in the text report (each block ended in
+  `\n` and was then joined with `\n`, giving 4–6 consecutive newlines per
+  reference).
+- [x] **One status vocabulary, in core.** `STATUS_LABELS` / `STATUS_HINTS` now
+  live in `core/src/references/explain.ts`. The dashboard and the live progress
+  view had their own copies and the CLI had a third; the six verdicts were
+  described four different ways across the app.
+- [x] **The disclaimer prints once per run, not once per file** (~14 lines × N
+  files buried the findings). Moved to stderr so `--json` output stays
+  machine-readable — the first attempt broke six tests by writing it to stdout.
+- [x] **`HelpOverlay` is a real dialog**: `aria-modal` was declared with no
+  focus trap, no initial focus, no Escape and no focus restore, so AT was told
+  to hide content that stayed keyboard-reachable. All four now work, plus
+  click-outside to close.
+- [x] **Section-help popovers** expose `aria-expanded`/`aria-controls`, close on
+  Escape or an outside click, and trap Tab inside (they previously closed only
+  via a close button you had to tab to find).
+- [x] **Streaming progress is announced.** `aria-live` on the counter and
+  `role="progressbar"` with `aria-valuetext` on the bar. This is the only
+  async-progress surface in the app and a screen-reader user previously heard one
+  message and then nothing for the whole run.
+- [x] **No nested `<main>` landmark.** `ResultsDashboard` rendered a second
+  `<main>` inside the host page's — invalid, and it broke landmark navigation on
+  all four surfaces. Now a labelled `<section>`.
+- [x] **Dropzone is announced.** react-dropzone's root is focusable and
+  Enter/Space operable but shipped `role="presentation"` with no accessible name,
+  so it was announced as nothing.
+- [x] **File-rejection messages say something a person can act on.** Desktop and
+  standalone printed react-dropzone's strings verbatim ("File is larger than
+  52428800 bytes"); the wording now lives in one shared helper and reads like
+  the web app's.
+- [x] **The "Orphaned" stat says what it counts.** It summed unmatched in-text
+  citations *and* uncited bibliography entries while the Cross-refs panel
+  presented those as two different things. Now "Unmatched (N cited, M uncited)".
+- [x] **`unverified` looks the same everywhere.** It was amber + dashed in the
+  reference table but grey on two other surfaces, discarding the deliberate
+  "retryable, not a confirmed miss" signal.
+
+## Batch 4 — next up (not started)
 
 - [ ] **#9 Land or delete `VerdictHero`.** The headline-verdict treatment
   (all-clear / caution / issues + proportion bar) is unreachable; reports open
-  on a count sentence instead.
+  on a count sentence instead. It is the last remaining dead component.
+- [ ] **`Format Only` is the least explained verdict.** It is unfilterable,
+  uncounted, absent from the legend and absent from the help topics — yet it is
+  the *only* verdict a local-only run produces.
+- [ ] **Consolidate the triplicated report generators** (`generatePdfReport.ts`
+  ×3, `generateCsvReport.ts` ×3 — the desktop CSV is two feature-generations
+  behind the others). Natural home is now that `ui-dashboard` exports shared
+  copy helpers.
+- [ ] **Desktop batch completion signal.** A finished run is indistinguishable
+  from a stalled one: no banner, no "N of M done".
 
 ## Backlog — trust & disclosure (product call)
 
@@ -104,41 +161,49 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] Status-badge text contrast: amber "Needs review" **2.58:1**, `--ink-faint`
   **2.58:1**, `--accent` links **3.32:1** — all failed WCAG AA and are now fixed
   (see Batch 2).
-- [ ] Live regions: streaming progress is still silent on every surface; the
-  focused row still unmounts when a review is recorded, with no focus restore.
-- [ ] `HelpOverlay` + desktop Settings claim `aria-modal="true"` with no focus
-  trap, no Escape, no focus restore.
-- [ ] `<main>` nested inside `<main>` in `ResultsDashboard` (two landmarks,
-  nested).
-- [ ] Dropzone is focusable and Enter/Space operable but has no accessible name
-  (it now has a focus style; still needs `role="button"` + label).
-- [ ] Section-help popovers: no `aria-expanded`/`aria-controls`, no focus move,
-  no dismiss on Escape/outside click, and every trigger is announced as
-  "What does this mean?".
+- [x] Streaming progress now announces via `aria-live` + `role="progressbar"`.
+- [ ] The focused row still unmounts when a review is recorded, with no focus
+  restore (the toast announces the action; focus itself is not restored).
+- [ ] Desktop Settings overlay still claims `aria-modal="true"` with no focus
+  trap, no Escape, no focus restore — the same defect just fixed in `HelpOverlay`.
+- [x] No nested `<main>` landmark; `ResultsDashboard` is now a labelled
+  `<section>`.
+- [x] Dropzone now has `role="button"` and an accessible name.
+- [x] Section-help popovers have `aria-expanded`/`aria-controls` and close on
+  Escape/outside click.
+- [ ] Every section-help trigger still has the identical accessible name
+  ("What does this mean?"), so with several on screen they are indistinguishable.
 
 ## Backlog — clarity & consistency
 
 - [ ] `Format Only` status is unfilterable, uncounted, and unexplained — yet it
   is the *only* status in a local-only run.
-- [ ] "Orphaned" summary stat silently includes uncited bibliography entries.
-- [ ] `unverified` is amber in the table but grey on two other surfaces.
-- [ ] Four vocabularies for the same six statuses across CLI terminal, CLI text
-  report, CLI HTML report, and PDF. Raw enums leak into UI copy.
-- [ ] Desktop/standalone print raw react-dropzone messages ("larger than
-  52428800 bytes"); web writes a human sentence.
+- [x] "Orphaned" summary stat silently included uncited bibliography entries; it
+  now reads "Unmatched (N cited, M uncited)".
+- [x] `unverified` was amber in the table but grey on two other surfaces.
+- [x] One status vocabulary: `STATUS_LABELS` / `STATUS_HINTS` in core, consumed
+  by the dashboard, the live progress view and the CLI text report. Still to do:
+  the CLI terminal keeps its lowercase glyph form and the PDF export keeps
+  "Unverified (lookup failed)".
+- [x] Desktop/standalone no longer print raw react-dropzone messages.
 
 ## Backlog — scale & performance
 
-- [ ] No search box, pagination, or virtualisation for the reference table.
+- [ ] No search box, pagination, or virtualisation for the reference table. This
+  is the biggest functional gap: a 200-reference bibliography has no way to
+  filter by title, author or DOI.
 - [ ] Every review action re-renders the whole table (`ReferenceRow` not
   memoised; `dismissed` is a fresh `Set` per effect run; `live()` filters 6×).
 - [ ] Zero media queries in `ResultsDashboard.css` / `Overview.css`; 220px
-  sidebar never collapses.
+  sidebar never collapses and the 7-column table is saved only by
+  `overflow-x: auto`.
 
 ## Backlog — CLI report quality
 
-- [ ] Text report drops `nearMatches` entirely (typo suggestions present in
-  terminal + HTML reports but missing from saved `.txt`); no status legend in
-  the file.
-- [ ] ~14-line disclaimer re-printed per file (~280 lines on a 20-file batch).
+- [x] Text report no longer drops `nearMatches`, and now carries a status legend.
+- [x] Disclaimer printed once per run (on stderr) rather than once per file.
+- [ ] Batch roll-up prints *after* every per-file report, so a 20-file run buries
+  the summary under 20 reports.
+- [ ] `--fail-on` help text still says "Exit 2 when findings are present" while
+  the flag has four levels.
 - [ ] Batch roll-up prints *after* every per-file report.

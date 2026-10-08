@@ -176,7 +176,9 @@
 .sr-status--likely_valid  { color: var(--likely); background: var(--likely-bg); }
 .sr-status--suspicious    { color: var(--amber-dark); background: var(--amber-bg); }
 .sr-status--not_found     { color: var(--rose-dark); background: var(--rose-bg); }
-.sr-status--unverified    { color: var(--neutral); background: var(--neutral-bg); }
+/* Amber, to agree with the reference table and the Overview chips: unverified
+   is a lookup that failed, not a neutral state. */
+.sr-status--unverified    { color: var(--amber-dark); background: var(--amber-bg); }
 .sr-status--format_only   { color: var(--neutral); background: var(--neutral-bg); }
 
 .sr-status--checking {

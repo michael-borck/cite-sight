@@ -50,7 +50,7 @@ export { verifyReferences } from './references/verifier.js';
 export { exportLookupCache, hydrateLookupCache } from './references/lookupCache.js';
 export { exportBibtex } from './references/bibtexExport.js';
 export type { PersistedLookupCache } from './references/lookupCache.js';
-export { explainVerification, hasReviewFlags } from './references/explain.js';
+export { explainVerification, hasReviewFlags, STATUS_LABELS, STATUS_HINTS } from './references/explain.js';
 export type { FlagExplanation } from './references/explain.js';
 export { clearLookupCache } from './references/lookupCache.js';
 export { setMinRequestInterval } from './references/rateLimiter.js';

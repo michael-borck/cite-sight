@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
+import { describeRejection } from '@michaelborck/cite-sight-ui';
 import { useStore } from '../store';
 import './FileUpload.css';
 
@@ -11,6 +12,7 @@ const ACCEPTED_FILE_TYPES = {
 };
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB for desktop
+const REJECTION_LIMITS = { maxBytes: MAX_FILE_SIZE, extensions: 'PDF, DOCX, TXT, MD or QMD' };
 
 export function FileUpload() {
   const { filePaths, addFiles, removeFile, clearFiles } = useStore();
@@ -93,7 +95,7 @@ export function FileUpload() {
             <div key={file.name} className="error-item">
               <strong>{file.name}</strong>
               {errors.map((e) => (
-                <span key={e.code}> - {e.message}</span>
+                <span key={e.code}> - {describeRejection(e.code, e.message, REJECTION_LIMITS)}</span>
               ))}
             </div>
           ))}

@@ -1,4 +1,8 @@
-import type { ReferenceVerification, VerificationStatus } from '@michaelborck/cite-sight-core';
+import type { ReferenceVerification } from '@michaelborck/cite-sight-core';
+// The /browser subpath, not the package root: the root entry imports node:*
+// (undici, node:dns) for the Node fetch shim, which cannot be bundled into a
+// renderer or single-file build.
+import { STATUS_LABELS } from '@michaelborck/cite-sight-core/browser';
 import { PACING_NOTE } from '@michaelborck/cite-sight-core/disclaimer';
 import './StreamingResults.css';
 
@@ -11,16 +15,9 @@ export interface StreamingResultsProps {
   fileName: string;
 }
 
-// Mirrors the dashboard's status labels so the live view and the final report
-// use identical vocabulary.
-const STATUS_LABEL: Record<VerificationStatus, string> = {
-  verified: 'Verified',
-  likely_valid: 'Likely Valid',
-  not_found: 'Not Found',
-  unverified: 'Unverified',
-  suspicious: 'Needs review',
-  format_only: 'Format Only',
-};
+// Status wording comes from core so the live view, the finished report, the CLI
+// and the exported PDFs all describe the six verdicts identically.
+const STATUS_LABEL = STATUS_LABELS;
 
 function titleOf(v: ReferenceVerification): string {
   return v.reference.title || v.reference.raw.slice(0, 80) || '(untitled)';
@@ -56,12 +53,21 @@ export function StreamingResults({ verifications, total, stage, elapsedMs, fileN
         </span>
       </div>
 
+      {/* aria-live + progressbar semantics: this is the only async-progress
+          surface in the app, and a screen-reader user previously heard one
+          message and then nothing for the whole run. The counter is announced
+          politely so it does not interrupt every single update. */}
       <div className="sr-progress">
-        <div className="sr-progress-info">
+        <div className="sr-progress-info" aria-live="polite" aria-atomic="true">
           <span>{known > 0 ? `${checked} / ${known} checked` : 'Preparing…'}</span>
           <span className="sr-progress-pct">{known > 0 ? `${pct}%` : ''}</span>
         </div>
-        <div className="sr-bar-track">
+        <div className="sr-bar-track" role="progressbar"
+          aria-label="Reference verification progress"
+          aria-valuemin={0}
+          aria-valuemax={known || 0}
+          aria-valuenow={known ? checked : 0}
+          aria-valuetext={known ? `${checked} of ${known} references checked` : 'Preparing'}>
           <div className="sr-bar-fill" style={{ width: `${pct}%` }} />
         </div>
         <div className="sr-progress-meta">

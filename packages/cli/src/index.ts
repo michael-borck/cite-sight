@@ -281,14 +281,11 @@ function printReport(result: AnalysisResult, minimal: boolean): void {
     }
   }
 
-  // Accuracy disclaimer — always shown, even under --minimal, so a report is
-  // never mistaken for a guarantee.
-  printSectionHeader('Please note');
-  for (const line of wrapText(DISCLAIMER + ' ' + ATTRIBUTION, 78)) {
-    console.log(chalk.gray(`  ${line}`));
-  }
-
-  console.log('');
+  // The accuracy disclaimer is printed once per run by printAggregate(), not
+  // per file: it was ~14 lines repeated for every document, which is roughly
+  // 280 lines of boilerplate on a 20-file batch and pushed the actual findings
+  // off the screen. It still always appears, including under --minimal, so a
+  // report is never mistaken for a guarantee.
 }
 
 /** Greedy word-wrap to a column width, for the terminal disclaimer footer. */
@@ -444,6 +441,24 @@ function parseFailOn(value: string): FailOnLevel {
 }
 
 /** Print the roll-up shown after a multi-file run. */
+function printRunFooter(): void {
+  // Accuracy disclaimer — always shown, including under --minimal, so a report is
+  // never mistaken for a guarantee. Printed once per run rather than once per
+  // file: it was ~14 lines repeated for each document (~280 lines on a 20-file
+  // batch), which buried the findings.
+  //
+  // stderr, not stdout: --json writes the result to stdout and every test parses
+  // it, so a report-mode footer on stdout would corrupt the machine-readable
+  // output. It also has to sit outside printAggregate's `level !== 'none'`
+  // branch, since "none" is the default.
+  console.error('');
+  console.error(chalk.bold.underline('Please note'));
+  for (const line of wrapText(DISCLAIMER + ' ' + ATTRIBUTION, 78)) {
+    console.error(chalk.gray(`  ${line}`));
+  }
+  console.error('');
+}
+
 function printAggregate(outcomes: FileOutcome[], level: FailOnLevel): void {
   const analysed = outcomes.filter((o) => o.result);
   const errored = outcomes.filter((o) => o.error);
@@ -606,6 +621,11 @@ function finishAnalysis(outcomes: FileOutcome[], opts: AnalysisOpts, options: Pr
   } else if (batch) {
     printAggregate(outcomes, level);
   }
+
+  // Accuracy disclaimer, once per run (it used to be printed inside every
+  // per-file report). The default --fail-on is "none", so printAggregate's exit
+  // line is skipped on a normal run — this must not depend on that.
+  printRunFooter();
 
   // --- Exit code ---
   process.exit(exitCodeFor(outcomes, level));

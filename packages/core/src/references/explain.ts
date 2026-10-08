@@ -1,4 +1,40 @@
-import type { ReferenceVerification } from '../types.js';
+import type { ReferenceVerification, VerificationStatus } from '../types.js';
+
+// ============================================================
+// Status vocabulary
+//
+// Six verdicts, and they were being described in four different vocabularies
+// across the CLI, the dashboard, the live progress view and the PDF export
+// ("Not Found" / "not found" / "[not_found]" / "Unverified (lookup failed)").
+// These two maps are the single source of truth so a grader reads the same
+// words wherever they look.
+// ============================================================
+
+/** Canonical user-facing label per status. */
+export const STATUS_LABELS: Record<VerificationStatus, string> = {
+  verified: 'Verified',
+  likely_valid: 'Likely Valid',
+  suspicious: 'Needs review',
+  not_found: 'Not Found',
+  unverified: 'Unverified',
+  format_only: 'Format Only',
+};
+
+/**
+ * A plain-language gloss per status, for surfaces with no room for an inline
+ * legend (a plain-text report, a CSV column). The not_found / unverified
+ * distinction is the one that carries the most weight: "not found" means every
+ * database answered and nothing matched, while "unverified" means our lookup
+ * failed. Conflating them turns a rate limit into an accusation.
+ */
+export const STATUS_HINTS: Record<VerificationStatus, string> = {
+  verified: 'a record matched and the cited details agree',
+  likely_valid: 'a record matched, with only minor differences',
+  suspicious: 'a record matched but the cited details disagree — often a hand-typed typo',
+  not_found: 'every lookup answered cleanly and no record matched',
+  unverified: 'a lookup failed (rate limit or timeout) — not a confirmed miss, re-run to retry',
+  format_only: 'formatting was checked; the source was not looked up',
+};
 
 // ============================================================
 // Human-readable explanations for verification flags

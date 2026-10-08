@@ -7,3 +7,5 @@ export { StreamingResults } from './StreamingResults';
 export type { StreamingResultsProps } from './StreamingResults';
 export { AnalysisSetup } from './AnalysisSetup';
 export { HelpOverlay, SectionHelp } from './HelpOverlay';
+export { describeRejection } from './FileRejection';
+export type { RejectionLimits } from './FileRejection';

@@ -19,6 +19,59 @@ it('announces a recorded review and offers an immediate undo', async () => {
   await waitFor(() => expect(screen.getByRole('heading', { name: '1 item needs review' })).toBeDefined());
   expect(Object.values(changed.mock.lastCall![0].reviews)).toEqual([]);
 });
+it('uses one status vocabulary shared with the CLI and core', async () => {
+  const user = userEvent.setup();
+  render(<ResultsDashboard results={sampleResult('suspicious')} />);
+  // Canonical wording lives in core so the CLI text report, the live view and
+  // the dashboard cannot drift into separate vocabularies again.
+  expect(screen.getAllByText('Needs review').length).toBeGreaterThan(0);
+  expect(screen.queryByText(/Needs Review/)).toBeNull();
+  expect(screen.queryByText('[suspicious]')).toBeNull();
+  await user.click(screen.getByRole('button', { name: /References/ }));
+  expect(screen.getAllByText('Needs review').length).toBeGreaterThan(0);
+});
+it('describes unmatched citations and bibliography entries separately', async () => {
+  const user = userEvent.setup();
+  const result = sampleResult('verified');
+  result.references.crossReference.unmatchedInText = [{ raw: '(Jones, 2021)', position: 0, context: '' }];
+  result.references.crossReference.unmatchedBibliography = [{ raw: 'Brown, K. (2019). Uncited.', position: 0 }];
+  render(<ResultsDashboard results={result} />);
+  // This total sums both directions, so it must not be labelled "Orphaned",
+  // which elsewhere in the UI means an unmatched in-text citation only.
+  expect(screen.getByText(/Unmatched \(1 cited, 1 uncited\)/)).toBeDefined();
+  await user.click(screen.getByRole('button', { name: /Cross-refs/ }));
+  expect(screen.getByText('Orphaned In-Text Citations')).toBeDefined();
+});
+it('behaves like a dialog: focus moves in, Escape closes, focus returns', async () => {
+  const user = userEvent.setup();
+  render(<ResultsDashboard results={sampleResult()} />);
+  const trigger = screen.getByRole('button', { name: /Help/ });
+  await user.click(trigger);
+  const dialog = screen.getByRole('dialog', { name: 'Help and about' });
+  expect(dialog).toBeDefined();
+  // aria-modal used to be declared with no focus trap, no Escape and no restore,
+  // so assistive tech was told to hide content that stayed keyboard-reachable.
+  expect(dialog.contains(document.activeElement)).toBe(true);
+  await user.keyboard('{Escape}');
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(document.activeElement).toBe(trigger);
+});
+it('gives each section-help trigger a state and closes on Escape', async () => {
+  const user = userEvent.setup();
+  render(<ResultsDashboard results={sampleResult()} />);
+  await user.click(screen.getByRole('button', { name: /References/ }));
+  const trigger = screen.getAllByRole('button', { name: 'What does this mean?' })[0];
+  expect(trigger.getAttribute('aria-expanded')).toBe('false');
+  await user.click(trigger);
+  expect(trigger.getAttribute('aria-expanded')).toBe('true');
+  await user.keyboard('{Escape}');
+  await waitFor(() => expect(trigger.getAttribute('aria-expanded')).toBe('false'));
+});
+it('does not nest a second main landmark', async () => {
+  render(<ResultsDashboard results={sampleResult()} />);
+  expect(document.querySelectorAll('main')).toHaveLength(0);
+  expect(screen.getByRole('region', { name: 'Citation report' })).toBeDefined();
+});
 it('exposes sortable column headers to keyboard and assistive tech', async () => {
   const user = userEvent.setup();
   render(<ResultsDashboard results={sampleResult()} />);

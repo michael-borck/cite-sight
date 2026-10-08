@@ -227,7 +227,12 @@ export function ToolPage() {
         </button>)}
       </div>
       {mode === 'upload' ? <div id="input-upload" role="tabpanel" aria-labelledby="tab-upload">
-        <div {...getRootProps()} className={`dropzone ${isDragActive ? 'dropzone-active' : ''}`}><input {...getInputProps()} />
+        {/* react-dropzone's root is focusable and Enter/Space operable, but it ships
+            role="presentation" with no accessible name, so it is announced as
+            nothing. role="button" plus a label is what the behaviour implies. */}
+        <div {...getRootProps({ role: 'button' })} className={`dropzone ${isDragActive ? 'dropzone-active' : ''}`}
+          aria-label={file ? `Document selected: ${file.name}. Activate to choose a different file.` : 'Choose a document to check, or drop one here'}>
+          <input {...getInputProps()} />
           <p>{file ? `${file.name} · ${(file.size / 1024 / 1024).toFixed(1)} MB` : 'Drop a document here or click to browse'}</p>
           <p className="dropzone-hint">PDF, DOCX, TXT, MD, QMD or JSON · Maximum 10 MB</p>
         </div>

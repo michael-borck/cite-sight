@@ -8,7 +8,7 @@ import type {
   ReviewDecision,
 } from '@michaelborck/cite-sight-core';
 import { ATTRIBUTION, DISCLAIMER } from '@michaelborck/cite-sight-core/disclaimer';
-import { explainVerification, hasReviewFlags } from '@michaelborck/cite-sight-core/browser';
+import { explainVerification, hasReviewFlags, STATUS_LABELS } from '@michaelborck/cite-sight-core/browser';
 import { referenceContentKey } from '@michaelborck/cite-sight-core/dashboard';
 import { REVIEW_LABELS, reviewKey, withVerifications } from '@michaelborck/cite-sight-core/review';
 import { ReviewActions, ReviewContext } from './ReviewActions';
@@ -68,14 +68,7 @@ const noScreenshot = (): Promise<string | null> => Promise.resolve(null);
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
 function statusLabel(s: VerificationStatus): string {
-  switch (s) {
-    case 'verified': return 'Verified';
-    case 'likely_valid': return 'Likely Valid';
-    case 'suspicious': return 'Needs review';
-    case 'not_found': return 'Not Found';
-    case 'unverified': return 'Unverified';
-    case 'format_only': return 'Format Only';
-  }
+  return STATUS_LABELS[s];
 }
 
 function statusClass(s: VerificationStatus): string {
@@ -653,7 +646,10 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
         </button>
       </aside>
 
-      <main className="results-content">
+      {/* A <section>, not a <main>: hosts already provide the page's single
+          <main>, and nesting two main landmarks is invalid and breaks
+          landmark navigation for screen-reader users. */}
+      <section className="results-content" aria-label="Citation report">
         {effectiveResults.offline && <p>Local-only run. Source existence was not checked with external services.</p>}
         <section className="review-summary" aria-label="Review summary">
           <h2>{reviewTotal > 0 ? `${reviewTotal} ${reviewTotal === 1 ? 'item needs' : 'items need'} review` : effectiveResults.claims?.progress?.state === 'partial' ? 'Claim review incomplete' : 'No outstanding review items'}</h2>
@@ -704,7 +700,11 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
           )}
           <div className="summary-stat muted">
             <span className="value">{crossRefCount}</span>
-            <span className="label">Orphaned</span>
+            {/* This total is citations *and* bibliography entries that appear in
+                only one of the two lists, so "Orphaned" — which elsewhere in
+                this UI means an unmatched in-text citation — undercounts what
+                is actually being summed. Say what it is. */}
+            <span className="label">Unmatched ({adjusted.orphanInText} cited, {adjusted.uncited} uncited)</span>
           </div>
         </div>
 
@@ -742,7 +742,7 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
 
         <p className="results-disclaimer">{DISCLAIMER}</p>
         <p className="results-attribution">{ATTRIBUTION}</p>
-      </main>
+      </section>
       {undo && <UndoToast
         message={`${undo.label} review recorded.`}
         onUndo={() => recordReview(undo.itemKey)}
