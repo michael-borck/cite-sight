@@ -38,6 +38,10 @@ logs/
 # Coverage
 coverage/
 
+# Python
+__pycache__/
+*.pyc
+
 # ESLint
 .eslintcache
 

@@ -90,6 +90,10 @@ echo "Updating Python wrapper version (packages/python/pyproject.toml)..."
 node -e "const fs=require('fs');const f='$ROOT_DIR/packages/python/pyproject.toml';fs.writeFileSync(f,fs.readFileSync(f,'utf8').replace(/^version = .*/,'version = \"$VERSION\"'))" 
 rm -f "$ROOT_DIR/packages/python/pyproject.toml.bak"
 
+echo "Updating Python __version__ (packages/python/cite_sight/__init__.py)..."
+sed -i.bak -E "s/^__version__ = \".*\"/__version__ = \"$VERSION\"/" "$ROOT_DIR/packages/python/cite_sight/__init__.py"
+rm -f "$ROOT_DIR/packages/python/cite_sight/__init__.py.bak"
+
 echo "Updating manifest version (core/src/manifest.ts, manifest.json)..."
 sed -i.bak -E "s/(version: ')[0-9]+\.[0-9]+\.[0-9]+(')/\1$VERSION\2/" "$ROOT_DIR/packages/core/src/manifest.ts"
 sed -i.bak -E "s/(\"version\": \")[0-9]+\.[0-9]+\.[0-9]+(\")/\1$VERSION\2/" "$ROOT_DIR/manifest.json"
@@ -101,7 +105,7 @@ cd "$ROOT_DIR"
 
 echo ""
 echo "=== Changes ==="
-git diff -- '*.json' packages/core/src/manifest.ts
+git diff -- '*.json' packages/core/src/manifest.ts packages/python/pyproject.toml packages/python/cite_sight/__init__.py
 echo ""
 
 read -rp "Commit and tag v$VERSION? [y/N] " confirm
@@ -110,7 +114,7 @@ if [[ "$confirm" != [yY] ]]; then
   exit 0
 fi
 
-git add -A '*.json' packages/core/src/manifest.ts
+git add -A '*.json' packages/core/src/manifest.ts packages/python/pyproject.toml packages/python/cite_sight/__init__.py
 git commit -m "chore: bump all package versions to $VERSION"
 git tag -a "v$VERSION" -m "v$VERSION"
 

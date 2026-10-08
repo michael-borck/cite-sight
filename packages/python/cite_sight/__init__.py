@@ -14,8 +14,8 @@ import subprocess
 from pathlib import Path
 from typing import Any, Iterable
 
-__version__ = "0.12.0"
-__all__ = ["CiteSightError", "is_cli_available", "check", "claims", "library_plan", "claim_overlap", "about"]
+__version__ = "0.12.1"
+__all__ = ["CiteSightError", "is_cli_available", "run", "check", "claims", "library_plan", "claim_overlap", "about"]
 
 
 class CiteSightError(RuntimeError):
@@ -52,9 +52,8 @@ def run(args: Iterable[str], *, timeout: float | None = None, as_json: bool = Tr
     """
     result = subprocess.run([_cli(), *args], capture_output=True, text=True, timeout=timeout)
     if as_json:
-        import json as _json
         try:
-            return _json.loads(result.stdout)
+            return json.loads(result.stdout)
         except json.JSONDecodeError:
             pass
     return result.stdout
@@ -90,6 +89,8 @@ def check(
     source_list: bool = False,
     fail_on: str | None = None,
     bibtex: str | None = None,
+    screenshots: bool = False,
+    extra_args: Iterable[str] | None = None,
     timeout: float | None = None,
 ) -> dict[str, Any]:
     """Verify references in one or more documents. Returns the analysis JSON.
@@ -97,6 +98,10 @@ def check(
     The JSON shape matches the CLI: `references.verifications[]` with
     `status`, `flags`, `matchedWork`, `publicationCheck`, plus
     `crossReference` (orphan/near-match suggestions) and `detectedStyle`.
+
+    `screenshots` requires Playwright (`npm install -g playwright &&
+    npx playwright install chromium`). `extra_args` passes raw flags
+    through to the CLI.
     """
     args = ["check", *_as_path_list(paths), "--json"]
     if style:
