@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ToolPage } from '../src/pages/ToolPage';
+import { App } from '../src/App';
 import { uploadDocument, retryReference } from '../src/utils/analysisApi';
 import { RECOVERY_KEY } from '../src/utils/recovery';
 import { sampleResult } from '../../core/test/fixtures/analysis-result';
@@ -22,6 +23,7 @@ class FakeStream {
 const options = { citationStyle: 'auto', checkUrls: true, checkDoi: true, checkInText: true, screenshotUrls: false };
 beforeEach(() => {
   sessionStorage.clear(); FakeStream.instances = [];
+  window.history.replaceState(null, '', '/');
   vi.stubGlobal('EventSource', FakeStream);
   vi.mocked(uploadDocument).mockReset().mockResolvedValue({ status: 'queued', jobId: 'job-123' });
   vi.mocked(retryReference).mockReset().mockResolvedValue(sampleResult('verified').references.verifications[0]);
@@ -46,10 +48,25 @@ it('checks pasted references and persists a retried result for refresh recovery'
   expect(screen.queryByRole('button', { name: 'Retry 1 unavailable check' })).toBeNull();
 });
 
-it('reconnects to a queued job after a refresh', async () => {
+// Without routing, reloading dropped the visitor on the landing page, so the
+// restore effect never ran and refresh recovery could not actually be reached.
+it('restores a completed report when the tab is reloaded on /tool', async () => {
+  const expiresAt = new Date(Date.now() + 3600_000).toISOString();
+  sessionStorage.setItem(RECOVERY_KEY, JSON.stringify({
+    version: 1, fileName: 'assignment.pdf', options,
+    result: sampleResult('verified'), expiresAt,
+  }));
+  window.history.replaceState(null, '', '/tool');
+  render(<App />);
+  expect(await screen.findByRole('heading', { name: 'assignment.pdf' })).toBeDefined();
+  expect(screen.getByRole('button', { name: 'Download PDF' })).toBeDefined();
+});
+
+it('restores a queued check when the tab is reloaded on /tool', async () => {
   sessionStorage.setItem(RECOVERY_KEY, JSON.stringify({ version: 1, jobId: 'saved-job', fileName: 'assignment.pdf', options }));
-  render(<ToolPage />);
-  await waitFor(() => expect(FakeStream.instances[0]?.url).toBe('/api/stream/saved-job'));
+  window.history.replaceState(null, '', '/tool');
+  render(<App />);
+  expect(FakeStream.instances[0]?.url).toBe('/api/stream/saved-job');
   await act(async () => FakeStream.instances[0].emit({ type: 'complete', result: sampleResult('verified'), expiresAt: new Date(Date.now() + 3600_000).toISOString() }));
   expect(await screen.findByRole('heading', { name: 'assignment.pdf' })).toBeDefined();
 });

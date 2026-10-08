@@ -1,5 +1,37 @@
 .app { min-height: 100vh; display: flex; flex-direction: column; background: var(--paper); }
 
+/* Available to assistive tech and keyboard users, not painted on screen. */
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Off-screen until focused, then pinned to the top-left so it is the first
+   thing a keyboard user reaches. */
+.skip-link {
+  position: absolute;
+  left: var(--sp-4);
+  top: -100px;
+  z-index: 100;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--white);
+  color: var(--accent-dim);
+  font-weight: 600;
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-md);
+  transition: top 0.15s;
+}
+.skip-link:focus { top: var(--sp-3); }
+
+/* The brand is the page's real <h1>; the button inside it is the control, so
+   reset the button chrome so the wordmark still looks like the wordmark. */
+.brand-button {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
 .app-header {
   position: relative;
   background: var(--white);

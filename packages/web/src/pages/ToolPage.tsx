@@ -78,15 +78,16 @@ export function ToolPage() {
     const timer = setInterval(() => setElapsed(Date.now() - start), 250);
     return () => clearInterval(timer);
   }, [isProcessing]);
-  // Leaving the tab mid-check abandons the queued job; leaving with an
-  // un-downloaded report loses it when refresh recovery expires. Neither
-  // survives a close, so warn rather than let the result vanish silently.
+  // Leaving with an un-downloaded report loses it when refresh recovery expires,
+  // so warn rather than let the result vanish silently. App.tsx owns the
+  // listener because it also fires when the visitor navigates away from the
+  // tool page to another view in the SPA.
   useEffect(() => {
-    if (!isProcessing && state !== 'done') return;
+    if (state !== 'done') return;
     const warn = (event: BeforeUnloadEvent) => event.preventDefault();
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
-  }, [isProcessing, state]);
+  }, [state]);
 
   const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
     accept: ACCEPTED_FILES, maxSize: MAX_UPLOAD_BYTES, multiple: false, disabled: isProcessing,

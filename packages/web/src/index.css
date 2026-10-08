@@ -2,38 +2,42 @@
    DESIGN TOKENS — "Academic Observatory" palette
    ============================================================ */
 :root {
-  /* Color: Deep Library variant */
+  /* Color: Deep Library variant.
+     Every text token below clears WCAG AA (4.5:1) on paper (#faf8f5), white and
+     its own tinted background — the previous values sat at 2.4–3.3:1, which
+     made help text, links and the "Needs review" badge hard to read. Hues are
+     unchanged; only lightness moved. */
   --ink:        #1a2332;
   --ink-soft:   #3d4f5f;
-  --ink-muted:  #6b7c8a;
-  --ink-faint:  #94a3b1;
+  --ink-muted:  #637380;
+  --ink-faint:  #68727c;
 
   --paper:      #faf8f5;
   --paper-warm: #f4f1ec;
   --paper-cool: #f0eff2;
   --white:      #ffffff;
 
-  --accent:     #2a9d8f;
-  --accent-dim: #238578;
+  --accent:     #217b70;
+  --accent-dim: #207b6f;
   --accent-bg:  #e8f6f4;
 
   --amber:      #e9c46a;
   --amber-bg:   #fdf8eb;
-  --amber-dark: #c4952a;
+  --amber-dark: #8e6c1e;
 
-  --rose:       #d4726a;
+  --rose:       #a45852;
   --rose-bg:    #fdf0ee;
-  --rose-dark:  #b5524a;
+  --rose-dark:  #b15048;
 
-  --verified:   #2a9d8f;
+  --verified:   #217b70;
   --verified-bg:#e8f6f4;
-  --likely:     #5b8a3c;
+  --likely:     #4f7934;
   --likely-bg:  #eef5e8;
-  --suspicious: #c4952a;
+  --suspicious: #8e6c1e;
   --suspicious-bg: #fdf8eb;
-  --notfound:   #d4726a;
+  --notfound:   #a45852;
   --notfound-bg:#fdf0ee;
-  --neutral:    #6b7c8a;
+  --neutral:    #5f6e7a;
   --neutral-bg: #f0eff2;
 
   /* Typography */
@@ -139,8 +143,12 @@ select { font-family: var(--font-body); }
   background: var(--accent-dim);
   box-shadow: 0 4px 12px rgba(42,157,143,0.3);
 }
+/* A disabled button still has to be readable: the previous white text at 0.4
+   opacity measured 1.03:1, so the default empty state of the primary action
+   ("Check citations", before a file is chosen) was effectively invisible text. */
 .btn-primary:disabled {
-  opacity: 0.4;
+  background: var(--neutral-bg);
+  color: var(--neutral);
   cursor: not-allowed;
   box-shadow: none;
 }

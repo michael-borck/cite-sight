@@ -317,7 +317,15 @@
 
 /* ── References panel interactivity ─────────────────────────── */
 button.status-chip { border: none; cursor: pointer; font: inherit; }
-.status-chip.off { opacity: 0.4; }
+/* A filtered-out chip used to be dimmed with opacity alone, which dropped its
+   label to roughly 1.2:1 and left the state readable only by sighted users who
+   already knew what dimming meant. Now it keeps full contrast and gains a
+   line-through, matching the "hidden" semantics the aria-pressed=false
+   already conveys to assistive tech. */
+.status-chip.off {
+  box-shadow: inset 0 0 0 1px currentColor;
+  text-decoration: line-through;
+}
 .ref-table th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
 .ref-table th.sortable:hover { text-decoration: underline; }
 /* Sorting is a real button in the header so it is reachable by keyboard and
@@ -328,8 +336,11 @@ button.status-chip { border: none; cursor: pointer; font: inherit; }
   cursor: pointer; text-align: left; font-weight: 600;
 }
 .ref-table th.sortable .sort-button:hover { text-decoration: underline; }
-.ref-row.dismissed { opacity: 0.45; }
+/* Reviewed rows keep full text contrast: the strike-through on the title plus
+   the "Reviewed" chip are the state signals. Dimming to 0.45 put the row at
+   about 1.2:1, which is unreadable rather than recessive. */
 .ref-row.dismissed .ref-title { text-decoration: line-through; }
+.ref-row.dismissed .ref-detail { color: var(--ink-muted); }
 .ref-detail-actions { margin-top: 8px; }
 
 .results-attribution {
