@@ -517,12 +517,11 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
     .filter((i) => i >= 0);
 
   const handleReverifyAll = async () => {
-    // Sequential on purpose: the whole point is recovering from rate limits.
-    for (const idx of unverifiedIdx) {
-      if (!mounted.current) break;
-      // eslint-disable-next-line no-await-in-loop
-      await handleReverify(idx);
-    }
+      // Sequential on purpose: the whole point is recovering from rate limits.
+      for (const idx of unverifiedIdx) {
+        if (!mounted.current) break;
+        await handleReverify(idx);
+      }
   };
   // Dismissal state lives HERE (not in the Overview) so every surface that
   // shows counts — summary strip, sidebar badges, per-panel chips — reflects

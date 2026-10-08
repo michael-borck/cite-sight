@@ -90,7 +90,7 @@ export class ClaimInstallation {
       update('idle', model.bytes);
     } catch (error) {
       this.progress = { ...this.progress, phase: 'failed', error: controller.signal.aborted ? 'Model setup cancelled.' : error instanceof Error ? error.message : 'Model setup failed.' };
-      notify(this.progress); throw new Error(this.progress.error);
+      notify(this.progress); throw new Error(this.progress.error, { cause: error });
     } finally { await rm(imported, { force: true }); this.controller = undefined; }
   }
   async resolve(): Promise<{ runnerPath: string; modelPath: string; reasoning?: 'off'; chatTemplate?: 'chatml' }> {

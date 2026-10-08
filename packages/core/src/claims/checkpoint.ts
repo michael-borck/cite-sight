@@ -20,7 +20,7 @@ export async function readClaimCheckpoint(path: string): Promise<ClaimCheckpoint
     return value;
   } catch (error) {
     if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') return undefined;
-    throw new Error('Could not read the claim checkpoint. Preserve it for review, or explicitly restart claim checking.');
+    throw new Error('Could not read the claim checkpoint. Preserve it for review, or explicitly restart claim checking.', { cause: error });
   }
 }
 

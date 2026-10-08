@@ -25,5 +25,5 @@ export async function openSession(window: BrowserWindow): Promise<ReviewSession 
   if (canceled || !filePaths[0]) return null;
   if ((await stat(filePaths[0])).size > 50 * 1024 * 1024) throw new Error('Session files must be 50 MB or smaller.');
   try { return parseReviewSession(JSON.parse(await readFile(filePaths[0], 'utf8'))); }
-  catch (err) { throw new Error(err instanceof SyntaxError ? 'The selected file is not valid JSON.' : (err as Error).message); }
+  catch (err) { throw new Error(err instanceof SyntaxError ? 'The selected file is not valid JSON.' : (err as Error).message, { cause: err }); }
 }

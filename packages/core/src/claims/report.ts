@@ -28,7 +28,7 @@ export function claimReportLines(analysis: ClaimAnalysis): string[] {
 export function claimCsv(analysis: ClaimAnalysis, assessments: (ClaimAssessmentExport | undefined)[] = []): string {
   const cell = (value: string | number) => {
     let text = String(value);
-    if (/^[\s]*[=+@\-]/.test(text)) text = "'" + text;
+    if (/^[\s]*[=+@-]/.test(text)) text = "'" + text;
     return '"' + text.replaceAll('"', '""') + '"';
   };
   return ['Statement,Citation,Reference,Source,Source SHA256,Model suggestion,Reason,Evidence,Human assessment,Assessed at,Model,Checked at,Provenance,Run state,Completed claims,Total claims',

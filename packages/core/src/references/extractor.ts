@@ -104,7 +104,7 @@ function parseReference(raw: string): ParsedReference {
 
 function extractAuthors(raw: string, _style: CitationStyle): string[] {
   // Strip leading number/bullet: "1. " or "• "
-  const stripped = raw.replace(/^[\d]+[.)]\s*/, '').replace(/^[•\-]\s*/, '');
+  const stripped = raw.replace(/^[\d]+[.)]\s*/, '').replace(/^[•-]\s*/, '');
 
   // APA / MLA / Chicago: author block ends at the year "(YYYY)".
   const yearIdx = stripped.search(/\((19|20)\d{2}[a-z]?\)/);
@@ -369,7 +369,7 @@ function splitByLines(block: string): string[] {
     // Numbered: "1. " or "1) "
     if (/^\s*\d+[.)]\s+/.test(line)) return true;
     // Bullet
-    if (/^\s*[•\-]\s+/.test(line)) return true;
+    if (/^\s*[•-]\s+/.test(line)) return true;
     // Blank line followed by author-like content (capital letter start)
     if (line.trim() === '' && current.trim().length > 0) return true;
     return false;

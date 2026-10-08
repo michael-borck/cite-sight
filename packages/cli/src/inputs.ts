@@ -50,7 +50,7 @@ export function collectInputs(paths: string[]): string[] {
       // globSync yields paths relative to cwd; resolve each and classify.
       for (const match of globSync(raw)) {
         const abs = resolve(match);
-        let isDir = false;
+        let isDir: boolean;
         try {
           isDir = statSync(abs).isDirectory();
         } catch {
@@ -63,7 +63,7 @@ export function collectInputs(paths: string[]): string[] {
     }
 
     const abs = resolve(raw);
-    let isDir = false;
+    let isDir: boolean;
     try {
       isDir = statSync(abs).isDirectory();
     } catch {
