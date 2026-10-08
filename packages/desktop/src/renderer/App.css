@@ -121,6 +121,31 @@
 }
 .dismiss-btn:hover { color: var(--rose-dark); }
 
+/* Run feedback: a notice line you can dismiss, and the batch completion
+   summary. Both are role="status", so they are announced on change. */
+.run-notice {
+  position: relative;
+  padding: var(--sp-3) var(--sp-8) var(--sp-3) var(--sp-4);
+  background: var(--neutral-bg);
+  border: 1px solid rgba(95,110,122,0.2);
+  border-radius: var(--r-md);
+  font-size: 0.87rem;
+  color: var(--ink-soft);
+}
+.run-notice .dismiss-btn { color: var(--neutral); }
+.run-notice .dismiss-btn:hover { color: var(--ink); }
+
+.run-summary {
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--accent-bg);
+  border: 1px solid rgba(33,123,112,0.2);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--r-md);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--accent-dim);
+}
+
 /* ---- Results header ---- */
 .results-header {
   display: flex;

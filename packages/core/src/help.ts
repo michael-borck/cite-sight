@@ -21,7 +21,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
   {
     id: 'verdicts',
     title: 'What the statuses mean',
-    body: 'Verified / Likely valid: a real record matched and the cited details agree (or differ only trivially). Needs review: matched, but the details disagree — for hand-typed references this is often a small typo. Not found: every lookup answered cleanly and nothing matched. Unverified: a lookup failed (rate limit, timeout) — not a confirmed miss, re-run to retry. Possible spelling mismatch: an in-text citation is one letter-slip from a bibliography entry.',
+    body: 'Verified / Likely valid: a real record matched and the cited details agree (or differ only trivially). Needs review: matched, but the details disagree — for hand-typed references this is often a small typo. Not found: every lookup answered cleanly and nothing matched. Unverified: a lookup failed (rate limit, timeout) — not a confirmed miss, re-run to retry. Format only: citation formatting was checked, but the source was never looked up, so nothing is claimed about whether it exists — this is the verdict for every reference in a local-only run. Possible spelling mismatch: an in-text citation is one letter-slip from a bibliography entry.',
   },
   {
     id: 'rate-limits',

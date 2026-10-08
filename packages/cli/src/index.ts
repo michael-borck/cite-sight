@@ -671,7 +671,7 @@ function addAnalysisOptions(cmd: Command): Command {
     .option('--email <email>', 'Contact email for API polite pool')
     .option('--s2-key <key>', 'Semantic Scholar API key (or set SEMANTIC_SCHOLAR_API_KEY) to avoid rate-limiting')
     .option('--openalex-key <key>', 'OpenAlex API key (or set OPENALEX_API_KEY) for the larger free daily allowance')
-    .option('--fail-on <level>', `Exit ${EXIT_FINDINGS} when findings are present — for CI (none|suspicious|broken-url|any)`, 'none')
+    .option('--fail-on <level>', `Exit ${EXIT_FINDINGS} when findings meet this level — for CI. Levels: none (never), suspicious (matched but details disagree), broken-url (a cited link failed), any (any of these). A lookup that failed (unavailable) never trips the threshold`, 'none')
     .option('--json', 'Output result as JSON', false)
     .option('--format <format>', 'Report format: text, json or html', (value: string) => {
       if (!['text', 'json', 'html'].includes(value)) throw new Error('Format must be text, json or html.');

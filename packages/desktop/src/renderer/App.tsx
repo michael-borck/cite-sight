@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { FileUpload } from './components/FileUpload';
 import { ProcessingOptions } from './components/ProcessingOptions';
 import { DataPrivacyPanel } from './components/DataPrivacyPanel';
@@ -26,6 +26,39 @@ export function App() {
   const [persistedDismissals, setPersistedDismissals] = useState<string[]>([]);
   const [elapsed, setElapsed] = useState(0);
   const [notice, setNotice] = useState('');
+  const [runSummary, setRunSummary] = useState('');
+  const settingsRef = useRef<HTMLDivElement>(null);
+  const settingsCardRef = useRef<HTMLDivElement>(null);
+
+  // The settings overlay declared aria-modal="true" with no focus trap, no
+  // Escape and no focus restore, so assistive tech was told to hide a surface
+  // that stayed keyboard-reachable behind it.
+  useEffect(() => {
+    if (!settings) return;
+    const returnFocus = document.activeElement as HTMLElement | null;
+    const card = settingsCardRef.current;
+    const focusable = () => [...(card?.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input, select, textarea, summary, [tabindex]:not([tabindex="-1"])') ?? [])];
+    focusable()[0]?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); setSettings(false); return; }
+      if (event.key !== 'Tab') return;
+      const items = focusable();
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !card?.contains(document.activeElement))) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault(); first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      returnFocus?.focus?.();
+    };
+  }, [settings]);
   const [clock, setClock] = useState<BatchClock>();
   const results = useMemo(() => batch.flatMap((item) => item.result ? [item.result] : []), [batch]);
   const selected = batch.find((item) => item.path === selectedPath);
@@ -95,6 +128,7 @@ export function App() {
     setNotice('');
     store.setProcessing(true);
     const runOptions = { ...store.options };
+    setRunSummary('');
     try {
       if (explicitPhase === 'claims') store.queueClaims(paths);
       const phaseOf = (path: string) => explicitPhase ?? useStore.getState().batch.find((item) => item.path === path)?.phase ?? 'references';
@@ -120,10 +154,35 @@ export function App() {
       });
       if (useStore.getState().cancelRequested) setNotice('Stopped after the current document. Waiting documents can be checked later.');
     } catch (error) { store.setError(error instanceof Error ? error.message : String(error)); }
-    finally { setClock((clock) => clock ? { ...clock, ended: Date.now() } : clock); await checkpoint(); useStore.getState().setProcessing(false); }
+    finally {
+      setClock((clock) => clock ? { ...clock, ended: Date.now() } : clock);
+      await checkpoint();
+      useStore.getState().setProcessing(false);
+      setRunSummary(summariseRun(useStore.getState().batch, paths));
+    }
   }
 
-  async function addDocuments() {
+  /**
+ * What the run actually did. A finished batch previously looked identical to a
+ * stalled one: `setProcessing(false)` just clears the active file, so there was
+ * no banner, no count and no way to tell "done" from "stuck on the last
+ * document" without watching the list the whole time.
+ */
+function summariseRun(
+  batch: { path: string; status: string; error?: string }[],
+  paths: string[],
+): string {
+  const ran = batch.filter((item) => paths.includes(item.path));
+  const failed = ran.filter((item) => item.status === 'failed');
+  const complete = ran.filter((item) => item.status === 'complete');
+  const waiting = ran.filter((item) => item.status === 'waiting');
+  const parts = [`${complete.length} of ${ran.length} checked`];
+  if (failed.length) parts.push(`${failed.length} failed`);
+  if (waiting.length) parts.push(`${waiting.length} still waiting`);
+  return `Run finished: ${parts.join(', ')}.`;
+}
+
+async function addDocuments() {
     try { state.addFiles(await window.citeSight.selectFiles()); }
     catch (err) { state.setError(err instanceof Error ? err.message : 'Could not select documents.'); }
   }
@@ -181,8 +240,9 @@ export function App() {
       </div>
     </div></header>
     <main className="app-main"><div className="container">
-      {settings && <div className="settings-overlay" role="dialog" aria-modal="true" aria-label="Settings">
-        <div className="settings-overlay-card">
+      {settings && <div className="settings-overlay" role="dialog" aria-modal="true" aria-label="Settings" ref={settingsRef}
+        onMouseDown={(event) => { if (event.target === event.currentTarget) setSettings(false); }}>
+        <div className="settings-overlay-card" ref={settingsCardRef}>
           <div className="settings-overlay-header">
             <h2>Settings</h2>
             <button type="button" className="settings-overlay-close" aria-label="Close settings" onClick={() => setSettings(false)}>×</button>
@@ -203,7 +263,10 @@ export function App() {
           </div>
         </div>
       </div>}
-      {notice && <p role="status">{notice}</p>}
+      {notice && <p role="status" className="run-notice">{notice}<button className="dismiss-btn" onClick={() => setNotice('')} aria-label="Dismiss notice">×</button></p>}
+      {/* Without this a completed batch is indistinguishable from a stalled one —
+          the detail pane just reverts to whichever document is selected. */}
+      {runSummary && <p role="status" className="run-summary">{runSummary}</p>}
       {isProcessing && !activePath && filePaths.length > 0 && <p role="status">{progress?.message ?? 'Preparing the batch locally...'}</p>}
       {error && <p role="alert" className="error-message">{error}<button onClick={() => state.setError(null)} aria-label="Dismiss error">×</button></p>}
       {filePaths.length > 0 && <div className="batch-toolbar">

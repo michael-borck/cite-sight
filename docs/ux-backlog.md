@@ -129,20 +129,61 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
   reference table but grey on two other surfaces, discarding the deliberate
   "retryable, not a confirmed miss" signal.
 
-## Batch 4 — next up (not started)
+## Batch 4 — verdicts, search, completion
 
-- [ ] **#9 Land or delete `VerdictHero`.** The headline-verdict treatment
-  (all-clear / caution / issues + proportion bar) is unreachable; reports open
-  on a count sentence instead. It is the last remaining dead component.
-- [ ] **`Format Only` is the least explained verdict.** It is unfilterable,
+- [x] **`Format Only` is now explained and filterable.** It was unfilterable,
   uncounted, absent from the legend and absent from the help topics — yet it is
-  the *only* verdict a local-only run produces.
-- [ ] **Consolidate the triplicated report generators** (`generatePdfReport.ts`
-  ×3, `generateCsvReport.ts` ×3 — the desktop CSV is two feature-generations
-  behind the others). Natural home is now that `ui-dashboard` exports shared
-  copy helpers.
-- [ ] **Desktop batch completion signal.** A finished run is indistinguishable
-  from a stalled one: no banner, no "N of M done".
+  the *only* verdict a local-only run produces, so first-time offline users saw a
+  badge nobody could account for. It now has a status chip, a legend entry, a
+  `STATUS_HINTS` gloss and a place in the help topic.
+- [x] **`VerdictHero` landed (#9).** The headline verdict (All clear / Caution /
+  Issues + proportion bar) was fully built and never rendered, so every report
+  opened on a count sentence with no sense of scale. "Issues" stays reserved for
+  the threshold breach in `computeVerdict`, so one typo does not paint the whole
+  document red. This was the last dead component in the repo.
+- [x] **Search across the reference table.** Title, author, DOI, URL and raw
+  citation text, with a live "N of M shown" count and a clear button. This was the
+  single biggest functional gap at 200+ references — status filters alone left no
+  way to find one citation. Pagination/virtualisation is still open.
+- [x] **Desktop batch completion signal.** A finished run was indistinguishable
+  from a stalled one: `setProcessing(false)` just clears the active file, so
+  looking away mid-batch left no way to tell. There is now a "Run finished: N of M
+  checked, K failed" banner, and the notice line became a dismissible card rather
+  than bare unstyled text (success and failure were previously identical).
+- [x] **Desktop Settings overlay is a real dialog.** It declared
+  `aria-modal="true"` with no focus trap, no Escape, no focus restore and no
+  click-outside — the same defect just fixed in `HelpOverlay`.
+- [x] **CSV export consolidated into `ui-dashboard`** — three copies (233 lines)
+  replaced by one, so the three apps produce byte-identical files.
+- [x] **Formula-injection guard on every CSV column.** The standalone build had
+  **no guard at all**, so a citation beginning `=`, `+`, `-` or `@` executed when
+  a marker opened the export in Excel or LibreOffice. The guard now also covers
+  leading whitespace, which spreadsheets trim before evaluating.
+- [x] **CSV exports the citation itself.** All three copies exported only the
+  parsed `title`, which is empty whenever extraction fails to find one — so a
+  saved CSV could contain no citation text at all, with no way to tell which
+  reference a row referred to.
+- [x] **CLI `--fail-on` help text** listed no levels and said only "Exit 2 when
+  findings are present"; it now describes each level and states that an
+  `unavailable` lookup never trips the threshold.
+
+## Batch 5 — remaining (not started)
+
+- [ ] **Triplicated PDF generators** (`generatePdfReport.ts` ×3 — 362/392/446
+  lines, all drifted). The CSV consolidation shows the shape of the fix, but the
+  PDF versions differ by feature (screenshots, attribution, local types) and need
+  a real design rather than a copy-paste.
+- [ ] **Pagination / virtualisation** for the reference table. Search now makes
+  long lists navigable, but every review action still re-renders the whole table
+  (`ReferenceRow` not memoised; `dismissed` is a fresh `Set` per effect run).
+- [ ] **Landing-page trust copy**: no privacy line on the page whose hero CTA
+  uploads the document to a server, a feature-parity claim contradicted by
+  `HOSTED_LIMITS_NOTICE`, and "not found ≠ fake" buried two clicks away.
+- [ ] **Responsive layout.** Zero media queries in `ResultsDashboard.css` /
+  `Overview.css`; the 220px sidebar never collapses and the 7-column table is
+  saved only by `overflow-x: auto`.
+- [ ] **CLI batch roll-up ordering.** The roll-up still prints after every
+  per-file report, so a 20-file run buries the summary.
 
 ## Backlog — trust & disclosure (product call)
 
@@ -164,8 +205,8 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] Streaming progress now announces via `aria-live` + `role="progressbar"`.
 - [ ] The focused row still unmounts when a review is recorded, with no focus
   restore (the toast announces the action; focus itself is not restored).
-- [ ] Desktop Settings overlay still claims `aria-modal="true"` with no focus
-  trap, no Escape, no focus restore — the same defect just fixed in `HelpOverlay`.
+- [x] Desktop Settings overlay is now a real dialog (trap, Escape, focus restore,
+  click-outside).
 - [x] No nested `<main>` landmark; `ResultsDashboard` is now a labelled
   `<section>`.
 - [x] Dropzone now has `role="button"` and an accessible name.
@@ -176,8 +217,8 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
 
 ## Backlog — clarity & consistency
 
-- [ ] `Format Only` status is unfilterable, uncounted, and unexplained — yet it
-  is the *only* status in a local-only run.
+- [x] `Format Only` was unfilterable, uncounted and unexplained; it now has a
+  chip, a legend entry and a help gloss.
 - [x] "Orphaned" summary stat silently included uncited bibliography entries; it
   now reads "Unmatched (N cited, M uncited)".
 - [x] `unverified` was amber in the table but grey on two other surfaces.
@@ -189,9 +230,10 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
 
 ## Backlog — scale & performance
 
-- [ ] No search box, pagination, or virtualisation for the reference table. This
-  is the biggest functional gap: a 200-reference bibliography has no way to
-  filter by title, author or DOI.
+- [x] Search box added (title, author, DOI, URL, raw citation) with a live
+  "N of M shown" count.
+- [ ] Pagination / virtualisation still absent. Search makes long lists
+  navigable, but the whole table still renders at once.
 - [ ] Every review action re-renders the whole table (`ReferenceRow` not
   memoised; `dismissed` is a fresh `Set` per effect run; `live()` filters 6×).
 - [ ] Zero media queries in `ResultsDashboard.css` / `Overview.css`; 220px
@@ -202,8 +244,9 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
 
 - [x] Text report no longer drops `nearMatches`, and now carries a status legend.
 - [x] Disclaimer printed once per run (on stderr) rather than once per file.
-- [ ] Batch roll-up prints *after* every per-file report, so a 20-file run buries
-  the summary under 20 reports.
-- [ ] `--fail-on` help text still says "Exit 2 when findings are present" while
-  the flag has four levels.
+- [x] `--fail-on` help text describes all four levels.
+- [ ] Batch roll-up still prints *after* every per-file report, so a 20-file run
+  buries the summary under 20 reports.
+- [ ] The terminal report and the PDF export still use their own status wording
+  (`~ likely valid`, "Unverified (lookup failed)") rather than `STATUS_LABELS`.
 - [ ] Batch roll-up prints *after* every per-file report.

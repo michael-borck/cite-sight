@@ -263,6 +263,7 @@ function ReferencesPanel({ results, dismissed, onReverify, rechecking }: PanelPr
 
   // Chip filters: clicking a status chip toggles that status's rows.
   const [hiddenStatuses, setHiddenStatuses] = useState<Set<string>>(new Set());
+  const [query, setQuery] = useState('');
   const toggleStatus = (status: string) => {
     setHiddenStatuses((prev) => {
       const next = new Set(prev);
@@ -282,9 +283,19 @@ function ReferencesPanel({ results, dismissed, onReverify, rechecking }: PanelPr
   const sortIndicator = (key: SortKey) => (sortKey === key ? (sortDir === 1 ? ' \u25B4' : ' \u25BE') : '');
   const ariaSort = (key: SortKey) => (sortKey === key ? (sortDir === 1 ? 'ascending' : 'descending') : 'none');
 
+  // Search across the fields a marker would actually search by. At 200
+  // references the status filters alone leave no way to find one citation.
+  const matchesQuery = (v: ReferenceVerification): boolean => {
+    if (!query) return true;
+    const needle = query.toLowerCase();
+    const authors = (v.reference.authors ?? []).join(' ');
+    return [v.reference.title, v.reference.raw, v.reference.doi, v.reference.url, authors]
+      .some((field) => field && field.toLowerCase().includes(needle));
+  };
+
   const rows = useMemo(() => {
     const withIndex = references.verifications.map((v, idx) => ({ v, idx }));
-    const filtered = withIndex.filter(({ v, idx }) => !hiddenStatuses.has(kindOf(v, idx)));
+    const filtered = withIndex.filter(({ v, idx }) => !hiddenStatuses.has(kindOf(v, idx)) && matchesQuery(v));
     const keyOf = ({ v, idx }: { v: ReferenceVerification; idx: number }): string | number => {
       switch (sortKey) {
         case 'title':      return (v.reference.title || v.reference.raw).toLowerCase();
@@ -299,13 +310,13 @@ function ReferencesPanel({ results, dismissed, onReverify, rechecking }: PanelPr
       const ka = keyOf(a); const kb = keyOf(b);
       return (ka < kb ? -1 : ka > kb ? 1 : 0) * sortDir;
     });
-  }, [references.verifications, hiddenStatuses, sortKey, sortDir, dismissed]);
+  }, [references.verifications, hiddenStatuses, sortKey, sortDir, dismissed, query]);
 
   return (
     <div className="panel-card">
       <div className="panel-header">
         <h3>Reference Verification
-          <SectionHelp text="Verified/Likely valid = a real record matched. Needs review = matched but details disagree (often a hand-typed typo). Not found = nothing matched. Unverified = the lookup failed (rate limit/timeout) — retry, not a confirmed miss." />
+          <SectionHelp text="Verified/Likely valid = a real record matched. Needs review = matched but details disagree (often a hand-typed typo). Not found = nothing matched. Unverified = the lookup failed (rate limit/timeout) — retry, not a confirmed miss. Format only = formatting checked, source never looked up (every reference in a local-only run)." />
         </h3>
         <span className="meta">{references.detectedStyle} style</span>
       </div>
@@ -317,6 +328,7 @@ function ReferencesPanel({ results, dismissed, onReverify, rechecking }: PanelPr
             ['suspicious', 'Needs review', 'suspicious', live('suspicious')],
             ['not_found', 'Not Found', 'notfound', live('not_found')],
             ['unverified', 'Unverified', 'unverified', live('unverified')],
+            ['format_only', 'Format only', 'format-only', live('format_only')],
             ['dismissed', 'Reviewed', 'dismissed-chip', live('dismissed')],
           ] as const).map(([status, label, cls, count]) => (
             <button
@@ -335,11 +347,28 @@ function ReferencesPanel({ results, dismissed, onReverify, rechecking }: PanelPr
           <strong>Not found</strong> = searched, no record &middot;{' '}
           <strong>Unverified</strong> = database unreachable, re-run to retry &middot;{' '}
           <strong>Needs review</strong> = found but metadata disagrees &middot;{' '}
+          <strong>Format only</strong> = formatting checked, existence not verified &middot;{' '}
           <strong>struck-through</strong> = reviewed. Expand the row to change or undo your decision.
         </p>
 
         {references.verifications.length > 0 ? (
-          <div className="ref-table-wrap">
+          <>
+          <div className="ref-table-toolbar">
+            <label className="ref-search">
+              <span className="visually-hidden">Search references</span>
+              <input type="search" value={query} placeholder="Search title, author, DOI or URL"
+                onChange={(event) => setQuery(event.target.value)} />
+              {query && <button type="button" onClick={() => setQuery('')} aria-label="Clear search">×</button>}
+            </label>
+            <span className="ref-count" aria-live="polite">
+              {rows.length === references.verifications.length
+                ? `${references.verifications.length} references`
+                : `${rows.length} of ${references.verifications.length} shown`}
+            </span>
+          </div>
+          {rows.length === 0
+            ? <p className="no-data">No references match “{query}”. Clear the search or adjust the status filters.</p>
+            : <div className="ref-table-wrap">
             <table className="ref-table">
               <caption className="visually-hidden">Reference verification results. Each column header sorts the table.</caption>
               <thead>
@@ -366,7 +395,8 @@ function ReferencesPanel({ results, dismissed, onReverify, rechecking }: PanelPr
                 ))}
               </tbody>
             </table>
-          </div>
+          </div>}
+          </>
         ) : (
           <p className="no-data">No references found in this document.</p>
         )}
