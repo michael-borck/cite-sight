@@ -141,6 +141,15 @@
   border-style: solid;
 }
 
+/* react-dropzone makes the root focusable and Enter/Space operable, so it needs
+   a visible focus state like hover — otherwise keyboard users cannot tell they
+   are on the drop target. */
+.dropzone:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  border-style: solid;
+}
+
 .dropzone-has-file {
   border-color: var(--accent);
   background: var(--accent-bg);
@@ -283,8 +292,9 @@
 }
 
 .option-row select:focus {
-  outline: none;
-  box-shadow: var(--shadow-focus);
+  border-color: var(--accent);
+  outline: 2px solid var(--accent-dim);
+  outline-offset: 2px;
 }
 
 /* ── Progress ───────────────────────────────────────────────────────────────── */

@@ -1,3 +1,4 @@
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .analysis-setup { border: 0; padding: 0; margin: 1.25rem 0; min-width: 0; }
 .analysis-setup legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .setup-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
@@ -22,5 +23,5 @@
 .review-log { margin: 1rem 0; padding: 1rem; border: 1px solid #cbd5e1; border-radius: 8px; }
 .review-log summary { cursor: pointer; font-weight: 600; }
 .retry-error { color: #991b1b; background: #fff1f2; padding: .8rem; border-radius: 6px; }
-button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 3px solid #0f766e; outline-offset: 3px; }
+a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible, [tabindex]:focus-visible { outline: 3px solid #0f766e; outline-offset: 3px; }
 @media (max-width: 600px) { .review-comparison { grid-template-columns: 1fr; } }

@@ -5,6 +5,8 @@ import { downloadPdfReport } from '../utils/generatePdfReport';
 import { downloadCsvReport } from '../utils/generateCsvReport';
 import { ACCEPTED_FILES, ApiError, MAX_PASTE_CHARS, MAX_UPLOAD_BYTES, pollJob, referencesFile, retryReference, uploadDocument, type JobResponse } from '../utils/analysisApi';
 import { clearRecovery, readRecovery, writeRecovery, type RecoverySnapshot } from '../utils/recovery';
+import { HOSTED_LIMITS_NOTICE, HOSTED_LIMITS_SHORT } from '../disclaimer';
+import { AnalysisProgress } from '../components/AnalysisProgress';
 import type { AnalysisResult, ProcessingOptions, ReferenceVerification } from '../types';
 import './ToolPage.css';
 
@@ -28,6 +30,7 @@ export function ToolPage() {
   const [displayName, setDisplayName] = useState('');
   const [expiresAt, setExpiresAt] = useState<string>();
   const [recoveryNotice, setRecoveryNotice] = useState('');
+  const [showNotices, setShowNotices] = useState(true);
   const nameRef = useRef('');
   const esRef = useRef<EventSource | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
@@ -75,6 +78,15 @@ export function ToolPage() {
     const timer = setInterval(() => setElapsed(Date.now() - start), 250);
     return () => clearInterval(timer);
   }, [isProcessing]);
+  // Leaving the tab mid-check abandons the queued job; leaving with an
+  // un-downloaded report loses it when refresh recovery expires. Neither
+  // survives a close, so warn rather than let the result vanish silently.
+  useEffect(() => {
+    if (!isProcessing && state !== 'done') return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [isProcessing, state]);
 
   const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
     accept: ACCEPTED_FILES, maxSize: MAX_UPLOAD_BYTES, multiple: false, disabled: isProcessing,
@@ -177,9 +189,13 @@ export function ToolPage() {
 
   return <div className="tool-page">
     <div className="tool-header"><h2>Check citations online</h2><p className="tool-subtitle">Add a document or paste a reference list.</p></div>
-    <p className="privacy-notice">Uploads are deleted after analysis or cancellation while queued. Queued reports exclude full document text and expire after one hour.</p>
-    {notice && <p className="cancel-notice" role="status">{notice}</p>}
-    {recoveryNotice && <p className="cancel-notice" role="status">{recoveryNotice}</p>}
+    {showNotices && <div className="notices">
+      <p className="privacy-notice"><span className="privacy-icon" aria-hidden="true">🔒</span><span>Your document is uploaded to this server for checking and deleted when the analysis finishes. Reference titles, authors, identifiers and URLs are sent to citation databases to verify them. Reports exclude the document text and expire after one hour.</span></p>
+      <p className="hosted-notice"><span className="hosted-notice-icon" aria-hidden="true">ℹ️</span><span>{HOSTED_LIMITS_NOTICE}</span></p>
+      <button className="dismiss-btn" onClick={() => setShowNotices(false)} aria-label="Dismiss these notices">×</button>
+    </div>}
+    {notice && <p className="cancel-notice" role="status">{notice}<button className="dismiss-btn" onClick={() => setNotice('')} aria-label="Dismiss notice">×</button></p>}
+    {recoveryNotice && <p className="cancel-notice" role="status">{recoveryNotice}<button className="dismiss-btn" onClick={() => setRecoveryNotice('')} aria-label="Dismiss notice">×</button></p>}
     {error && <div className="error-message" role="alert">{error}<button className="dismiss-btn" onClick={() => setError('')} aria-label="Dismiss error">×</button></div>}
     {state === 'error' && jobRef.current && <button className="btn btn-secondary" onClick={() => {
       const job = jobRef.current!; stopWatching(); setError(''); const controller = new AbortController(); controllerRef.current = controller;
@@ -187,10 +203,15 @@ export function ToolPage() {
     }}>Reconnect to check</button>}
     {isProcessing ? <div className="streaming-section">
       <p role="status">{state === 'uploading' ? `Uploading and checking ${displayName}…` : `Checking ${displayName}`}</p>
-      {streaming ? <StreamingResults verifications={streaming.verifications} total={streaming.total} stage={streaming.stage} elapsedMs={elapsed} fileName={displayName} /> : <progress aria-label="Uploading and checking document" />}
+      {/* Without the queue the server runs the whole analysis inside the POST,
+          so the client cannot tell upload from verify — the status line above
+          covers that wording and the stepper explains the slow stage. It
+          deliberately shows stages rather than an invented percentage. */}
+      {streaming ? <StreamingResults verifications={streaming.verifications} total={streaming.total} stage={streaming.stage} elapsedMs={elapsed} fileName={displayName} /> : <AnalysisProgress phase="processing" />}
       <button className="btn btn-secondary" onClick={() => void handleCancel()}>{state === 'uploading' ? 'Stop waiting' : 'Cancel / stop watching'}</button>
     </div> : result ? <div className="results-section">
       {expiresAt && <p>Download to keep this report. Refresh recovery ends at <time dateTime={expiresAt}>{new Date(expiresAt).toLocaleString()}</time>.</p>}
+      <p className="hosted-notice"><span className="hosted-notice-icon" aria-hidden="true">ℹ️</span><span>{HOSTED_LIMITS_SHORT}</span></p>
       <div className="results-toolbar"><h3 className="results-file-name">{displayName || result.fileName}</h3><div className="results-toolbar-actions">
         <button className="btn btn-primary" onClick={() => downloadPdfReport(result)}>Download PDF</button>
         <button className="btn btn-secondary" onClick={() => downloadCsvReport(result)}>Download CSV</button>
@@ -209,6 +230,7 @@ export function ToolPage() {
           <p>{file ? `${file.name} · ${(file.size / 1024 / 1024).toFixed(1)} MB` : 'Drop a document here or click to browse'}</p>
           <p className="dropzone-hint">PDF, DOCX, TXT, MD, QMD or JSON · Maximum 10 MB</p>
         </div>
+        {file && <button className="btn btn-secondary" onClick={() => { setFile(null); setError(''); }}>Remove file</button>}
         {fileRejections.map(({ file: rejected, errors }) => <p role="alert" className="error-message" key={rejected.name}>{rejected.name}: {errors.map((issue) => issue.code === 'file-too-large'
           ? `This file is ${(rejected.size / 1024 / 1024).toFixed(1)} MB; the limit is 10 MB.`
           : issue.code === 'too-many-files' ? 'Choose one document at a time.' : 'Choose a PDF, DOCX, TXT, MD, QMD or JSON file.').join(' ')}</p>)}

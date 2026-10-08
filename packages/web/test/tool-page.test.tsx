@@ -70,3 +70,39 @@ it('ignores late results from a cancelled job when a new check starts', async ()
   expect(screen.queryByRole('button', { name: 'Download PDF' })).toBeNull();
   expect(JSON.parse(sessionStorage.getItem(RECOVERY_KEY)!).jobId).toBe('new-job');
 });
+
+// The hosted checker is the only surface that uploads the document to a server.
+// The disclosure existed in the wording module and was never rendered.
+it('discloses the hosted limits before upload and can be dismissed', async () => {
+  const user = userEvent.setup(); render(<ToolPage />);
+  expect(screen.getByText(/sends your upload to this server and reference metadata to citation databases/)).toBeDefined();
+  expect(screen.queryByText(/share server-side API quotas/)).toBeNull();
+  await user.click(screen.getByRole('button', { name: 'Dismiss these notices' }));
+  expect(screen.queryByText(/sends your upload to this server/)).toBeNull();
+});
+
+it('clears the selected file without starting a run', async () => {
+  const user = userEvent.setup(); render(<ToolPage />);
+  const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+  await user.upload(input, new File(['refs'], 'essay.pdf', { type: 'application/pdf' }));
+  expect(screen.getByText(/essay\.pdf · /)).toBeDefined();
+  await user.click(screen.getByRole('button', { name: 'Remove file' }));
+  expect(screen.queryByRole('button', { name: 'Remove file' })).toBeNull();
+  expect(screen.getByText('Drop a document here or click to browse')).toBeDefined();
+});
+
+// Without the queue the server analyses inside the POST, so there is no stream.
+// The stepper replaces the bare progress element so the wait is explained.
+it('shows staged progress instead of an indeterminate bar when no queue is used', async () => {
+  const user = userEvent.setup();
+  let release!: (value: unknown) => void;
+  vi.mocked(uploadDocument).mockReset().mockReturnValue(new Promise((resolve) => { release = resolve; }));
+  render(<ToolPage />);
+  await user.click(screen.getByRole('tab', { name: 'Paste references' }));
+  await user.type(screen.getByLabelText(/Paste your references/), 'Smith, J. (2020). A study.');
+  await user.click(screen.getByRole('button', { name: 'Check citations' }));
+  expect(await screen.findByText('Extract')).toBeDefined();
+  expect(screen.getByText('Cross-ref')).toBeDefined();
+  expect(document.querySelector('progress')).toBeNull();
+  await act(async () => release({ status: 'complete', result: sampleResult(), expiresAt: new Date(Date.now() + 3600_000).toISOString() }));
+});

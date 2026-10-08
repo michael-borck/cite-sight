@@ -53,7 +53,7 @@
   --shadow-sm: 0 1px 3px rgba(26,35,50,0.06);
   --shadow-md: 0 2px 8px rgba(26,35,50,0.08);
   --shadow-lg: 0 8px 24px rgba(26,35,50,0.10);
-  --shadow-focus: 0 0 0 3px rgba(42,157,143,0.25);
+  --shadow-focus: 0 0 0 2px var(--accent-dim);
 }
 
 /* ============================================================
@@ -91,7 +91,22 @@ a { font-weight: 500; color: var(--accent); text-decoration: none; }
 a:hover { color: var(--accent-dim); }
 
 button { font-family: var(--font-body); cursor: pointer; border: none; }
-button:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
+
+/* Keyboard focus has to be visible on every control. The old ring was a
+   25%-alpha accent at 1.33:1 on paper — indistinguishable from no ring, which
+   fails WCAG 2.4.11 / 1.4.11. Solid accent-dim clears 4:1 on paper, white and
+   the tinted surfaces. Links are covered too: they are colour-only here
+   (text-decoration: none), so focus is the sole non-colour cue. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent-dim);
+  outline-offset: 2px;
+}
 
 input[type="checkbox"] { cursor: pointer; accent-color: var(--accent); }
 select { font-family: var(--font-body); }

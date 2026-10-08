@@ -20,15 +20,17 @@ import {
   meetsThreshold,
   findingsSummary,
   isFailOnLevel,
+  exitCodeFor,
+  EXIT_OK,
+  EXIT_ERROR,
+  EXIT_FINDINGS,
 } from './findings.js';
 
-// Exit codes (documented in --help so CI can branch on them):
+// Exit codes live in findings.ts so exitCodeFor can be unit-tested without
+// spawning the CLI; they are documented in --help so CI can branch on them:
 //   0  success, no findings (or --fail-on none)
 //   1  execution error (unreadable file, extraction failure, bad usage)
 //   2  analysis succeeded but findings met the --fail-on threshold
-const EXIT_OK = 0;
-const EXIT_ERROR = 1;
-const EXIT_FINDINGS = 2;
 
 // Read the real version from this package's package.json (relative to the
 // built dist/index.js → ../package.json), instead of hardcoding it.
@@ -606,9 +608,7 @@ function finishAnalysis(outcomes: FileOutcome[], opts: AnalysisOpts, options: Pr
   }
 
   // --- Exit code ---
-  const hadError = outcomes.some((o) => o.error || o.result?.claims?.findings.some((finding) => finding.status === 'unavailable'));
-  const tripped = outcomes.some((o) => o.result && meetsThreshold(fileFindings(o.result), level));
-  process.exit(hadError ? EXIT_ERROR : tripped ? EXIT_FINDINGS : EXIT_OK);
+  process.exit(exitCodeFor(outcomes, level));
 }
 
 async function runRetry(path: string, opts: AnalysisOpts): Promise<void> {

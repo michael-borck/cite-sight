@@ -70,3 +70,35 @@ export function findingsSummary(f: Findings): string {
 export function isFailOnLevel(value: string): value is FailOnLevel {
   return (FAIL_ON_LEVELS as readonly string[]).includes(value);
 }
+
+// --- Process exit codes -------------------------------------------------------
+// Exported so the decision can be unit-tested without spawning the CLI, which
+// parses argv on import.
+
+export const EXIT_OK = 0;
+export const EXIT_ERROR = 1;
+export const EXIT_FINDINGS = 2;
+
+/** The shape exitCodeFor needs — FileOutcome satisfies it structurally. */
+export interface OutcomeLike {
+  error?: string;
+  result?: AnalysisResult;
+}
+
+/**
+ * Process exit code for a finished run.
+ *
+ * Only a genuine execution failure (`outcome.error`) is EXIT_ERROR. A claim
+ * marked `unavailable` — the local model or its sources could not be consulted
+ * — is an assessment outcome, not a crash, and `fileFindings` deliberately
+ * excludes it from the threshold counts for the same reason: gating CI on a
+ * model or provider outage would make otherwise-clean runs flaky. Treating it
+ * as an error here also made the printed exit explanation disagree with the
+ * code that actually ran.
+ */
+export function exitCodeFor(outcomes: OutcomeLike[], level: FailOnLevel): number {
+  if (outcomes.some((o) => o.error)) return EXIT_ERROR;
+  return outcomes.some((o) => o.result && meetsThreshold(fileFindings(o.result), level))
+    ? EXIT_FINDINGS
+    : EXIT_OK;
+}

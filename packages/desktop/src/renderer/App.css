@@ -148,7 +148,7 @@
   min-width: 200px;
   color: var(--ink);
 }
-.file-select:focus { border-color: var(--accent); outline: none; box-shadow: var(--shadow-focus); }
+.file-select:focus-visible { border-color: var(--accent); outline: 2px solid var(--accent-dim); outline-offset: 2px; }
 
 .nav-arrow {
   width: 30px; height: 30px;

@@ -320,6 +320,14 @@ button.status-chip { border: none; cursor: pointer; font: inherit; }
 .status-chip.off { opacity: 0.4; }
 .ref-table th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
 .ref-table th.sortable:hover { text-decoration: underline; }
+/* Sorting is a real button in the header so it is reachable by keyboard and
+   exposes the sort state to assistive tech via aria-sort. It has to look like
+   the old click-on-th text, hence the full button reset. */
+.ref-table th.sortable .sort-button {
+  font: inherit; color: inherit; background: none; border: 0; padding: 0;
+  cursor: pointer; text-align: left; font-weight: 600;
+}
+.ref-table th.sortable .sort-button:hover { text-decoration: underline; }
 .ref-row.dismissed { opacity: 0.45; }
 .ref-row.dismissed .ref-title { text-decoration: line-through; }
 .ref-detail-actions { margin-top: 8px; }

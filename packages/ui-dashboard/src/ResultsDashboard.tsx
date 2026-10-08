@@ -13,11 +13,20 @@ import { referenceContentKey } from '@michaelborck/cite-sight-core/dashboard';
 import { REVIEW_LABELS, reviewKey, withVerifications } from '@michaelborck/cite-sight-core/review';
 import { ReviewActions, ReviewContext } from './ReviewActions';
 import { OverviewPanel } from './Overview';
+import { UndoToast } from './Overview/UndoToast';
 import { ScreenshotContext, ScreenshotThumbnail } from './Screenshot';
 import { OfflineContext } from './OfflineContext';
 import { HelpOverlay, SectionHelp } from './HelpOverlay';
 import { ClaimResults } from './ClaimResults';
 import './ResultsDashboard.css';
+
+/** Item-key prefixes map to what the marker actually reviewed. */
+const ITEM_LABELS: Record<string, string> = {
+  ref: 'Reference',
+  intext: 'In-text citation',
+  biblio: 'Bibliography entry',
+  claim: 'Claim',
+};
 
 export interface ResultsDashboardProps {
   results: AnalysisResult;
@@ -278,6 +287,7 @@ function ReferencesPanel({ results, dismissed, onReverify, rechecking }: PanelPr
     else { setSortKey(key); setSortDir(1); }
   };
   const sortIndicator = (key: SortKey) => (sortKey === key ? (sortDir === 1 ? ' \u25B4' : ' \u25BE') : '');
+  const ariaSort = (key: SortKey) => (sortKey === key ? (sortDir === 1 ? 'ascending' : 'descending') : 'none');
 
   const rows = useMemo(() => {
     const withIndex = references.verifications.map((v, idx) => ({ v, idx }));
@@ -338,15 +348,16 @@ function ReferencesPanel({ results, dismissed, onReverify, rechecking }: PanelPr
         {references.verifications.length > 0 ? (
           <div className="ref-table-wrap">
             <table className="ref-table">
+              <caption className="visually-hidden">Reference verification results. Each column header sorts the table.</caption>
               <thead>
                 <tr>
-                  <th className="sortable" onClick={() => setSort('index')}>#{sortIndicator('index')}</th>
-                  <th className="sortable" onClick={() => setSort('title')}>Reference{sortIndicator('title')}</th>
-                  <th className="sortable" onClick={() => setSort('status')}>Status{sortIndicator('status')}</th>
-                  <th className="sortable" onClick={() => setSort('doi')}>DOI{sortIndicator('doi')}</th>
-                  <th className="sortable" onClick={() => setSort('url')}>URL{sortIndicator('url')}</th>
-                  <th className="sortable" title="Heuristic score, not a probability" onClick={() => setSort('confidence')}>Match strength{sortIndicator('confidence')}</th>
-                  <th></th>
+                  <th scope="col" className="sortable" aria-sort={ariaSort('index')}><button type="button" className="sort-button" onClick={() => setSort('index')}>#<span aria-hidden="true">{sortIndicator('index')}</span></button></th>
+                  <th scope="col" className="sortable" aria-sort={ariaSort('title')}><button type="button" className="sort-button" onClick={() => setSort('title')}>Reference<span aria-hidden="true">{sortIndicator('title')}</span></button></th>
+                  <th scope="col" className="sortable" aria-sort={ariaSort('status')}><button type="button" className="sort-button" onClick={() => setSort('status')}>Status<span aria-hidden="true">{sortIndicator('status')}</span></button></th>
+                  <th scope="col" className="sortable" aria-sort={ariaSort('doi')}><button type="button" className="sort-button" onClick={() => setSort('doi')}>DOI<span aria-hidden="true">{sortIndicator('doi')}</span></button></th>
+                  <th scope="col" className="sortable" aria-sort={ariaSort('url')}><button type="button" className="sort-button" onClick={() => setSort('url')}>URL<span aria-hidden="true">{sortIndicator('url')}</span></button></th>
+                  <th scope="col" className="sortable" title="Heuristic score, not a probability" aria-sort={ariaSort('confidence')}><button type="button" className="sort-button" onClick={() => setSort('confidence')}>Match strength<span className="visually-hidden"> (heuristic score, not a probability)</span><span aria-hidden="true">{sortIndicator('confidence')}</span></button></th>
+                  <th scope="col"></th>
                 </tr>
               </thead>
               <tbody>
@@ -560,6 +571,9 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
     });
     setDismissedRaw(next);
   }, [results, persistedDismissals, reviews]);
+  // Last recorded decision, so the item can be brought back. Recording a decision
+  // drops the row from the priority list, leaving nowhere to undo from in place.
+  const [undo, setUndo] = useState<{ itemKey: string; label: string } | null>(null);
   // Diff each change against the previous set and report per-reference
   // deltas to the host for persistence.
   const recordReview = (itemKey: string, decision?: ReviewDecision) => {
@@ -572,6 +586,12 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
     setReviews(nextReviews);
     if (itemKey.startsWith('ref:')) onDismissalChange?.(key, !!decision && decision !== 'unresolved');
     onResultsChange?.(next);
+    // Recording a decision removes the item from the priority list, so the row
+    // the user was on disappears. The toast is the only immediate signal that
+    // anything happened, and the only way back — the item is no longer in the
+    // list to undo from.
+    if (decision) setUndo({ itemKey, label: ITEM_LABELS[itemKey.split(':')[0]] ?? 'Item' });
+    else setUndo(null);
   };
   const refs = effectiveResults.references;
 
@@ -723,6 +743,11 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
         <p className="results-disclaimer">{DISCLAIMER}</p>
         <p className="results-attribution">{ATTRIBUTION}</p>
       </main>
+      {undo && <UndoToast
+        message={`${undo.label} review recorded.`}
+        onUndo={() => recordReview(undo.itemKey)}
+        onExpire={() => setUndo(null)}
+      />}
     </div>
   );
 

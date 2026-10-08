@@ -5,6 +5,10 @@ import {
   meetsThreshold,
   findingsSummary,
   isFailOnLevel,
+  exitCodeFor,
+  EXIT_OK,
+  EXIT_ERROR,
+  EXIT_FINDINGS,
   type Findings,
 } from '../src/findings.js';
 
@@ -120,5 +124,53 @@ describe('isFailOnLevel', () => {
     expect(isFailOnLevel('bogus')).toBe(false);
     expect(isFailOnLevel('')).toBe(false);
     expect(isFailOnLevel('SUSPICIOUS')).toBe(false);
+  });
+});
+
+describe('exitCodeFor', () => {
+  /** A result whose only claim findings are `unavailable` — the model or its
+   *  sources could not be consulted. */
+  function claimsUnavailable(): AnalysisResult {
+    return {
+      references: {
+        suspiciousCount: 0, brokenUrlCount: 0, notFoundCount: 0,
+        crossReference: { unmatchedInText: [], unmatchedBibliography: [] },
+        verifications: [],
+      },
+      claims: { findings: [{ status: 'unavailable' }, { status: 'unavailable' }] },
+    } as unknown as AnalysisResult;
+  }
+
+  it('exits 0 for a clean run', () => {
+    expect(exitCodeFor([{ result: resultWith({}) }], 'any')).toBe(EXIT_OK);
+  });
+
+  it('exits 1 when a file failed to analyze', () => {
+    expect(exitCodeFor([{ error: 'unreadable' }], 'none')).toBe(EXIT_ERROR);
+  });
+
+  it('prefers the execution error over findings', () => {
+    expect(exitCodeFor([{ result: resultWith({ suspicious: 3 }) }, { error: 'boom' }], 'any')).toBe(EXIT_ERROR);
+  });
+
+  it('exits 2 when findings meet the threshold', () => {
+    expect(exitCodeFor([{ result: resultWith({ suspicious: 1 }) }], 'suspicious')).toBe(EXIT_FINDINGS);
+  });
+
+  // Regression: an `unavailable` claim used to be treated as an execution
+  // error, so a run whose model or sources were unavailable exited 1 while the
+  // printed explanation said "Exit 0" — and CI gating on exit codes failed on
+  // an outage rather than on a citation problem.
+  it('does not treat an unavailable claim as an execution error', () => {
+    expect(exitCodeFor([{ result: claimsUnavailable() }], 'none')).toBe(EXIT_OK);
+    expect(exitCodeFor([{ result: claimsUnavailable() }], 'any')).toBe(EXIT_OK);
+  });
+
+  it('still trips on an available claim finding', () => {
+    const contradicted = {
+      references: resultWith({}).references,
+      claims: { findings: [{ status: 'contradicted' }] },
+    } as unknown as AnalysisResult;
+    expect(exitCodeFor([{ result: contradicted }], 'any')).toBe(EXIT_FINDINGS);
   });
 });

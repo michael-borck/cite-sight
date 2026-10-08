@@ -58,7 +58,7 @@ export function ThingsToCheckHero({ items, onReverify, rechecking }: Props) {
       {visibleItems.length === 0 ? (
         <div className="priority-empty">
           {items.length === 0
-             ? 'No outstanding items in this review list. Reviewed items remain available below.'
+             ? 'No outstanding items in this review list. Anything you have reviewed still appears in the References table, marked Reviewed.'
             : 'All flagged items are filtered out. Click a chip to show them.'}
         </div>
       ) : (

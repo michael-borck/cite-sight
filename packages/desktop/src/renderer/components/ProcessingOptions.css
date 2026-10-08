@@ -69,8 +69,8 @@
 }
 .option-select:focus {
   border-color: var(--accent);
-  outline: none;
-  box-shadow: var(--shadow-focus);
+  outline: 2px solid var(--accent-dim);
+  outline-offset: 2px;
 }
 
 .checkbox-group {

@@ -6,6 +6,32 @@ import { AnalysisSetup } from '../src/AnalysisSetup';
 import { sampleResult } from '../../core/test/fixtures/analysis-result';
 
 afterEach(cleanup);
+it('announces a recorded review and offers an immediate undo', async () => {
+  const user = userEvent.setup(); const changed = vi.fn();
+  render(<ResultsDashboard results={sampleResult('suspicious')} onResultsChange={changed} />);
+  expect(screen.queryByText(/review recorded/)).toBeNull();
+  await user.click(screen.getByRole('button', { name: /Needs review.*A study of learning/ }));
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Record review decision' }), 'citation_error');
+  // The item leaves the priority list, so the toast is the only signal and the
+  // only way back — there is nowhere to undo from once the row is gone.
+  expect(await screen.findByText('Reference review recorded.')).toBeDefined();
+  await user.click(screen.getByRole('button', { name: 'Undo' }));
+  await waitFor(() => expect(screen.getByRole('heading', { name: '1 item needs review' })).toBeDefined());
+  expect(Object.values(changed.mock.lastCall![0].reviews)).toEqual([]);
+});
+it('exposes sortable column headers to keyboard and assistive tech', async () => {
+  const user = userEvent.setup();
+  render(<ResultsDashboard results={sampleResult()} />);
+  await user.click(screen.getByRole('button', { name: /References/ }));
+  const statusHeader = screen.getByRole('columnheader', { name: /^Status/ });
+  expect(statusHeader.getAttribute('aria-sort')).toBe('none');
+  await user.click(screen.getByRole('button', { name: /^Status/ }));
+  expect(screen.getByRole('columnheader', { name: /^Status/ }).getAttribute('aria-sort')).toBe('ascending');
+  await user.click(screen.getByRole('button', { name: /^Status/ }));
+  expect(screen.getByRole('columnheader', { name: /^Status/ }).getAttribute('aria-sort')).toBe('descending');
+  // The score caveat must not live only in a title tooltip.
+  expect(screen.getByRole('button', { name: /heuristic score, not a probability/ })).toBeDefined();
+});
 it('puts a verified but retracted source in the review list', () => {
   const result = sampleResult('verified');
   result.references.verifications[0].flags = ['retraction_notice'];
