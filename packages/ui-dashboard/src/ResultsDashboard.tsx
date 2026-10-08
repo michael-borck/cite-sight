@@ -1,4 +1,4 @@
-import { Fragment, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, memo, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type {
   AnalysisResult,
@@ -105,7 +105,11 @@ interface ReferenceRowProps {
   isRechecking?: boolean;
 }
 
-function ReferenceRow({ v, index, isDismissed, onReverify, isRechecking }: ReferenceRowProps) {
+// Memoised because a review action rebuilds `dismissed` as a fresh Set, which
+// re-created the rows array and re-rendered every row in the table. With a
+// 200-reference bibliography that is 200 components and a full tbody diff on
+// every single decision.
+const ReferenceRow = memo(function ReferenceRow({ v, index, isDismissed, onReverify, isRechecking }: ReferenceRowProps) {
   const offline = useContext(OfflineContext);
   const [expanded, setExpanded] = useState(false);
   const [showSnapshot, setShowSnapshot] = useState(false);
@@ -238,13 +242,18 @@ function ReferenceRow({ v, index, isDismissed, onReverify, isRechecking }: Refer
       )}
     </>
   );
-}
+});
 
 interface PanelProps {
   results: AnalysisResult;
 }
 
 type SortKey = 'index' | 'title' | 'status' | 'doi' | 'url' | 'confidence';
+
+/** Rows mounted before the user asks for more. */
+const INITIAL_ROWS = 50;
+/** Rows added per "Show more" click. */
+const PAGE_ROWS = 50;
 
 function ReferencesPanel({ results, dismissed, onReverify, rechecking }: PanelProps & {
   dismissed: Set<string>;
@@ -264,6 +273,10 @@ function ReferencesPanel({ results, dismissed, onReverify, rechecking }: PanelPr
   // Chip filters: clicking a status chip toggles that status's rows.
   const [hiddenStatuses, setHiddenStatuses] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
+  // Windowed rendering. A 200-reference bibliography used to mount 200 rows
+  // (and, before that, re-render all 200 on every decision). Rows are cheap
+  // individually but not in bulk, so we render a page and grow it on demand.
+  const [visibleCount, setVisibleCount] = useState(INITIAL_ROWS);
   const toggleStatus = (status: string) => {
     setHiddenStatuses((prev) => {
       const next = new Set(prev);
@@ -311,6 +324,15 @@ function ReferencesPanel({ results, dismissed, onReverify, rechecking }: PanelPr
       return (ka < kb ? -1 : ka > kb ? 1 : 0) * sortDir;
     });
   }, [references.verifications, hiddenStatuses, sortKey, sortDir, dismissed, query]);
+
+  // Windowed rendering. A 200-reference bibliography used to mount 200 rows at
+  // once (and re-render all of them on every decision). Rows are cheap
+  // individually but not in bulk, so we mount a page and grow it on demand.
+  const visibleRows = useMemo(() => rows.slice(0, visibleCount), [rows, visibleCount]);
+  const hasMoreRows = rows.length > visibleCount;
+  // A new filter, search or sort should start from the top again rather than
+  // leaving the user past a window that no longer matches.
+  useEffect(() => { setVisibleCount(INITIAL_ROWS); }, [query, sortKey, sortDir, hiddenStatuses]);
 
   return (
     <div className="panel-card">
@@ -365,6 +387,11 @@ function ReferencesPanel({ results, dismissed, onReverify, rechecking }: PanelPr
                 ? `${references.verifications.length} references`
                 : `${rows.length} of ${references.verifications.length} shown`}
             </span>
+            {hasMoreRows && <button type="button" className="ref-more"
+              onClick={() => setVisibleCount((count) => count + PAGE_ROWS)}>
+              Show {Math.min(PAGE_ROWS, rows.length - visibleCount)} more
+              <span className="visually-hidden"> references</span>
+            </button>}
           </div>
           {rows.length === 0
             ? <p className="no-data">No references match “{query}”. Clear the search or adjust the status filters.</p>
@@ -383,7 +410,7 @@ function ReferencesPanel({ results, dismissed, onReverify, rechecking }: PanelPr
                 </tr>
               </thead>
               <tbody>
-                {rows.map(({ v, idx }) => (
+                {visibleRows.map(({ v, idx }) => (
                   <ReferenceRow
                     key={idx}
                     v={v}
@@ -563,6 +590,10 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
   // (`ref:<idx>`, `intext:<idx>`). Session-only, like before.
   // Rows matching a persisted content-key start dismissed (triage decisions
   // are about WHAT is cited, not which row it landed in this run's order).
+  // Keyed by content rather than identity: `persistedDismissals` is an array and
+  // a host passing a freshly-built one every render would otherwise spin this
+  // state forever. Returning the previous Set when nothing changed keeps the
+  // memoised rows and the memoised counts below from recomputing at all.
   const [dismissed, setDismissedRaw] = useState<Set<string>>(() => {
     const init = new Set<string>();
     if (persistedDismissals?.length) {
@@ -592,7 +623,15 @@ export function ResultsDashboard({ results, readScreenshot, reverify, persistedD
       const decision = reviews[reviewKey(results, `claim:${index}`)]?.decision;
       if (decision && decision !== 'unresolved') next.add(`claim:${index}`);
     });
-    setDismissedRaw(next);
+    // Keep the previous Set identity when the content is identical. Without
+    // this every review decision handed the rows memo and the counts memo a new
+    // Set, so they recomputed even when nothing about the set had changed — and
+    // a host passing a fresh `persistedDismissals` array each render would spin
+    // this effect indefinitely.
+    setDismissedRaw((previous) => {
+      if (previous.size === next.size && [...next].every((key) => previous.has(key))) return previous;
+      return next;
+    });
   }, [results, persistedDismissals, reviews]);
   // Last recorded decision, so the item can be brought back. Recording a decision
   // drops the row from the priority list, leaving nowhere to undo from in place.

@@ -167,23 +167,69 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
   findings are present"; it now describes each level and states that an
   `unavailable` lookup never trips the threshold.
 
-## Batch 5 — remaining (not started)
+## Batch 5 — consolidation, scale, trust
 
-- [ ] **Triplicated PDF generators** (`generatePdfReport.ts` ×3 — 362/392/446
-  lines, all drifted). The CSV consolidation shows the shape of the fix, but the
-  PDF versions differ by feature (screenshots, attribution, local types) and need
-  a real design rather than a copy-paste.
-- [ ] **Pagination / virtualisation** for the reference table. Search now makes
-  long lists navigable, but every review action still re-renders the whole table
-  (`ReferenceRow` not memoised; `dismissed` is a fresh `Set` per effect run).
-- [ ] **Landing-page trust copy**: no privacy line on the page whose hero CTA
-  uploads the document to a server, a feature-parity claim contradicted by
-  `HOSTED_LIMITS_NOTICE`, and "not found ≠ fake" buried two clicks away.
-- [ ] **Responsive layout.** Zero media queries in `ResultsDashboard.css` /
-  `Overview.css`; the 220px sidebar never collapses and the 7-column table is
-  saved only by `overflow-x: auto`.
-- [ ] **CLI batch roll-up ordering.** The roll-up still prints after every
-  per-file report, so a 20-file run buries the summary.
+- [x] **Triplicated PDF generators consolidated.** 1,200 lines across three
+  drifted copies (362 / 392 / 446) became one `buildPdfReport` in `ui-dashboard`
+  with options for the real differences: screenshots (desktop + standalone),
+  review decisions, and the attribution block (web only). All three surfaces now
+  produce the same document.
+- [x] **PDF exports the spelling mismatches.** The HTML and text reports both
+  carried `nearMatches`; the PDF never did, so an exported PDF silently lost the
+  likely-typo suggestions. Cross-references are now labelled consistently with
+  the rest of the app ("Unmatched in-text citations", not "Orphaned").
+- [x] **Reference table windowed.** 50 rows mount at a time with a "Show more"
+  control, instead of all 200+ at once. Changing the search, sort or filters
+  resets the window.
+- [x] **`ReferenceRow` memoised**, and the `dismissed` Set now keeps its identity
+  when its contents are unchanged. Together these stop a single review decision
+  from re-rendering the whole table and re-running every derived count.
+- [x] **Responsive layout.** The two largest stylesheets had zero media queries,
+  so the 220px sidebar never collapsed and the 7-column table forced horizontal
+  scrolling for the most important column. Below 860px the sidebar becomes a
+  wrapping strip of section links and the title column wraps; below 520px the
+  buttons go full width.
+- [x] **Landing-page trust copy.** The hero CTA is the only product that uploads
+  a document to a server, and the page said nothing about it — the only privacy
+  copy promoted the *offline* products. There is now a panel beside the CTAs
+  saying what leaves your machine, plus "not found means a database returned no
+  record, not that a source is fake".
+- [x] **Feature-parity claim corrected.** "Everything the web version offers" is
+  contradicted by the tool's own `HOSTED_LIMITS_NOTICE`; the copy now names the
+  actual differences (personal API keys, screenshots) and says why the desktop
+  app produces fewer "unavailable" results.
+- [x] **CLI batch roll-up printed first.** A 20-file run used to print 20 full
+  reports and then the summary. Human-mode batches now print the roll-up, then
+  the reports. Single-file runs are unchanged, and `--json` / `--format` output
+  is untouched (verified against the existing e2e tests).
+- [x] **Terminal badges use the canonical wording.** `~ likely valid` and
+  `⚠ unverified (lookup failed)` were a fourth vocabulary; the words now come
+  from `STATUS_LABELS`, leaving only the glyph and colour terminal-specific.
+
+## Verified
+
+- 438 tests pass (core 241, cli 56, server 14, ui-dashboard 26, desktop 22,
+  web 39, python 17).
+- Lint and typecheck clean across all seven packages.
+- All four app bundles build (`cli`, `desktop`, `web`, `standalone`).
+- The six generator files that existed across the three front ends are now: one
+  shared `reportPdf.ts`, one shared `reportCsv.ts`, and three thin platform
+  shims each for screenshots.
+
+## Still open
+
+- [ ] **Landing-page privacy line wording is a product call.** It now states what
+  leaves the machine, but whether to link a full policy page is a decision, not
+  an implementation detail.
+- [ ] **Report PDF layout was not visually reviewed.** The consolidated builder
+  is verified by builds and existing tests, not by rendering a document and
+  looking at it — worth a manual pass before shipping an export change.
+- [ ] **Windowed rendering is not virtualisation.** It caps the initial mount,
+  but scrolling a very long list still grows the DOM. Search plus "Show more" is
+  a reasonable trade for a report screen; a real virtualiser would break
+  ctrl-F and the sticky table header.
+- [ ] **Server still has no per-IP rate limit** (only a global 10-upload cap),
+  and its error handler returns raw `err.message` to clients.
 
 ## Backlog — trust & disclosure (product call)
 

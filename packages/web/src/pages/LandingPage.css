@@ -96,6 +96,22 @@
   font-size: 0.9rem;
 }
 
+/* What leaves your machine when you use the hosted checker. Sits with the hero
+   CTAs rather than two clicks away, because it is the only page a visitor is
+   guaranteed to read before uploading. */
+.hero-privacy {
+  margin-top: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--accent-bg);
+  border: 1px solid rgba(33, 123, 112, 0.2);
+  border-radius: var(--r-md);
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  line-height: 1.55;
+  text-align: left;
+}
+.hero-privacy strong { color: var(--accent-dim); }
+
 /* ── Hero report mock (decorative) ──────────────────────────────────────────── */
 
 .report-mock {

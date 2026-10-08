@@ -3,7 +3,8 @@
 import { program, type Command } from 'commander';
 import chalk from 'chalk';
 import { analyzePipeline, analyzeClaimsFile, readClaimSources, planFiles, unitSourceList, claimOverlapFromResults, durationRange, claimSuggestionLabel, MANIFEST, explainVerification, DISCLAIMER, ATTRIBUTION, HELP_TOPICS, ACKNOWLEDGEMENTS, HELP_FOOTER,
-  exportBibtex, installCliRuntime, installCliModel, resolveManagedClaimSetup, CLAIM_MODELS } from '@michaelborck/cite-sight-core';
+  exportBibtex, installCliRuntime, installCliModel, resolveManagedClaimSetup, CLAIM_MODELS, STATUS_LABELS } from '@michaelborck/cite-sight-core';
+import type { VerificationStatus } from '@michaelborck/cite-sight-core';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import type { AnalysisResult, ProcessingOptions, ProgressCallback } from '@michaelborck/cite-sight-core';
 import { readFileSync } from 'node:fs';
@@ -47,16 +48,26 @@ function formatDuration(ms: number): string {
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
+/**
+ * Terminal badge for a status. The wording comes from core's STATUS_LABELS so
+ * it matches the dashboard, the reports and the PDF; only the glyph and colour
+ * are terminal-specific. Each verdict is still encoded three ways (glyph, colour,
+ * word) so nothing depends on colour alone, and the glyph degrades to plain text
+ * in a piped, non-TTY stream.
+ */
+const STATUS_GLYPH: Record<string, { glyph: string; paint: (text: string) => string }> = {
+  verified: { glyph: '✔', paint: chalk.green },
+  likely_valid: { glyph: '~', paint: chalk.green },
+  suspicious: { glyph: '⚠', paint: chalk.yellow },
+  not_found: { glyph: '?', paint: chalk.yellow },
+  unverified: { glyph: '⚠', paint: chalk.gray },
+  format_only: { glyph: 'f', paint: chalk.cyan },
+};
+
 function statusBadge(status: string): string {
-  switch (status) {
-    case 'verified':     return chalk.green('✔ verified');
-    case 'likely_valid': return chalk.green('~ likely valid');
-    case 'suspicious':   return chalk.yellow('⚠ needs review');
-    case 'not_found':    return chalk.yellow('? not found');
-    case 'unverified':   return chalk.gray('⚠ unverified (lookup failed)');
-    case 'format_only':  return chalk.cyan('f format only');
-    default:             return chalk.gray(status);
-  }
+  const entry = STATUS_GLYPH[status];
+  const label = STATUS_LABELS[status as VerificationStatus] ?? status.replaceAll('_', ' ');
+  return entry ? entry.paint(`${entry.glyph} ${label.toLowerCase()}`) : chalk.gray(label);
 }
 
 function urlStatusBadge(status: string): string {
@@ -546,13 +557,33 @@ async function runAnalysis(paths: string[], opts: AnalysisOpts): Promise<void> {
     if (human) {
       if (outcome.error) {
         console.error(chalk.red(`\nError: ${outcome.error}`));
-      } else {
+      } else if (files.length === 1) {
+        // Single file: report immediately, in full.
         printReport(outcome.result!, opts.minimal);
       }
+      // A batch defers its per-file reports until after the roll-up (below), so
+      // the summary is not buried under N full reports.
     }
   }
 
-  finishAnalysis(outcomes, opts, options);
+  const deferredBatch = human && files.length > 1;
+  if (deferredBatch) {
+    printAggregate(outcomes, opts.failOn as FailOnLevel);
+    for (const outcome of outcomes) {
+      if (outcome.result) printReport(outcome.result, opts.minimal);
+    }
+    console.log('');
+  }
+
+  // finishAnalysis's own text branch would print a second roll-up after the
+  // reports we just emitted, so suppress it via a flag rather than a second
+  // call site.
+  if (deferredBatch) (opts as AnalysisOpts & { reportPrinted?: boolean }).reportPrinted = true;
+  finishAnalysis(outcomes, opts, options, deferredBatch);
+  // finishAnalysis exits unless it was asked to defer, in which case the footer
+  // and the exit code belong after the per-file reports printed above.
+  printRunFooter();
+  process.exit(exitCodeFor(outcomes, opts.failOn as FailOnLevel));
 }
 
 function outputFormat(opts: AnalysisOpts): ReportFormat {
@@ -560,7 +591,7 @@ function outputFormat(opts: AnalysisOpts): ReportFormat {
   return opts.format ?? (opts.json || opts.output?.endsWith('.json') ? 'json' : opts.output?.endsWith('.html') ? 'html' : 'text');
 }
 
-function finishAnalysis(outcomes: FileOutcome[], opts: AnalysisOpts, options: ProcessingOptions): void {
+function finishAnalysis(outcomes: FileOutcome[], opts: AnalysisOpts, options: ProcessingOptions, deferFooter = false): void {
   const level = parseFailOn(opts.failOn);
   const batch = outcomes.length > 1;
   const format = outputFormat(opts);
@@ -619,15 +650,21 @@ function finishAnalysis(outcomes: FileOutcome[], opts: AnalysisOpts, options: Pr
       }
     }
   } else if (batch) {
-    printAggregate(outcomes, level);
+    // runAnalysis already printed the roll-up ahead of the per-file reports in
+    // human mode; this covers the non-human paths, where there is no report to
+    // bury it under anyway.
+    if (!(opts as AnalysisOpts & { reportPrinted?: boolean }).reportPrinted) printAggregate(outcomes, level);
   }
 
   // Accuracy disclaimer, once per run (it used to be printed inside every
   // per-file report). The default --fail-on is "none", so printAggregate's exit
-  // line is skipped on a normal run — this must not depend on that.
-  printRunFooter();
-
+  // line is skipped on a normal run — this must not depend on that. In a
+  // human-mode batch runAnalysis prints this itself, after the reports.
   // --- Exit code ---
+  // When the caller still has per-file reports to print, it owns the footer and
+  // the exit; returning here leaves the process running.
+  if (deferFooter) return;
+  printRunFooter();
   process.exit(exitCodeFor(outcomes, level));
 }
 

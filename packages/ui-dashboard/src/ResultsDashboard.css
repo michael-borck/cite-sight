@@ -206,6 +206,12 @@
 }
 .ref-search button:hover { color: #172b3a; }
 .ref-count { color: #475569; font-size: .85rem; white-space: nowrap; }
+.ref-more {
+  font: inherit; font-size: .85rem; font-weight: 600; color: #0f766e;
+  background: #fff; border: 1px solid #cbd5e1; border-radius: 6px;
+  padding: .35rem .7rem; cursor: pointer; white-space: nowrap;
+}
+.ref-more:hover { border-color: #0f766e; }
 
 .ref-table-wrap { overflow-x: auto; }
 .ref-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
@@ -364,3 +370,67 @@ button.status-chip { border: none; cursor: pointer; font: inherit; }
 }
 
 .status-chip.dismissed-chip { background: var(--muted-bg, #f0f0f2); color: var(--muted, #6b7280); text-decoration: line-through; }
+
+/* ---- Narrow viewports ----
+   The shell was a fixed 220px + 1fr two-column grid at every width, so on a
+   phone the sidebar kept its 220px and squeezed the report into whatever was
+   left. Below 860px the sidebar becomes a horizontal strip of section links and
+   the content takes the full width. */
+@media (max-width: 860px) {
+  .results-shell {
+    grid-template-columns: 1fr;
+    gap: var(--sp-4);
+  }
+
+  .results-sidebar {
+    position: static;
+    border-bottom: 1px solid var(--line, #e2e8f0);
+    padding-bottom: var(--sp-3);
+  }
+
+  .sidebar-filename {
+    /* No longer truncated: the filename is the one thing worth reading on a
+       narrow screen, and it can wrap. */
+    white-space: normal;
+    overflow: visible;
+    word-break: break-word;
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+  }
+
+  .sidebar-link {
+    width: auto;
+    border: 1px solid var(--line, #e2e8f0);
+  }
+
+  /* The 7-column table cannot fit, and forcing nowrap on the title meant
+     horizontal scrolling for the most important column. Let the title wrap and
+     keep the scroll container for the remaining numeric columns. */
+  .ref-table .ref-title {
+    white-space: normal;
+    max-width: none;
+  }
+
+  .ref-table-toolbar {
+    gap: var(--sp-2);
+  }
+
+  .ref-search {
+    flex: 1 1 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .status-summary,
+  .summary-strip {
+    gap: var(--sp-1);
+  }
+  .review-summary-actions .btn,
+  .btn {
+    flex: 1 1 100%;
+  }
+}

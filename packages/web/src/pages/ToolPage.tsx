@@ -214,7 +214,7 @@ export function ToolPage() {
       {expiresAt && <p>Download to keep this report. Refresh recovery ends at <time dateTime={expiresAt}>{new Date(expiresAt).toLocaleString()}</time>.</p>}
       <p className="hosted-notice"><span className="hosted-notice-icon" aria-hidden="true">ℹ️</span><span>{HOSTED_LIMITS_SHORT}</span></p>
       <div className="results-toolbar"><h3 className="results-file-name">{displayName || result.fileName}</h3><div className="results-toolbar-actions">
-        <button className="btn btn-primary" onClick={() => downloadPdfReport(result)}>Download PDF</button>
+        <button className="btn btn-primary" onClick={() => downloadPdfReport([result], { includeAttribution: true })}>Download PDF</button>
         <button className="btn btn-secondary" onClick={() => downloadCsvReport([result])}>Download CSV</button>
         <button className="btn btn-secondary" onClick={reset}>Check another document</button>
       </div></div>

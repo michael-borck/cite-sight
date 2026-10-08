@@ -10,3 +10,5 @@ export { HelpOverlay, SectionHelp } from './HelpOverlay';
 export { describeRejection } from './FileRejection';
 export type { RejectionLimits } from './FileRejection';
 export { buildCsv, downloadCsvReport, csvEscape } from './reportCsv';
+export { buildPdfReport, downloadPdfReport, pdfReportFileName } from './reportPdf';
+export type { PdfReportOptions } from './reportPdf';

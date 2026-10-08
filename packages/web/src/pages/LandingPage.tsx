@@ -291,6 +291,16 @@ export function LandingPage({ onNavigate }: Props) {
             <p className="hero-note">
               PDF · DOCX · TXT — verified against Crossref, Semantic Scholar &amp; OpenAlex.
             </p>
+            {/* The only privacy copy on this page used to promote the offline
+                products, while the hero CTA — the one product that uploads the
+                document to a server — said nothing about what leaves your
+                machine. */}
+            <p className="hero-note hero-privacy">
+              <strong>Checking online uploads your document to our server</strong> and sends
+              reference titles, authors and identifiers to citation databases. The desktop app
+              keeps files on your machine. Either way CiteSight is a guide for markers, not a
+              judge: “not found” means a database returned no record, not that a source is fake.
+            </p>
           </div>
           <HeroMock />
         </div>
@@ -344,7 +354,16 @@ export function LandingPage({ onNavigate }: Props) {
       <section className="download-section">
         <h2 className="section-heading">Get the Desktop App</h2>
         <p className="download-sub">
-          Everything the web version offers, plus powerful extras that run entirely on your machine.
+          {/*
+            This used to claim "everything the web version offers", which the
+            tool's own HOSTED_LIMITS_NOTICE contradicts: the hosted checker
+            shares server-side API quotas and supports no personal OpenAlex or
+            Semantic Scholar keys, so it returns more "unverified". Say what is
+            actually different.
+          */}
+          Everything the web version offers, plus powerful extras that run entirely on your
+          machine — including personal API keys and URL screenshots, which is why it verifies
+          more references with fewer “unavailable” results.
         </p>
 
         <div className="comparison">
