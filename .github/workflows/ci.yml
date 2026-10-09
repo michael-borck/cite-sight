@@ -1,0 +1,93 @@
+name: CI
+
+# Everything the release workflows assume to be true, checked before a tag
+# exists. The v0.13.0 npm publish failed because the CLI typechecked against
+# last release's core .d.ts — a lockfile problem visible only under `npm ci`,
+# which is exactly what this job does.
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # npm ci, not npm install: if the lockfile drifts from package.json the
+      # release would resolve different code than the one tested here.
+      - name: Install dependencies
+        run: npm ci
+
+      # Guards the bug that broke v0.13.0. When the CLI's range on core no
+      # longer matches the local workspace version, npm quietly installs the
+      # previous published core into packages/cli/node_modules instead of
+      # linking the workspace, and the CLI silently builds against stale types.
+      - name: Verify the CLI links the workspace core
+        run: |
+          node -e "
+            const l = require('./package-lock.json');
+            const stale = l.packages['packages/cli/node_modules/@michaelborck/cite-sight-core'];
+            if (stale) {
+              console.error('Lockfile resolves core@' + stale.version + ' from the registry for the CLI.');
+              console.error('Expected a workspace link. The CLI would build against a published release.');
+              process.exit(1);
+            }
+            const declared = require('./packages/cli/package.json').dependencies['@michaelborck/cite-sight-core'];
+            console.log('CLI core dependency:', declared);
+          "
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      # Also the typecheck: every package builds via tsc, so this is what
+      # catches a package importing an export core does not have.
+      - name: Build
+        run: npm run build
+
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.9 is the floor declared in pyproject.toml — if the wrapper starts
+        # using syntax or typing that needs 3.10+, this is where it surfaces.
+        python-version: ['3.9', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Test wrapper
+        run: python -m unittest discover -s packages/python -p 'test_*.py'
+
+      - name: Wheel builds and its version matches pyproject
+        if: matrix.python-version == '3.9'
+        run: |
+          pip install --quiet build
+          cd packages/python
+          python -m build --wheel --outdir /tmp/pkg
+          python -c "
+            import glob, re, zipfile
+            declared = re.search(r'^version = \"(.+)\"', open('pyproject.toml').read(), re.M).group(1)
+            wheel = glob.glob('/tmp/pkg/citesight-*.whl')[0]
+            meta_name = next(n for n in zipfile.ZipFile(wheel).namelist() if n.endswith('.dist-info/METADATA'))
+            meta = zipfile.ZipFile(wheel).read(meta_name).decode()
+            built = re.search(r'^Version: (.+)$', meta, re.M).group(1)
+            print('pyproject:', declared, '| wheel:', built)
+            assert declared == built, f'version drift: pyproject {declared} != wheel {built}'
+          "
