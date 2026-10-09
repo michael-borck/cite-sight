@@ -87,7 +87,17 @@ npm pkg set "dependencies.@michaelborck/cite-sight-core=^$VERSION"
 # the language-neutral manifest.json the family table generator reads.
 
 echo "Updating Python wrapper version (packages/python/pyproject.toml)..."
-node -e "const fs=require('fs');const f='$ROOT_DIR/packages/python/pyproject.toml';fs.writeFileSync(f,fs.readFileSync(f,'utf8').replace(/^version = .*/,'version = \"$VERSION\"'))" 
+# The `m` flag is load-bearing: pyproject.toml starts with [build-system], so
+# without it `^version` only ever matches at byte 0, the replace finds nothing,
+# and the file is written back unchanged — silently. That is how pyproject.toml
+# drifted out of step with the rest of the monorepo.
+node -e "
+  const fs=require('fs');
+  const f='$ROOT_DIR/packages/python/pyproject.toml';
+  const before=fs.readFileSync(f,'utf8');
+  if (!/^version = .*$/m.test(before)) throw new Error('pyproject.toml has no version line to update');
+  fs.writeFileSync(f, before.replace(/^version = .*$/m, 'version = \"$VERSION\"'));
+"
 rm -f "$ROOT_DIR/packages/python/pyproject.toml.bak"
 
 echo "Updating Python __version__ (packages/python/cite_sight/__init__.py)..."
