@@ -59,10 +59,12 @@ export const PACING_NOTE =
 
 /** Shown on the online checker before upload — why the hosted version finds less. */
 export const HOSTED_LIMITS_NOTICE =
-  'The online checker sends your upload to this server and reference metadata to citation databases. ' +
-  'Lookups share the server\'s rate limits. Unavailable checks can be retried. ' +
-  'The desktop app processes files locally and supports personal OpenAlex and Semantic Scholar API keys, ' +
-  'but still sends reference metadata to external services.';
+  'Checking online uploads your document to this server and sends reference titles, authors, ' +
+  'identifiers and URLs to citation databases to verify them. The upload is deleted when the ' +
+  'analysis finishes, reports exclude the document text and expire after one hour. Lookups share ' +
+  'the server\'s rate limits, so unavailable checks can be retried. The desktop app processes ' +
+  'files locally and supports personal OpenAlex and Semantic Scholar API keys, but still sends ' +
+  'reference metadata to external services.';
 
 /** One-line version — shown alongside results, where a low verified count prompts the question. */
 export const HOSTED_LIMITS_SHORT =

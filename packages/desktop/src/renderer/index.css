@@ -163,6 +163,19 @@ select { font-family: var(--font-body); }
   border-color: rgba(26,35,50,0.25);
 }
 
+/* Quiet toolbar button - for secondary actions (session restore, settings) that
+   should not compete with the primary action in the window. */
+.btn-quiet {
+  background: transparent;
+  color: var(--ink-muted);
+  border: 1px solid transparent;
+}
+.btn-quiet:hover:not(:disabled) {
+  background: var(--paper);
+  border-color: rgba(26,35,50,0.1);
+  color: var(--ink-soft);
+}
+
 .btn-danger {
   background: var(--rose);
   color: var(--white);

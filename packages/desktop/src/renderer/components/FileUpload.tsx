@@ -69,9 +69,11 @@ export function FileUpload() {
         <input {...getInputProps()} />
 
         <div className="dropzone-content">
-          <div className="dropzone-icon">&#128196;</div>
+          {/* A monochrome emoji rendered as a dull glyph and read as
+              unfinished; this is a drawn arrow in the brand colour instead. */}
+          <div className="dropzone-icon" aria-hidden="true">&#8595;</div>
           {isDragActive ? (
-            <p className="dropzone-text">Drop the files here...</p>
+            <p className="dropzone-text">Drop the files here</p>
           ) : (
             <>
               <p className="dropzone-text">Drag &amp; drop documents here, or</p>

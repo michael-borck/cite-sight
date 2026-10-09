@@ -92,20 +92,24 @@ it('ignores late results from a cancelled job when a new check starts', async ()
 // The disclosure existed in the wording module and was never rendered.
 it('discloses the hosted limits before upload and can be dismissed', async () => {
   const user = userEvent.setup(); render(<ToolPage />);
-  expect(screen.getByText(/sends your upload to this server and reference metadata to citation databases/)).toBeDefined();
+  expect(screen.getByText(/uploads your document to this server and sends reference titles/)).toBeDefined();
+  // Exactly one notice: a hand-written privacy line used to sit next to this one
+  // saying almost the same thing, and both repeated under the results.
+  expect(screen.getAllByRole('paragraph').filter((p) => /server|database/i.test(p.textContent ?? ''))).toHaveLength(1);
   expect(screen.queryByText(/share server-side API quotas/)).toBeNull();
-  await user.click(screen.getByRole('button', { name: 'Dismiss these notices' }));
-  expect(screen.queryByText(/sends your upload to this server/)).toBeNull();
+  await user.click(screen.getByRole('button', { name: 'Dismiss this notice' }));
+  expect(screen.queryByText(/uploads your document to this server/)).toBeNull();
 });
 
 it('clears the selected file without starting a run', async () => {
   const user = userEvent.setup(); render(<ToolPage />);
   const input = document.querySelector('input[type="file"]') as HTMLInputElement;
   await user.upload(input, new File(['refs'], 'essay.pdf', { type: 'application/pdf' }));
-  expect(screen.getByText(/essay\.pdf · /)).toBeDefined();
+  expect(screen.getByText('essay.pdf')).toBeDefined();
   await user.click(screen.getByRole('button', { name: 'Remove file' }));
   expect(screen.queryByRole('button', { name: 'Remove file' })).toBeNull();
-  expect(screen.getByText('Drop a document here or click to browse')).toBeDefined();
+  expect(screen.getByText('Drop a document here')).toBeDefined();
+  expect(screen.getByText('or click to browse')).toBeDefined();
 });
 
 // Without the queue the server analyses inside the POST, so there is no stream.

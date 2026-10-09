@@ -23,6 +23,7 @@
 /* ── Notices ────────────────────────────────────────────────────────────────── */
 
 .notices {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--sp-3);
@@ -59,7 +60,7 @@
   background: var(--amber-bg);
   border: 1px solid rgba(196,149,42,0.2);
   border-radius: var(--r-md);
-  padding: var(--sp-3) var(--sp-4);
+  padding: var(--sp-3) 3rem var(--sp-3) var(--sp-4);
   font-size: 0.82rem;
   line-height: 1.55;
   color: var(--ink-soft);
@@ -119,21 +120,78 @@
 
 /* ── Dropzone ───────────────────────────────────────────────────────────────── */
 
+/* Input on the left, settings on the right. Previously everything stacked, so
+   the dropzone was a short wide strip and the action button sat below the fold
+   on a tall, mostly-empty card. */
+.upload-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.65fr);
+  gap: var(--sp-8);
+  align-items: start;
+}
+
+.upload-settings {
+  position: sticky;
+  top: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.btn-block { width: 100%; justify-content: center; }
+
+@media (max-width: 860px) {
+  .upload-layout { grid-template-columns: 1fr; gap: var(--sp-5); }
+  .upload-settings { position: static; }
+}
+
+/* A drop target that reads as the primary action of the page: solid surface,
+   defined edge, and enough vertical presence to invite the drop. */
 .dropzone {
-  border: 2px dashed var(--ink-faint);
+  border: 1.5px dashed var(--ink-faint);
   border-radius: var(--r-lg);
-  padding: 48px var(--sp-8);
+  padding: var(--sp-12) var(--sp-6);
   text-align: center;
   cursor: pointer;
-  transition: all 0.25s;
+  transition: border-color .2s, background .2s;
   background: var(--paper);
-  margin-bottom: var(--sp-8);
+  margin-bottom: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
 }
 
 .dropzone:hover {
   border-color: var(--accent);
   background: var(--accent-bg);
 }
+
+.dropzone-icon {
+  width: 44px;
+  height: 44px;
+  margin-bottom: var(--sp-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  color: var(--accent-dim);
+  font-size: 1.4rem;
+  font-weight: 700;
+  transition: transform .2s;
+}
+.dropzone:hover .dropzone-icon { transform: translateY(-2px); }
+
+.dropzone-title {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.dropzone-sub { color: var(--ink-muted); font-size: .92rem; }
 
 .dropzone-active {
   border-color: var(--accent);
@@ -145,9 +203,11 @@
    a visible focus state like hover — otherwise keyboard users cannot tell they
    are on the drop target. */
 .dropzone:focus-visible {
+  outline: 2px solid var(--accent-dim);
+  outline-offset: 2px;
   border-color: var(--accent);
-  background: var(--accent-bg);
   border-style: solid;
+  background: var(--accent-bg);
 }
 
 .dropzone-has-file {

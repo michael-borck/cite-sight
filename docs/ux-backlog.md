@@ -216,6 +216,44 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
   shared `reportPdf.ts`, one shared `reportCsv.ts`, and three thin platform
   shims each for screenshots.
 
+## Batch 6 — polish pass, driven by looking at the running app
+
+Everything below was found by **running** the desktop app under Electron and the
+web app in Chromium and reading the screenshots, not by reading CSS. Two of the
+four items were regressions introduced by earlier batches of this document, which
+only a rendered view would have caught.
+
+- [x] **Regression: a "×" floating at the right edge of the viewport.** The
+  notice cards gained dismiss buttons, but `.dismiss-btn` is `position: absolute`
+  and `.notices` had no `position: relative`, so the button anchored to the page
+  and flew off the side of the window.
+- [x] **Regression: three notice bars stacked above the tool**, two of them
+  saying the same thing. A hand-written privacy line was added alongside
+  `HOSTED_LIMITS_NOTICE`, which already existed for exactly that job — two
+  sources for one message. The results screen showed all three. Now exactly one
+  notice per screen, with the retention detail folded into the canonical
+  `HOSTED_LIMITS_NOTICE` rather than restated.
+- [x] **Desktop empty state had no voice.** The window opened straight onto a
+  48px-padded dropzone: no heading, no explanation of what the app does, an
+  emoji icon that rendered as a dull grey glyph, and four equal-weight header
+  buttons (session restore, settings) competing as if they were primary actions.
+  Now: a serif heading and one-line explanation, a tighter dropzone with a drawn
+  arrow, and the four actions demoted to a quiet toolbar (`btn-quiet`).
+- [x] **The accuracy disclaimer was the most prominent text in the desktop
+  window** — long, italic and centred, sitting directly under the dropzone,
+  outranked by nothing except the drop target. It is now small print at the
+  bottom of the window.
+- [x] **Web tool page: dropzone presence and layout.** It was a short, wide,
+  empty dashed strip with the settings stacked underneath, pushing the action
+  button below the fold. Now the dropzone is the primary object on the page and
+  the settings sit beside it, with the action button in the right-hand column.
+  Verified stacking at 620px.
+- [ ] **Results screen polish, not done.** The filename appears three times
+  (toolbar, sidebar, verdict hero); the "Unmatched" stat card wraps onto its own
+  full-width row, breaking the stat grid; the sidebar is mostly empty space.
+- [ ] **Landing page CTA cluster.** Three buttons with equal weight, one of which
+  ("Download for Mac (Intel)") wraps to its own row and reads as an accident.
+
 ## Still open
 
 - [ ] **Landing-page privacy line wording is a product call.** It now states what

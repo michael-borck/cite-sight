@@ -1,16 +1,26 @@
-.file-upload-container { width: 100%; max-width: 800px; margin: 0 auto; }
+.file-upload-container { width: 100%; max-width: 640px; margin: 0 auto; }
 
+/* Was 48px vertical padding, which made the dropzone the loudest thing in an
+   otherwise empty window. Tighter, with the icon carrying the invitation. */
 .dropzone {
-  border: 2px dashed var(--ink-faint);
-  border-radius: var(--r-xl);
-  padding: var(--sp-12) var(--sp-8);
+  border: 1.5px dashed var(--ink-faint);
+  border-radius: var(--r-lg);
+  padding: var(--sp-8) var(--sp-6);
   text-align: center;
-  background: var(--white);
-  transition: all 0.3s ease;
+  background: var(--paper);
+  transition: border-color 0.2s, background 0.2s;
   cursor: pointer;
 }
 .dropzone:hover {
   border-color: var(--accent);
+  background: var(--accent-bg);
+}
+/* Keyboard users get the same affordance as hover. */
+.dropzone:focus-visible {
+  outline: 2px solid var(--accent-dim);
+  outline-offset: 2px;
+  border-color: var(--accent);
+  border-style: solid;
   background: var(--accent-bg);
 }
 .dropzone.active {
@@ -27,18 +37,19 @@
 }
 
 .dropzone-icon {
-  width: 56px; height: 56px;
+  width: 44px; height: 44px;
   margin: 0 auto var(--sp-2);
   background: var(--accent-bg);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
-  color: var(--accent);
-  transition: transform 0.3s;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--accent-dim);
+  transition: transform 0.2s;
 }
-.dropzone:hover .dropzone-icon { transform: scale(1.1); }
+.dropzone:hover .dropzone-icon { transform: translateY(-2px); }
 
 .dropzone-text { color: var(--ink-soft); font-size: 0.93rem; }
 .dropzone-hint {

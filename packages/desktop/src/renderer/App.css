@@ -71,16 +71,31 @@
   box-shadow: var(--shadow-sm);
 }
 
-/* ---- Pre-run accuracy disclaimer ---- */
+/* ---- Pre-run accuracy disclaimer ----
+   This was a long italic centred paragraph sitting directly under the dropzone,
+   which made the legal caveat the most prominent text in the window — bigger
+   than any instruction, and centred multi-line prose is hard to read. It is now
+   small print in the footer. */
 .upload-disclaimer {
-  margin: var(--sp-5) auto 0;
-  max-width: 640px;
-  font-size: 0.82rem;
-  line-height: 1.5;
-  font-style: italic;
-  color: #64748b;
+  max-width: 860px;
+  margin: var(--sp-5) auto var(--sp-8);
+  padding: 0 var(--sp-6);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--ink-faint);
   text-align: center;
 }
+
+/* What this app does, for someone who has just opened it. */
+.upload-intro { max-width: 640px; margin: 0 auto var(--sp-6); text-align: center; }
+.upload-intro h2 {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: var(--sp-2);
+}
+.upload-intro p { color: var(--ink-muted); font-size: 0.95rem; line-height: 1.55; }
 
 /* ---- Action buttons ---- */
 .action-buttons {
@@ -147,6 +162,12 @@
 }
 
 /* ---- Results header ---- */
+.app-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  flex-shrink: 0;
+}
 .results-header {
   display: flex;
   justify-content: space-between;

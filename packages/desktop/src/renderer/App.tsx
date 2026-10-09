@@ -232,11 +232,14 @@ async function addDocuments() {
           setNotice(update?.error ? 'Could not check for updates.' : update?.updateAvailable ? 'An update is available.' : 'CiteSight is up to date.');
         }}>v{version}</button>
       </div>
-      <div className="batch-toolbar">
-        <button type="button" className="btn btn-secondary" disabled={isProcessing} onClick={() => void openReview()}>Open review session</button>
-        <button type="button" className="btn btn-secondary" disabled={isProcessing} onClick={() => void restoreBatch()}>Restore last batch</button>
-        <button type="button" className="btn btn-secondary" disabled={!batch.length} onClick={() => void saveReview()}>Save review session</button>
-        <button type="button" className="btn btn-secondary" aria-expanded={settings} onClick={() => setSettings(!settings)}>Settings</button>
+      {/* These are all secondary/advanced actions — session restore, settings.
+          Styled as `btn-secondary` they read as four equal-weight primaries and
+          dominated the header; `btn-quiet` makes them a toolbar. */}
+      <div className="app-toolbar">
+        <button type="button" className="btn btn-quiet" disabled={isProcessing} onClick={() => void openReview()}>Open review session</button>
+        <button type="button" className="btn btn-quiet" disabled={isProcessing} onClick={() => void restoreBatch()}>Restore last batch</button>
+        <button type="button" className="btn btn-quiet" disabled={!batch.length} onClick={() => void saveReview()}>Save review session</button>
+        <button type="button" className="btn btn-quiet" aria-expanded={settings} onClick={() => setSettings(!settings)}>Settings</button>
       </div>
     </div></header>
     <main className="app-main"><div className="container">
@@ -277,12 +280,20 @@ async function addDocuments() {
       </div>}
       <BatchRuntime clock={clock} />
       {!state.hasStarted ? <section className="upload-section">
+        {/* The window used to open straight onto a large dropzone with no
+            heading and nothing explaining what the app does or what happens
+            next. */}
+        {filePaths.length === 0 && <div className="upload-intro">
+          <h2>Check citations in a document</h2>
+          <p>Add one document or a whole folder. CiteSight extracts the reference list and in-text
+            citations, checks each source against Crossref, OpenAlex, Semantic Scholar, arXiv and
+            more, then flags anything worth a second look.</p>
+        </div>}
         <FileUpload />
         {filePaths.length > 0 && <><ProcessingOptions /><div className="action-buttons">
           <button className="btn btn-primary" disabled={isProcessing} onClick={() => void check(waiting)}>Check {filePaths.length === 1 ? 'citations' : `${filePaths.length} documents`}</button>
           <button className="btn btn-secondary" disabled={isProcessing} onClick={state.reset}>Clear documents</button>
         </div></>}
-        <p className="upload-disclaimer">{DISCLAIMER}</p>
       </section> : <>
         <div className="batch-toolbar">
           <button className="btn btn-secondary" onClick={() => void addDocuments()} disabled={isProcessing}>Add documents</button>
@@ -334,6 +345,11 @@ async function addDocuments() {
           </div>}
         </div></div>
       </>}
-    </div></main><UpdateNotification />
+    </div></main>
+    {/* Small print, last thing in the window. It used to sit directly under the
+        dropzone as a long italic centred paragraph, which made the legal caveat
+        the most prominent text in an otherwise empty app. */}
+    {!state.hasStarted && <p className="upload-disclaimer">{DISCLAIMER}</p>}
+    <UpdateNotification />
   </div>;
 }

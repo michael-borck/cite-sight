@@ -195,10 +195,14 @@ export function ToolPage() {
 
   return <div className="tool-page">
     <div className="tool-header"><h2>Check citations online</h2><p className="tool-subtitle">Add a document or paste a reference list.</p></div>
-    {showNotices && <div className="notices">
-      <p className="privacy-notice"><span className="privacy-icon" aria-hidden="true">🔒</span><span>Your document is uploaded to this server for checking and deleted when the analysis finishes. Reference titles, authors, identifiers and URLs are sent to citation databases to verify them. Reports exclude the document text and expire after one hour.</span></p>
+    {/* Exactly one notice per screen. This previously rendered a hand-written
+        privacy line *and* HOSTED_LIMITS_NOTICE, which say almost the same
+        thing, so the tool page opened with two near-identical bars and the
+        report opened with three. HOSTED_LIMITS_NOTICE is the canonical wording
+        and now carries the retention detail too. */}
+    {!result && showNotices && <div className="notices">
       <p className="hosted-notice"><span className="hosted-notice-icon" aria-hidden="true">ℹ️</span><span>{HOSTED_LIMITS_NOTICE}</span></p>
-      <button className="dismiss-btn" onClick={() => setShowNotices(false)} aria-label="Dismiss these notices">×</button>
+      <button className="dismiss-btn" onClick={() => setShowNotices(false)} aria-label="Dismiss this notice">×</button>
     </div>}
     {notice && <p className="cancel-notice" role="status">{notice}<button className="dismiss-btn" onClick={() => setNotice('')} aria-label="Dismiss notice">×</button></p>}
     {recoveryNotice && <p className="cancel-notice" role="status">{recoveryNotice}<button className="dismiss-btn" onClick={() => setRecoveryNotice('')} aria-label="Dismiss notice">×</button></p>}
@@ -226,6 +230,11 @@ export function ToolPage() {
       </div></div>
       <ResultsDashboard key={runRef.current} results={result} onResultsChange={setResult} reverify={(reference) => retryReference(reference, runOptions.current)} />
     </div> : <section className="upload-section">
+      {/* The dropzone is the point of the page, so it gets the room; the
+          settings sit beside it rather than stacking underneath and pushing the
+          action button to the bottom of the fold. */}
+      <div className="upload-layout">
+      <div className="upload-input">
       <div className="input-tabs" role="tablist" aria-label="Input method">
         {(['upload', 'paste'] as const).map((value) => <button key={value} type="button" role="tab" aria-selected={mode === value} aria-controls={`input-${value}`} id={`tab-${value}`}
           onClick={() => { setMode(value); setError(''); setOptions((previous) => ({ ...previous, documentType: value === 'paste' ? 'reference-list' : 'assignment', checkInText: value !== 'paste' })); }}>
@@ -239,7 +248,9 @@ export function ToolPage() {
         <div {...getRootProps({ role: 'button' })} className={`dropzone ${isDragActive ? 'dropzone-active' : ''}`}
           aria-label={file ? `Document selected: ${file.name}. Activate to choose a different file.` : 'Choose a document to check, or drop one here'}>
           <input {...getInputProps()} />
-          <p>{file ? `${file.name} · ${(file.size / 1024 / 1024).toFixed(1)} MB` : 'Drop a document here or click to browse'}</p>
+          <span className="dropzone-icon" aria-hidden="true">↧</span>
+          <p className="dropzone-title">{file ? file.name : 'Drop a document here'}</p>
+          <p className="dropzone-sub">{file ? `${(file.size / 1024 / 1024).toFixed(1)} MB · choose a different file` : 'or click to browse'}</p>
           <p className="dropzone-hint">PDF, DOCX, TXT, MD, QMD or JSON · Maximum 10 MB</p>
         </div>
         {file && <button className="btn btn-secondary" onClick={() => { setFile(null); setError(''); }}>Remove file</button>}
@@ -252,8 +263,12 @@ export function ToolPage() {
         <p id="paste-limit">{paste.length.toLocaleString()} / {MAX_PASTE_CHARS.toLocaleString()} characters</p>
         {paste.length > MAX_PASTE_CHARS && <p role="alert">Please shorten the reference list before checking.</p>}
       </div>}
-      <AnalysisSetup options={options} onChange={(patch) => setOptions((previous) => ({ ...previous, ...patch }))} />
-      <div className="action-buttons"><button className="btn btn-primary" onClick={() => void handleAnalyze()} disabled={mode === 'upload' ? !file : !paste.trim() || paste.length > MAX_PASTE_CHARS}>Check citations</button></div>
+      </div>
+      <div className="upload-settings">
+        <AnalysisSetup options={options} onChange={(patch) => setOptions((previous) => ({ ...previous, ...patch }))} />
+        <div className="action-buttons"><button className="btn btn-primary btn-block" onClick={() => void handleAnalyze()} disabled={mode === 'upload' ? !file : !paste.trim() || paste.length > MAX_PASTE_CHARS}>Check citations</button></div>
+      </div>
+      </div>
     </section>}
   </div>;
 }
