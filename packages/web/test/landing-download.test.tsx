@@ -51,9 +51,25 @@ function setTouchPoints(value: number) {
   Object.defineProperty(navigator, 'maxTouchPoints', { value, configurable: true });
 }
 
+/**
+ * detectPlatform() reads navigator.platform and navigator.userAgent, and
+ * jsdom's defaults name Linux. On an Ubuntu runner the page therefore rendered
+ * the Linux download and not one of these Mac assertions could find its link —
+ * they had only ever been exercised on a developer's Mac. Pin the platform so
+ * the tests describe the page's behaviour rather than the host's.
+ */
+const MAC_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15';
+const LINUX_UA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36';
+
+function setPlatform(platform: string, userAgent: string) {
+  Object.defineProperty(navigator, 'platform', { value: platform, configurable: true });
+  Object.defineProperty(navigator, 'userAgent', { value: userAgent, configurable: true });
+}
+
 beforeEach(() => {
   store = memoryStorage();
   vi.stubGlobal('localStorage', store);
+  setPlatform('MacIntel', MAC_UA);
   // The release-asset lookup hits GitHub; stub it so tests never depend on the
   // network. With no assets the links fall back to the releases page, which is
   // irrelevant to what these tests assert.
@@ -113,4 +129,15 @@ it('survives storage being unavailable', async () => {
   // The switch still works for this visit; only persistence is lost.
   expect(heroLink(/Download for Mac \(Intel\)/)).toBeDefined();
   setItem.mockRestore();
+});
+
+// The chip picker is macOS-only. Without this the whole file silently depends
+// on the host looking like a Mac, which is how six tests passed locally and
+// failed on the first CI run.
+it('offers no Mac build on a non-Mac platform', () => {
+  setPlatform('Linux x86_64', LINUX_UA);
+  setTouchPoints(5);
+  render(<LandingPage onNavigate={() => {}} />);
+  expect(hero().queryByRole('link', { name: /Download for Mac/ })).toBeNull();
+  expect(hero().queryByRole('button', { name: 'Apple silicon' })).toBeNull();
 });
