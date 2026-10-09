@@ -358,10 +358,23 @@ docker compose up --build
 # Open http://localhost:3000
 ```
 
+### Tests
+
+```bash
+npm test          # all packages, plus the Python wrapper
+npm run lint
+```
+
+See [docs/testing.md](docs/testing.md) for the environment traps that will
+otherwise cost you an afternoon — chiefly that `localStorage` is `undefined` in
+tests on Node 26 — and for how to screenshot the web and desktop UI without a
+display.
+
 ## Project Structure
 
 ```
 cite-sight/
+├── docs/              # Testing notes, UX backlog, ADRs, design rationale
 ├── packages/
 │   ├── core/          # Shared analysis library
 │   ├── ui-dashboard/  # Shared results dashboard (source-only package)
