@@ -14,7 +14,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Iterable
 
-__version__ = "0.12.2"
+__version__ = "0.13.0"
 __all__ = ["CiteSightError", "is_cli_available", "run", "check", "claims", "library_plan", "claim_overlap", "about"]
 
 
