@@ -88,13 +88,58 @@
   display: flex;
   gap: var(--sp-4);
   flex-wrap: wrap;
+  align-items: center;
 }
 
+/* macOS ships two builds. The button names the chip it will fetch and the
+   switcher underneath changes it in one click, so nobody has to work out which
+   of two similar files is theirs — or which of two equally-weighted buttons
+   means their machine. */
+.arch-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.arch-toggle {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  background: rgba(26, 35, 50, 0.05);
+  border: 1px solid rgba(26, 35, 50, 0.08);
+  border-radius: 999px;
+}
+
+.arch-option {
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 14px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.arch-option:hover { color: var(--ink-soft); }
+.arch-option--active {
+  background: var(--white);
+  color: var(--accent-dim);
+  box-shadow: 0 1px 3px rgba(26, 35, 50, 0.12);
+}
+
+.arch-hint { font-size: 0.78rem; color: var(--ink-faint); padding-left: 4px; }
+
+/* Consecutive notes stack tightly; the first one gets the breathing room. */
 .hero-note {
   margin-top: var(--sp-5);
   color: var(--ink-faint);
   font-size: 0.9rem;
 }
+.hero-note + .hero-note { margin-top: var(--sp-2); }
 
 /* What leaves your machine when you use the hosted checker. Sits with the hero
    CTAs rather than two clicks away, because it is the only page a visitor is
@@ -475,6 +520,11 @@
   box-shadow: 0 8px 22px rgba(42,157,143,0.4);
   color: var(--white);
 }
+
+/* The download section centres its stack, so the chip switcher centres with it. */
+.download-actions { display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); }
+.download-actions .arch-picker { align-items: center; }
+.download-actions .arch-hint { padding-left: 0; }
 
 .platform-selector {
   display: flex;

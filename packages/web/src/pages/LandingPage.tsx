@@ -27,14 +27,99 @@ function detectPlatform(): Platform {
 
 type MacArch = 'arm64' | 'x64';
 
-function matchAsset(assets: { name: string; browser_download_url: string }[], platform: Platform, macArch?: MacArch): string | null {
+const MAC_ARCH_LABELS: Record<MacArch, string> = {
+  arm64: 'Apple silicon',
+  x64: 'Intel',
+};
+
+/**
+ * Best-effort chip detection.
+ *
+ * Browsers cannot reliably distinguish Apple silicon from Intel: Safari and
+ * Chrome on an M-series Mac deliberately report "Macintosh; Intel Mac OS X" so
+ * that sites keep working. The strongest signal available to a page is that
+ * Apple silicon exposes a touch-capable trackpad (navigator.maxTouchPoints > 1)
+ * while an Intel Mac does not. That is correct in practice and wrong only for
+ * the rare Intel Mac with a touch display — so it selects a *default*, never
+ * locks out the other option, and the result is shown so a wrong guess is
+ * obvious and one click from being fixed.
+ */
+function detectMacArch(): MacArch {
+  return (navigator.maxTouchPoints ?? 0) > 1 ? 'arm64' : 'x64';
+}
+
+const MAC_ARCH_KEY = 'cite-sight-mac-arch';
+
+function readStoredArch(): MacArch | null {
+  try {
+    const stored = localStorage.getItem(MAC_ARCH_KEY);
+    return stored === 'arm64' || stored === 'x64' ? stored : null;
+  } catch {
+    return null; // Storage can be blocked; detection still works.
+  }
+}
+
+type ReleaseAsset = { name: string; browser_download_url: string };
+
+/**
+ * One primary download plus a chip switcher.
+ *
+ * The button always names the chip it will fetch, so nobody has to guess which
+ * of two similar-looking files is theirs, and switching is a single click. When
+ * the chip came from detection rather than a deliberate choice we say so — a
+ * wrong guess then explains itself instead of silently handing someone the
+ * wrong build.
+ */
+function MacDownload({
+  assets,
+  arch,
+  detected,
+  onArch,
+  className,
+}: {
+  assets: ReleaseAsset[];
+  arch: MacArch;
+  detected: boolean;
+  onArch: (next: MacArch) => void;
+  className?: string;
+}) {
+  return (
+    <>
+      <a className={className} href={matchAsset(assets, 'mac', arch) ?? FALLBACK_URL}>
+        Download for Mac ({MAC_ARCH_LABELS[arch]})
+      </a>
+      <div className="arch-picker">
+        <div className="arch-toggle" role="group" aria-label="Which Mac do you have?">
+          {(['arm64', 'x64'] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              className={`arch-option ${option === arch ? 'arch-option--active' : ''}`}
+              aria-pressed={option === arch}
+              onClick={() => onArch(option)}
+            >
+              {MAC_ARCH_LABELS[option]}
+            </button>
+          ))}
+        </div>
+        <span className="arch-hint">
+          {detected ? `Detected ${MAC_ARCH_LABELS[arch]}` : `Downloading the ${MAC_ARCH_LABELS[arch]} build`}
+        </span>
+      </div>
+    </>
+  );
+}
+
+function matchAsset(assets: ReleaseAsset[], platform: Platform, macArch?: MacArch): string | null {
   for (const asset of assets) {
     const name = asset.name.toLowerCase();
     if (platform === 'mac' && name.endsWith('.dmg')) {
       // Since the arch-suffixed naming, prefer the requested chip explicitly.
       // Older releases without suffixes still match the bare .dmg fallback.
       if (macArch === 'arm64' && name.includes('arm64')) return asset.browser_download_url;
-      if (macArch === 'x64' && !name.includes('arm64')) return asset.browser_download_url;
+      if (macArch === 'x64' && name.includes('x64')) return asset.browser_download_url;
+      // No arch requested: prefer the Apple silicon build, and say so, rather
+      // than relying on release order.
       if (!macArch && !name.includes('x64')) return asset.browser_download_url;
     }
     if (platform === 'windows' && name.endsWith('.exe')) return asset.browser_download_url;
@@ -218,15 +303,20 @@ export function LandingPage({ onNavigate }: Props) {
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>(detectPlatform);
   const { assets, version } = useReleaseAssets();
 
-  // Mac ships two builds (Apple Silicon and Intel) and browsers cannot tell
-  // the chip apart (Safari reports "MacIntel" on both), so the primary button
-  // serves the M-series build and an explicit Intel link sits beside it.
-  // Browsers cannot tell an M-series Mac from an Intel one, so both mac
-  // downloads are offered explicitly rather than guessed.
-  const macArm64Url = matchAsset(assets, 'mac', 'arm64') ?? FALLBACK_URL;
-  const macX64Url = matchAsset(assets, 'mac', 'x64') ?? FALLBACK_URL;
+  // macOS ships two builds and the browser cannot be trusted to know which, so
+  // detection picks a default that the visitor can change in one click. An
+  // explicit choice is remembered and never overridden.
+  const storedArch = readStoredArch();
+  const [macArch, setMacArch] = useState<MacArch>(() => storedArch ?? detectMacArch());
+  const [archIsDetected, setArchIsDetected] = useState(() => storedArch === null);
+  function chooseArch(next: MacArch) {
+    setMacArch(next);
+    setArchIsDetected(false);
+    try { localStorage.setItem(MAC_ARCH_KEY, next); } catch { /* Storage can be blocked. */ }
+  }
+
   const downloadUrl = selectedPlatform === 'mac'
-    ? macArm64Url
+    ? matchAsset(assets, 'mac', macArch) ?? FALLBACK_URL
     : matchAsset(assets, selectedPlatform) ?? FALLBACK_URL;
   // Single-file build: matched by exact artifact name so it never collides
   // with the platform matchers above. Falls back to the releases page until
@@ -261,17 +351,16 @@ export function LandingPage({ onNavigate }: Props) {
                 Check Citations Online
               </button>
               {selectedPlatform === 'mac' ? (
-                <>
-                  <a className="btn btn-secondary" href={macArm64Url}>Download for Mac (M-series)</a>
-                  <a className="btn btn-secondary" href={macX64Url}>Download for Mac (Intel)</a>
-                </>
+                <MacDownload assets={assets} arch={macArch} detected={archIsDetected} onArch={chooseArch} className="btn btn-secondary" />
               ) : (
                 <a className="btn btn-secondary" href={downloadUrl}>{label}</a>
               )}
             </div>
-            {selectedPlatform === 'mac' && (
+            {/* Only worth saying while the chip is a guess — once someone has
+                picked deliberately they know which machine they have. */}
+            {selectedPlatform === 'mac' && archIsDetected && (
               <p className="hero-note hero-alt-platforms">
-                Not sure which? Apple menu → About This Mac → check the Chip line.
+                Not sure? Apple menu → About This Mac → check the Chip line.
               </p>
             )}
             <p className="hero-note hero-alt-platforms">
@@ -389,15 +478,13 @@ export function LandingPage({ onNavigate }: Props) {
           </div>
         </div>
 
-        {selectedPlatform === 'mac' ? (
-          <>
-            <a className="download-btn" href={macArm64Url}>Download for Mac (M-series)</a>
-            <a className="download-btn download-btn--secondary" href={macX64Url}>Download for Mac (Intel)</a>
-            <p className="download-fine">Not sure which? Apple menu → About This Mac → check the Chip line.</p>
-          </>
-        ) : (
-          <a className="download-btn" href={downloadUrl}>{label}</a>
-        )}
+        <div className="download-actions">
+          {selectedPlatform === 'mac' ? (
+            <MacDownload assets={assets} arch={macArch} detected={archIsDetected} onArch={chooseArch} className="download-btn" />
+          ) : (
+            <a className="download-btn" href={downloadUrl}>{label}</a>
+          )}
+        </div>
 
         <div className="platform-selector">
           {(['mac', 'windows', 'linux'] as Platform[]).map((p) => (
