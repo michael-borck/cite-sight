@@ -81,6 +81,27 @@ echo "Updating CLI @michaelborck/cite-sight-core dependency to ^$VERSION..."
 cd "$ROOT_DIR/packages/cli"
 npm pkg set "dependencies.@michaelborck/cite-sight-core=^$VERSION"
 
+# The lockfile MUST be regenerated after the CLI's range on core moves.
+# Otherwise package-lock.json still records the old range, and on `npm ci` npm
+# stops linking the local workspace core and installs the *previous* published
+# core from the registry into packages/cli/node_modules instead. The CLI then
+# typechecks against last release's .d.ts and fails with TS2305 on any export
+# added since — which is exactly how the v0.13.0 npm publish broke.
+echo "Regenerating package-lock.json so core links as a workspace..."
+cd "$ROOT_DIR"
+npm install --package-lock-only
+
+# Fail loudly if npm decided to satisfy core from the registry instead.
+node -e "
+  const l=require('$ROOT_DIR/package-lock.json');
+  const stale=l.packages['packages/cli/node_modules/@michaelborck/cite-sight-core'];
+  if (stale) {
+    console.error('FATAL: lockfile still resolves core@'+stale.version+' from the registry for the CLI.');
+    console.error('The CLI would typecheck against the previous release. Refusing to continue.');
+    process.exit(1);
+  }
+"
+
 # --- keep the lens family manifest version in sync --------------------------
 # The capability manifest lives in two places that npm version does not touch:
 # the TS source (core/src/manifest.ts) served at /manifest and via the CLI, and
