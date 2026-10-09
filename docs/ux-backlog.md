@@ -228,8 +228,32 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
   but scrolling a very long list still grows the DOM. Search plus "Show more" is
   a reasonable trade for a report screen; a real virtualiser would break
   ctrl-F and the sticky table header.
-- [ ] **Server still has no per-IP rate limit** (only a global 10-upload cap),
-  and its error handler returns raw `err.message` to clients.
+
+## Closed — server capacity under a class-sized load
+
+The audit flagged "no per-IP rate limit" as a gap. Investigating it showed a
+per-IP limit was the wrong fix for this tool, so it was not added:
+
+- [x] **The 10-upload cap was not a per-session or per-IP quota** — it was a
+  process-wide counter of in-flight requests, and in the default sync mode the
+  slot was held for the whole analysis, so 11 simultaneous submissions meant the
+  11th got an immediate `503`.
+- [x] **Bursts now queue instead of being rejected** (`packages/server/src/capacity.ts`):
+  FIFO waiters, a bounded wait, and a slot transferred rather than lost on
+  release. Extracted from `routes.ts` so it can be tested directly — as
+  module-level state inside the router, one failing test leaked its held slots
+  into every test after it.
+- [x] **`503` now carries `Retry-After`**, and the web app retries automatically
+  with exponential backoff, aborting immediately on Cancel. A burst of 30
+  becomes "everyone runs, staggered" rather than "10 succeed, 20 see an error".
+- [x] **A queued request whose client disconnects is dropped** from the queue,
+  so closing the tab does not hold a place in line.
+- [x] **Documented in the README** under "Handling a whole class submitting at
+  once", including why per-IP limiting is deliberately absent and what to set if
+  they later want an abuse backstop.
+- [ ] **No per-IP backstop.** If wanted, key it on a server-issued cookie with a
+  high IP ceiling, and set `trust proxy` first — without it every request behind
+  a reverse proxy looks like it came from the proxy.
 
 ## Backlog — trust & disclosure (product call)
 

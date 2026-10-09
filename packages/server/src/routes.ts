@@ -1,4 +1,4 @@
-import { Router, type RequestHandler } from 'express';
+import { Router, type RequestHandler, type Response } from 'express';
 import multer from 'multer';
 import { tmpdir } from 'os';
 import { rename, unlink, open } from 'fs/promises';
@@ -10,6 +10,7 @@ import { subscribe, type StreamMessage } from './stream.js';
 import { MANIFEST } from './manifest.js';
 import { reverifyInput } from './reverify.js';
 import { REPORT_TTL_SECONDS } from './retention.js';
+import { Capacity, MAX_CONCURRENT_UPLOADS, SLOT_WAIT_MS, BUSY_RETRY_AFTER_SECONDS } from './capacity.js';
 
 // ---------------------------------------------------------------------------
 // Multer configuration
@@ -98,10 +99,37 @@ async function assertContentMatchesExtension(filePath: string, ext: string): Pro
 
 // ---------------------------------------------------------------------------
 // Concurrent upload limit
+//
+// See capacity.ts for why this is process-wide and queues rather than rejects.
+// A classroom shares one NAT address — and with no `trust proxy` configured a
+// reverse proxy collapses an entire institution to one IP — so per-IP counting
+// would reject exactly the users this tool is for.
 // ---------------------------------------------------------------------------
 
-const MAX_CONCURRENT_UPLOADS = 10;
-let activeUploads = 0;
+const capacity = new Capacity({ limit: MAX_CONCURRENT_UPLOADS, waitMs: SLOT_WAIT_MS });
+
+/** Tell the client when to come back, rather than leaving it to guess. */
+function sendBusy(res: Response, message: string): void {
+  res.setHeader('Retry-After', String(BUSY_RETRY_AFTER_SECONDS));
+  res.status(503).json({ error: message, retryAfterSeconds: BUSY_RETRY_AFTER_SECONDS });
+}
+
+/**
+ * Wait for a processing slot, resolving false when the server stayed full for
+ * the whole wait. Also gives up if the client disconnects while queued, so an
+ * abandoned request never occupies a place in the queue.
+ */
+async function acquireOrBusy(res: Response, message: string): Promise<boolean> {
+  const queued = new AbortController();
+  const onClose = () => { if (!res.writableEnded) queued.abort(); };
+  res.once('close', onClose);
+  const granted = await capacity.acquire(queued.signal);
+  res.off('close', onClose);
+  if (granted) return true;
+  if (queued.signal.aborted || res.writableEnded) return false; // client left; nothing to answer
+  sendBusy(res, message);
+  return false;
+}
 
 // ---------------------------------------------------------------------------
 // Router
@@ -113,13 +141,10 @@ export const router = Router();
 
 function analyzeUpload(allowQueue: boolean): RequestHandler {
   return async (req, res, next) => {
-    if (activeUploads >= MAX_CONCURRENT_UPLOADS) {
-      res.status(503).json({
-        error: 'The server is busy processing other uploads. Please try again in a moment.',
-      });
+    if (!(await acquireOrBusy(res,
+      `The server is busy and all ${MAX_CONCURRENT_UPLOADS} checking slots were taken. Please try again shortly.`))) {
       return;
     }
-    activeUploads++;
     let workerOwnsFile = false;
     try {
       await new Promise<void>((resolve, reject) => {
@@ -195,7 +220,7 @@ function analyzeUpload(allowQueue: boolean): RequestHandler {
       if (!workerOwnsFile && req.file) {
         await unlink(req.file.path).catch(() => undefined);
       }
-      activeUploads--;
+      capacity.release();
     }
   };
 }
@@ -203,11 +228,7 @@ function analyzeUpload(allowQueue: boolean): RequestHandler {
 router.post('/api/analyze', analyzeUpload(true));
 
 router.post('/api/reverify', async (req, res, next) => {
-  if (activeUploads >= MAX_CONCURRENT_UPLOADS) {
-    res.status(503).json({ error: 'The server is busy. Try this reference again shortly.' });
-    return;
-  }
-  activeUploads++;
+  if (!(await acquireOrBusy(res, 'The server is busy. Try this reference again shortly.'))) return;
   try {
     const { reference, options } = reverifyInput(req.body);
     const [verification] = await verifyReferences([reference], {
@@ -218,7 +239,7 @@ router.post('/api/reverify', async (req, res, next) => {
     });
     res.json({ verification });
   } catch (error) { next(error); }
-  finally { activeUploads--; }
+  finally { capacity.release(); }
 });
 
 // ---- GET /api/job/:id ------------------------------------------------------

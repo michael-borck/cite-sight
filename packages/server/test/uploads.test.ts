@@ -111,24 +111,48 @@ describe('upload lifecycle', () => {
     expect((await readdir(state.directory)).filter((name) => !name.startsWith('._'))).toHaveLength(1);
   });
 
-  it('shares capacity across routes and holds it while disconnected analysis still runs', async () => {
+  it('queues a burst beyond capacity instead of rejecting it', async () => {
     const releases: (() => void)[] = [];
     state.analyze.mockImplementation(() => new Promise((resolve) => releases.push(() => resolve(result))));
-    const controller = new AbortController();
-    const pending = Array.from({ length: 10 }, (_, i) => upload(i % 2 ? '/analyse' : '/api/analyze', 'test.txt', 'Text', controller.signal).catch(() => 0));
     try {
+      const pending = Array.from({ length: 14 }, (_, i) =>
+        upload(i % 2 ? '/analyse' : '/api/analyze', 'test.txt', 'Text').catch(() => 0));
+      // 10 run immediately; the remaining 4 must wait rather than be turned away.
       await vi.waitFor(() => expect(releases).toHaveLength(10));
-      controller.abort();
-      expect(await upload('/api/analyze')).toBe(503);
-      expect(await upload('/analyse')).toBe(503);
+      releases.forEach((release) => release());
+      await vi.waitFor(() => expect(releases.length).toBe(14));
+      releases.forEach((release) => release());
+      expect(await Promise.all(pending)).not.toContain(503);
     } finally {
       releases.forEach((release) => release());
-      await Promise.all(pending);
     }
     await vi.waitFor(async () => expect(await readdir(state.directory)).toEqual([]));
-    state.analyze.mockResolvedValue(result);
-    expect(await upload()).toBe(200);
-  });
+  }, 20_000);
+
+  it('advertises Retry-After and 503 once the wait expires', async () => {
+    // The capacity gate is covered directly in capacity.test.ts; here we only
+    // check the HTTP contract the client depends on, so saturate the real one.
+    const releases: (() => void)[] = [];
+    state.analyze.mockImplementation(() => new Promise((resolve) => releases.push(() => resolve(result))));
+    try {
+      const pending = Array.from({ length: 10 }, () => upload().catch(() => 0));
+      await vi.waitFor(() => expect(releases).toHaveLength(10));
+      const busy = await fetch(base + '/api/analyze', { method: 'POST', body: (() => {
+        const form = new FormData();
+        form.append('file', new Blob(['Text'], { type: 'text/plain' }), 'test.txt');
+        return form;
+      })() });
+      const body = await busy.json() as { error: string; retryAfterSeconds: number };
+      expect(busy.status).toBe(503);
+      expect(busy.headers.get('retry-after')).toBe('30');
+      expect(body.retryAfterSeconds).toBe(30);
+      expect(body.error).toMatch(/busy/i);
+      releases.forEach((release) => release());
+      await Promise.all(pending);
+    } finally {
+      releases.forEach((release) => release());
+    }
+  }, 60_000);
 
   it('releases capacity and partial files when a multipart upload is aborted', async () => {
     const req = request(base + '/api/analyze', {

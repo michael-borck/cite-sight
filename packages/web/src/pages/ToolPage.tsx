@@ -30,6 +30,7 @@ export function ToolPage() {
   const [displayName, setDisplayName] = useState('');
   const [expiresAt, setExpiresAt] = useState<string>();
   const [recoveryNotice, setRecoveryNotice] = useState('');
+  const [busyNotice, setBusyNotice] = useState('');
   const [showNotices, setShowNotices] = useState(true);
   const nameRef = useRef('');
   const esRef = useRef<EventSource | null>(null);
@@ -154,9 +155,13 @@ export function ToolPage() {
     runOptions.current = { ...options };
     nameRef.current = input.name;
     jobRef.current = null;
-    setError(''); setNotice(''); setResult(null); setElapsed(0); setDisplayName(input.name); setState('uploading');
+    setError(''); setNotice(''); setBusyNotice(''); setResult(null); setElapsed(0); setDisplayName(input.name); setState('uploading');
     try {
-      const data = await uploadDocument(input, options, controller.signal);
+      const data = await uploadDocument(input, options, controller.signal, (attempt, delay) => {
+        // The server queues a burst before giving up; say so, rather than
+        // looking frozen while it waits its turn.
+        setBusyNotice(`The server is busy with other submissions. Retrying in ${Math.ceil(delay / 1000)}s (attempt ${attempt})…`);
+      });
       if (token !== runRef.current) return;
       if (data.result) finish(data, token);
       else if (data.jobId) watchJob(data.jobId, token, controller.signal);
@@ -197,6 +202,7 @@ export function ToolPage() {
     </div>}
     {notice && <p className="cancel-notice" role="status">{notice}<button className="dismiss-btn" onClick={() => setNotice('')} aria-label="Dismiss notice">×</button></p>}
     {recoveryNotice && <p className="cancel-notice" role="status">{recoveryNotice}<button className="dismiss-btn" onClick={() => setRecoveryNotice('')} aria-label="Dismiss notice">×</button></p>}
+    {busyNotice && <p className="cancel-notice" role="status">{busyNotice}</p>}
     {error && <div className="error-message" role="alert">{error}<button className="dismiss-btn" onClick={() => setError('')} aria-label="Dismiss error">×</button></div>}
     {state === 'error' && jobRef.current && <button className="btn btn-secondary" onClick={() => {
       const job = jobRef.current!; stopWatching(); setError(''); const controller = new AbortController(); controllerRef.current = controller;

@@ -148,6 +148,37 @@ docker run -d -p 3000:3000 --restart unless-stopped --name cite-sight michaelbor
 
 The web app and API are available at `http://your-server:3000`.
 
+### Handling a whole class submitting at once
+
+A class marking session is the case the server is tuned for: students submit
+together, often from one NAT address.
+
+- **A burst queues rather than being rejected.** The server runs at most
+  `CITESIGHT_MAX_UPLOADS` analyses at once (default 10). Beyond that a request
+  waits up to `CITESIGHT_SLOT_WAIT_MS` (default 20s) for its turn and is served in
+  arrival order. Only if it still cannot be served does it get `503` — with a
+  `Retry-After` header, which the web app honours automatically, so students
+  normally never see an error.
+- **There is deliberately no per-IP limit.** A classroom shares one public
+  address, and behind a reverse proxy the whole institution shares one IP, so
+  per-IP counting would reject the users this tool exists for. If you later want
+  an abuse backstop, key it on a server-issued cookie rather than the IP, and set
+  `trust proxy` first — otherwise every request looks like it came from the proxy.
+- **Run with `REDIS_URL` for large cohorts.** Without it the analyses run inline
+  in the request; with it they queue in BullMQ and the browser follows live
+  progress. Note the worker checks two documents at a time by design, to stay
+  within the citation databases' polite-pool limits.
+- **Add a contact email.** `cite-sight config set email` / `CITESIGHT_EMAIL`
+  puts you in the Crossref and Semantic Scholar polite pools, which raises the
+  rate limit everyone behind the server shares. That limit — not the server's
+  own cap — is what makes hosted checks come back "unavailable".
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `CITESIGHT_MAX_UPLOADS` | `10` | Concurrent analyses per server process |
+| `CITESIGHT_SLOT_WAIT_MS` | `20000` | How long a request may queue before `503` |
+| `REDIS_URL` | unset | Enables the BullMQ queue and live progress |
+
 ### Using docker-compose (recommended)
 
 Create a `docker-compose.yml` on your VPS:
