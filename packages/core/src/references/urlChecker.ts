@@ -1,6 +1,7 @@
 import type { UrlCheckResult, UrlStatus } from '../types.js';
 import { isPrivateUrl } from './ssrf.js';
 import { httpFetch } from '../httpClient.js';
+import { throttle } from './rateLimiter.js';
 
 const TIMEOUT_MS = 10_000;
 const USER_AGENT =
@@ -24,6 +25,12 @@ export async function checkUrl(url: string): Promise<UrlCheckResult> {
   }
 
   try {
+    // Share the per-host pacer with the metadata fetches so a paper citing
+    // several pages on one site does not burst it into a rate-limit.
+    let service = 'web';
+    try { service = new URL(url).hostname; } catch { /* httpFetch reports malformed URLs */ }
+    await throttle(service);
+
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 

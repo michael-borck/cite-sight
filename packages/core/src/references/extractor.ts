@@ -127,7 +127,7 @@ function extractAuthors(raw: string, _style: CitationStyle): string[] {
 
   // Split by "; " or ", & " or " & " or " and "
   const parts = authorBlock
-    .split(/;\s*|,\s*(?:&|and)\s*|\s+(?:&|and)\s+/)
+    .split(/;\s*|,\s*(?:&|and)\s*|\s+(?:&|and)\s+|,\s+(?=\p{Lu}[\p{L}\-']+\s*,\s*\p{Lu}\.)/u)
     .map((s) => s.trim())
     .filter(Boolean);
 
@@ -452,6 +452,16 @@ function splitContinuousText(block: string): string[] {
  * furniture or dates, not author surnames — so "(Table 1)" / "(May 2024)" are
  * not mistaken for MLA in-text citations.
  */
+/** Split an in-text author list into individual names. Commas separate
+ *  authors in serial-comma lists ("Smith, Jones, and Brown"), but a bare space
+ *  does not: multi-word corporate authors ("Russell Group") must stay whole. */
+function splitCitationAuthors(raw: string): string[] {
+  return raw
+    .split(/\s*(?:,\s*(?:(?:&|and)\s+)?|&\s*|\s+and\s+)\s*/i)
+    .map((a) => a.trim())
+    .filter(Boolean);
+}
+
 const MLA_NON_CITATION_WORDS = new Set([
   // structural references
   'table', 'figure', 'fig', 'study', 'section', 'appendix', 'chapter',
@@ -482,15 +492,17 @@ function extractInTextCitations(text: string, style: CitationStyle = 'unknown'):
   // surnames — Buçinca, Kovanović, Gašević — match, not just ASCII. Years allow a
   // trailing APA disambiguation letter (2026a) for same-author/same-year works.
   // A surname may carry a kerning-split hyphenated second part ("Baidoo - Anu").
+  // Author lists may be serial-comma ("Smith, Jones, & Brown"), two-author
+  // ("Smith & Jones"), or corporate ("Russell Group").
   const apaParenRe =
-    /\((\p{Lu}[\p{L}\-']+(?:\s*-\s*\p{Lu}[\p{L}\-']+)?(?:\s*(?:&|and)\s*\p{Lu}[\p{L}\-']+(?:\s*-\s*\p{Lu}[\p{L}\-']+)?|\s+et\s+al\.)?),\s*((?:19|20)\d{2}[a-z]?(?:,\s*(?:19|20)\d{2}[a-z]?)*(?:;\s*\p{Lu}[^;)]+,\s*(?:19|20)\d{2}[a-z]?)*)\)/gu;
+    /\((\p{Lu}[\p{L}\-']+(?:\s*-\s*\p{Lu}[\p{L}\-']+)?(?:(?:\s+\p{Lu}[\p{L}\-']+)|(?:\s*,\s*(?:(?:&|and)\s+)?\p{Lu}[\p{L}\-']+(?:\s*-\s*\p{Lu}[\p{L}\-']+)?)|(?:\s*(?:&|and)\s*\p{Lu}[\p{L}\-']+(?:\s*-\s*\p{Lu}[\p{L}\-']+)?)|(?:\s+et\s+al\.))*),\s*((?:19|20)\d{2}[a-z]?(?:,\s*(?:19|20)\d{2}[a-z]?)*(?:;\s*\p{Lu}[^;)]+,\s*(?:19|20)\d{2}[a-z]?)*)\)/gu;
 
   for (const m of text.matchAll(apaParenRe)) {
     // Each work in a grouped citation needs its own author/year pairing.
     for (const group of m[0].slice(1, -1).split(';')) {
       const split = group.match(/^\s*(.+?),\s*((?:19|20)\d{2}[a-z]?(?:,\s*(?:19|20)\d{2}[a-z]?)*)\s*$/u);
       if (!split) continue;
-      const authors = split[1].split(/\s*(?:&|\band\b)\s*/).map((a) => a.trim()).filter(Boolean);
+      const authors = splitCitationAuthors(split[1]);
       for (const yearToken of split[2].split(/,\s*/)) {
         results.push({
           raw: m[0], authors, year: parseInt(yearToken, 10),
@@ -502,17 +514,15 @@ function extractInTextCitations(text: string, style: CitationStyle = 'unknown'):
   }
 
   // --- APA narrative: Smith (2020), Russell Group (2023), Mollick & Mollick (2023) ---
-  // The middle quantifier is `*` (not `?`) and an extra alternative `\s+[A-Z]…`
-  // is included so multi-word author/org surnames such as "Russell Group" or
-  // "Artificial Intelligence Act" aren't truncated to their last word.
+  // The middle quantifier is `*` (not `?`) and extra alternatives are included
+  // so multi-word author/org surnames ("Russell Group") and serial-comma lists
+  // ("Smith, Jones, and Brown") are captured whole rather than truncated to
+  // their last word.
   const apaNarrativeRe =
-    /\b(\p{Lu}[\p{L}\-']+(?:\s*-\s*\p{Lu}[\p{L}\-']+)?(?:\s+\p{Lu}[\p{L}\-']+|\s+(?:&|and)\s+\p{Lu}[\p{L}\-']+|\s+et\s+al\.)*)\s+\(((?:19|20)\d{2})([a-z]?)\)/gu;
+    /\b(\p{Lu}[\p{L}\-']+(?:\s*-\s*\p{Lu}[\p{L}\-']+)?(?:(?:\s+\p{Lu}[\p{L}\-']+)|(?:\s*,\s*(?:(?:&|and)\s+)?\p{Lu}[\p{L}\-']+(?:\s*-\s*\p{Lu}[\p{L}\-']+)?)|(?:\s+(?:&|and)\s+\p{Lu}[\p{L}\-']+)|(?:\s+et\s+al\.))*)\s+\(((?:19|20)\d{2})([a-z]?)\)/gu;
 
   for (const m of text.matchAll(apaNarrativeRe)) {
-    const authors = m[1]
-      .split(/\s*(?:&|\band\b)\s*/)
-      .map((a) => a.trim())
-      .filter(Boolean);
+    const authors = splitCitationAuthors(m[1]);
     const year = parseInt(m[2], 10);
     results.push({
       raw: m[0],

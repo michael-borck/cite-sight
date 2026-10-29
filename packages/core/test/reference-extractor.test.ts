@@ -274,6 +274,34 @@ Mollick & Mollick (2023) describe practical strategies.
     expect(allAuthors.filter((a) => a === 'Mollick')).toHaveLength(2);
   });
 
+  it('splits serial-comma author lists in in-text citations', () => {
+    const text = `
+Smith, Jones, Brown, and Clark (2025) reported this.
+It was replicated later (Smith, Jones, & Brown, 2026).
+
+References
+
+Smith, J., Jones, K., Brown, L., & Clark, M. (2025). A title. Journal, 1, 1-10.
+Smith, J., Jones, K., & Brown, L. (2026). Another title. Journal, 2, 11-20.
+`;
+    const { inTextCitations } = extractReferences(text);
+
+    expect(inTextCitations.find((c) => c.year === 2025)?.authors)
+      .toEqual(['Smith', 'Jones', 'Brown', 'Clark']);
+    expect(inTextCitations.find((c) => c.year === 2026)?.authors)
+      .toEqual(['Smith', 'Jones', 'Brown']);
+  });
+
+  it('splits serial-comma author lists in bibliography entries', () => {
+    const text = `References
+
+Smith, J., Jones, K., & Brown, L. (2025). A title. Journal, 1, 1-10.
+`;
+    const { references } = extractReferences(text);
+
+    expect(references[0].authors).toEqual(['Smith, J.', 'Jones, K.', 'Brown, L.']);
+  });
+
   it('does not include post-references content (e.g. checklists) as references', async () => {
     // The sample-paper.md has no post-references content, but the original
     // grant document has "## Applicant Checklist" after References.

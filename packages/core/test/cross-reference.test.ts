@@ -64,6 +64,40 @@ Borck, M. (2026). *Conversation, Not Delegation.* KDP.
     expect(result.unmatchedBibliography).toHaveLength(0);
   });
 
+  it('matches a three-author narrative citation by its full author list', () => {
+    const text = `
+Smith, Jones, and Brown (2025) found this.
+
+## References
+
+Smith, J., Jones, K., & Brown, L. (2025). A title. *Journal, 1,* 1-10.
+`;
+    const { references, inTextCitations } = extractReferences(text);
+    const citation = inTextCitations.find((c) => c.raw.includes('Smith'));
+
+    expect(citation?.authors).toEqual(['Smith', 'Jones', 'Brown']);
+    const result = crossReferenceCheck(references, inTextCitations);
+    expect(result.unmatchedInText).toHaveLength(0);
+    expect(result.nearMatches ?? []).toHaveLength(0);
+  });
+
+  it('matches a three-author parenthetical citation', () => {
+    const text = `
+This was found (Smith, Jones, & Brown, 2025).
+
+## References
+
+Smith, J., Jones, K., & Brown, L. (2025). A title. *Journal, 1,* 1-10.
+`;
+    const { references, inTextCitations } = extractReferences(text);
+    const citation = inTextCitations.find((c) => c.year === 2025);
+
+    expect(citation?.authors).toEqual(['Smith', 'Jones', 'Brown']);
+    const result = crossReferenceCheck(references, inTextCitations);
+    expect(result.unmatchedInText).toHaveLength(0);
+    expect(result.nearMatches ?? []).toHaveLength(0);
+  });
+
   it('detects orphaned in-text citation (no bibliography entry)', () => {
     const text = `
 This is cited (FakeAuthor, 2099) but has no bibliography entry.

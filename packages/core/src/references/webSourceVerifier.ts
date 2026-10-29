@@ -1,7 +1,7 @@
 import type { ParsedReference, AcademicWork } from '../types.js';
 import { isPrivateUrl } from './ssrf.js';
 import { httpFetch } from '../httpClient.js';
-import { LookupError, reasonFromStatus, reasonFromFetchError } from './lookupError.js';
+import { LookupError, reasonFromStatus, reasonFromFetchError, type LookupFailureReason } from './lookupError.js';
 import { throttle } from './rateLimiter.js';
 import { surnameOf } from './matching.js';
 
@@ -39,23 +39,65 @@ function extractIsbn(raw: string): string | null {
   return valid ? isbn : null;
 }
 
-/** Safe fetch wrapper with timeout. */
+/** Back-off delays before each retry on a transient web failure. */
+const RETRY_DELAYS_MS = [700, 1800];
+/** A site may ask for a long Retry-After; cap it so one page cannot stall a run. */
+const MAX_RETRY_AFTER_MS = 5_000;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Parse Retry-After (seconds or HTTP date) into a bounded millisecond wait. */
+function retryAfterMs(value: string | null): number | null {
+  if (!value) return null;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds * 1000, MAX_RETRY_AFTER_MS);
+  const date = Date.parse(value);
+  return Number.isFinite(date) ? Math.min(Math.max(0, date - Date.now()), MAX_RETRY_AFTER_MS) : null;
+}
+
+/** Safe fetch wrapper with timeout, per-host pacing, and retry/back-off on
+ *  transient failures (429, 5xx, timeout, network) so a temporarily
+ *  rate-limited website does not become a false "could not verify". */
 async function safeFetch(url: string, timeoutMs = 8000): Promise<Response | null> {
   const service = new URL(url).hostname;
-  try {
+  let reason: LookupFailureReason = 'unknown';
+  let waitMs = 0;
+
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+    if (attempt > 0) await delay(waitMs);
     await throttle(service);
-    const res = await httpFetch(url, {
-      signal: AbortSignal.timeout(timeoutMs),
-      headers: { 'User-Agent': 'CiteSight/1.0 (academic-reference-checker)' },
-      redirect: 'follow',
-    });
-    if (res.status === 404 || res.status === 410) return null;
-    if (!res.ok) throw new LookupError(service, reasonFromStatus(res.status));
-    return res;
-  } catch (err) {
-    if (err instanceof LookupError) throw err;
-    throw new LookupError(service, reasonFromFetchError(err));
+
+    let res: Response;
+    try {
+      res = await httpFetch(url, {
+        signal: AbortSignal.timeout(timeoutMs),
+        headers: { 'User-Agent': 'CiteSight/1.0 (academic-reference-checker)' },
+        redirect: 'follow',
+      });
+    } catch (err) {
+      // Network error or timeout — retryable.
+      reason = reasonFromFetchError(err);
+      waitMs = RETRY_DELAYS_MS[attempt] ?? RETRY_DELAYS_MS.at(-1)!;
+      continue;
+    }
+
+    if (res.status === 404 || res.status === 410) {
+      await res.body?.cancel();
+      return null;
+    }
+    if (res.ok) return res;
+
+    reason = reasonFromStatus(res.status);
+    const retryable = res.status === 429 || res.status >= 500;
+    waitMs = retryAfterMs(res.headers.get('retry-after')) ?? RETRY_DELAYS_MS[attempt] ?? RETRY_DELAYS_MS.at(-1)!;
+    await res.body?.cancel();
+    // 401/403/451 etc. mean the server declined; retrying will not help.
+    if (!retryable) break;
   }
+
+  throw new LookupError(service, reason);
 }
 
 // --- YouTube / Vimeo via oEmbed ---
@@ -176,18 +218,26 @@ async function verifyBookBySearch(title: string, author?: string): Promise<Acade
 
 // --- Generic web page via HTML metadata ---
 
-function extractMetaContent(html: string, names: string[]): string | null {
+function extractMetaContents(html: string, names: string[]): string[] {
+  const values: string[] = [];
   for (const name of names) {
-    // Match both name="..." and property="..." attributes
+    // Match both name="..." and property="..." attributes, collecting every
+    // occurrence — citation_author is emitted once per author.
     const regex = new RegExp(
       `<meta\\s+(?:[^>]*?)(?:name|property)=["']${name}["'][^>]*?content=["']([^"']+)["']`
       + `|<meta\\s+(?:[^>]*?)content=["']([^"']+)["'][^>]*?(?:name|property)=["']${name}["']`,
-      'i',
+      'gi',
     );
-    const match = html.match(regex);
-    if (match) return match[1] || match[2];
+    for (const match of html.matchAll(regex)) {
+      const value = match[1] || match[2];
+      if (value) values.push(value);
+    }
   }
-  return null;
+  return values;
+}
+
+function extractMetaContent(html: string, names: string[]): string | null {
+  return extractMetaContents(html, names)[0] ?? null;
 }
 
 function extractHtmlTitle(html: string): string | null {
@@ -211,13 +261,20 @@ async function verifyWebPage(url: string): Promise<AcademicWork | null> {
     extractMetaContent(html, ['citation_title', 'dc.title', 'og:title', 'twitter:title']) ?? extractHtmlTitle(html);
   if (!title) return null;
 
-  const author = extractMetaContent(html, ['citation_author', 'article:author', 'author', 'dc.creator']);
+  // Collect every author (citation_author repeats once per author). Falling
+  // back to a single author here made multi-author web citations look like an
+  // author mismatch even when the page named all of them.
+  const authors = [...new Set(
+    extractMetaContents(html, ['citation_author', 'dc.creator', 'article:author', 'author'])
+      .map((a) => a.trim())
+      .filter(Boolean),
+  )];
   const dateStr = extractMetaContent(html, ['citation_publication_date', 'article:published_time', 'date', 'dc.date']);
   const yearMatch = dateStr?.match(/\d{4}/);
 
   return {
     title,
-    authors: author ? [author] : [],
+    authors,
     year: yearMatch ? parseInt(yearMatch[0], 10) : null,
     source: 'web_metadata',
     url,
