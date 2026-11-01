@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "CiteSight"
+abstract: >-
+  An academic integrity tool for checking student assignments. It extracts
+  references and in-text citations, verifies each reference against Crossref,
+  Semantic Scholar, and OpenAlex, checks cited URLs, validates citation
+  formatting, and flags fabricated, future-dated, or orphaned citations. Ships
+  as a desktop application, a command-line tool, and a web service.
+type: software
+authors:
+  - family-names: Borck
+    given-names: Michael
+    orcid: "https://orcid.org/0000-0002-0950-6396"
+    affiliation: "Curtin University"
+    email: "michael.borck@curtin.edu.au"
+version: "0.13.3"
+date-released: "2026-10-31"
+license: MIT
+repository-code: "https://github.com/michael-borck/cite-sight"
+url: "https://citesight.eduserver.au/"
+keywords:
+  - academic integrity
+  - citation verification
+  - reference checking
+  - bibliographic metadata
+  - education technology
+  - research software

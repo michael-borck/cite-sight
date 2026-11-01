@@ -1,0 +1,33 @@
+{
+  "title": "CiteSight",
+  "description": "An academic integrity tool for checking student assignments. CiteSight extracts references and in-text citations from PDF, DOCX, TXT, Markdown, and JSON documents, verifies each reference against Crossref, Semantic Scholar, and OpenAlex, checks cited URLs, validates APA/MLA/Chicago formatting, and flags fabricated, future-dated, or orphaned citations. Distributed as a desktop application, a command-line tool, and a web service. Open source under the MIT licence.",
+  "creators": [
+    {
+      "name": "Borck, Michael",
+      "orcid": "0000-0002-0950-6396",
+      "affiliation": "Curtin University"
+    }
+  ],
+  "keywords": [
+    "academic integrity",
+    "citation verification",
+    "reference checking",
+    "bibliographic metadata",
+    "Crossref",
+    "Semantic Scholar",
+    "OpenAlex",
+    "education technology",
+    "research software"
+  ],
+  "license": "MIT",
+  "upload_type": "software",
+  "access_right": "open",
+  "language": "eng",
+  "related_identifiers": [
+    {
+      "relation": "isDocumentedBy",
+      "identifier": "https://citesight.eduserver.au/",
+      "resource_type": "other"
+    }
+  ]
+}

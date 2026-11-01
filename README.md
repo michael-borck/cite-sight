@@ -669,6 +669,20 @@ organisation's authorised users) under the S2 licence — it must not serve anon
 visitors' requests. Leave public instances keyless; users get their own free key at
 [semanticscholar.org/product/api](https://www.semanticscholar.org/product/api).
 
+## Citation
+
+If you use CiteSight in academic work, cite the archived release rather than a branch.
+Machine-readable metadata is in [CITATION.cff](CITATION.cff); each release is snapshotted
+by Zenodo via the repository's [`.zenodo.json`](.zenodo.json).
+
+```
+Borck, M. (2026). CiteSight (Version 0.13.3) [Computer software].
+Zenodo. <ZENODO-VERSION-DOI>
+```
+
+<!-- TODO: replace <ZENODO-VERSION-DOI> with the Zenodo version DOI after the
+     archival release is created, and add the concept DOI ("all versions") beneath it. -->
+
 ## Licence
 
 See [LICENSE](LICENSE).
