@@ -1,6 +1,6 @@
 {
   "name": "cite-sight",
-  "version": "0.13.2",
+  "version": "0.13.3",
   "role": "analyser",
   "accepts": ["citations", "references", "document"],
   "extensions": [],
