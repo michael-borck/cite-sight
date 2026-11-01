@@ -84,6 +84,7 @@ export function App() {
       <footer className="app-footer">
         <p>CiteSight — Academic Citation Verification Tool</p>
         <p className="footer-contact">Created by Michael Borck | <a href="https://github.com/michael-borck/cite-sight">GitHub</a></p>
+        <p className="footer-contact">Cite this tool: <a href="https://doi.org/10.5281/zenodo.23864196">doi:10.5281/zenodo.23864196</a></p>
       </footer>
     </div>
   );
