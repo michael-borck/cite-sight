@@ -16,6 +16,7 @@ authors:
     email: "michael.borck@curtin.edu.au"
 version: "0.13.3"
 date-released: "2026-10-31"
+doi: "10.5281/zenodo.23864197"
 license: MIT
 repository-code: "https://github.com/michael-borck/cite-sight"
 url: "https://citesight.eduserver.au/"

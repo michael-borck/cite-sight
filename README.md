@@ -677,11 +677,11 @@ by Zenodo via the repository's [`.zenodo.json`](.zenodo.json).
 
 ```
 Borck, M. (2026). CiteSight (Version 0.13.3) [Computer software].
-Zenodo. <ZENODO-VERSION-DOI>
+Zenodo. https://doi.org/10.5281/zenodo.23864197
 ```
 
-<!-- TODO: replace <ZENODO-VERSION-DOI> with the Zenodo version DOI after the
-     archival release is created, and add the concept DOI ("all versions") beneath it. -->
+Version DOI: <https://doi.org/10.5281/zenodo.23864197> ·
+All versions: <https://doi.org/10.5281/zenodo.23864196>
 
 ## Licence
 
