@@ -17,7 +17,7 @@ jobs:
           # macos-latest (macOS 15) breaks electron-builder's temp-keychain
           # setup — SecKeychainUnlock on set-key-partition-list. Pinned to the
           # macOS 14 image era that built v0.8.28 successfully.
-          - os: macos-14
+          - os: macos-15
             platform: mac
           - os: ubuntu-latest
             platform: linux
@@ -49,8 +49,8 @@ jobs:
       - name: Set up signing keychain (macOS)
         if: matrix.platform == 'mac'
         env:
-          CSC_LINK_B64: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_LINK_B64: ${{ secrets.APPLE_CERTIFICATE || secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD || secrets.CSC_KEY_PASSWORD }}
         run: |
           set -e
           echo "$CSC_LINK_B64" | base64 --decode > /tmp/cert.p12
@@ -67,13 +67,9 @@ jobs:
         working-directory: packages/desktop
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          # NOTARIZE_APPLE_* (not APPLE_*) so electron-builder's broken
-          # auto-notarize wrapper doesn't fire alongside our afterSign hook.
-          NOTARIZE_APPLE_ID: ${{ secrets.APPLE_ID }}
-          NOTARIZE_APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          NOTARIZE_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # The certificate is already imported into build.keychain above; do
+          # not set CSC_LINK or electron-builder will create a second temp
+          # keychain and can fail on newer macOS runners.
         shell: bash
         # macOS publishes after we've signed + notarised the DMG container
         # (next step). Other platforms publish straight from electron-builder.
@@ -88,11 +84,19 @@ jobs:
         if: matrix.platform == 'mac'
         working-directory: packages/desktop
         env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PWD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY_CONTENT }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         run: |
           set -e
+          if [ -z "$APPLE_API_KEY_CONTENT" ] || [ -z "$APPLE_API_KEY_ID" ]; then
+            echo "APPLE_API_KEY_CONTENT/APPLE_API_KEY are required"; exit 1
+          fi
+          KEY_DIR="$RUNNER_TEMP/apple-api"
+          KEY_PATH="$KEY_DIR/AuthKey_${APPLE_API_KEY_ID}.p8"
+          mkdir -p "$KEY_DIR"
+          printf '%s' "$APPLE_API_KEY_CONTENT" | openssl base64 -d -A > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
           IDENTITY=$(security find-identity -v -p codesigning \
             | sed -n 's/.*"\(Developer ID Application:[^"]*\)".*/\1/p' | head -1)
           if [ -z "$IDENTITY" ]; then
@@ -103,9 +107,9 @@ jobs:
             echo "=== $dmg ==="
             codesign --sign "$IDENTITY" --timestamp "$dmg"
             xcrun notarytool submit "$dmg" \
-              --apple-id "$APPLE_ID" \
-              --password "$APPLE_PWD" \
-              --team-id "$APPLE_TEAM_ID" \
+              --key "$KEY_PATH" \
+              --key-id "$APPLE_API_KEY_ID" \
+              --issuer "$APPLE_API_ISSUER" \
               --wait
             xcrun stapler staple "$dmg"
           done
