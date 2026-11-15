@@ -50,7 +50,12 @@ jobs:
             --key-id "$APPLE_API_KEY_ID" \
             --issuer "$APPLE_API_ISSUER" \
             --wait
-          xcrun stapler staple "$dmg"
+          for attempt in 1 2 3; do
+            xcrun stapler staple "$dmg" && break
+            [ "$attempt" -eq 3 ] && exit 1
+            echo "stapler staple failed (attempt $attempt); retrying..."
+            sleep 15
+          done
         done
       notarize-check-verify: |
         cd packages/desktop
