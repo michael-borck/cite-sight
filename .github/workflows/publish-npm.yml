@@ -27,13 +27,19 @@ jobs:
 
       - name: Set package versions from tag
         run: |
-          npm version ${{ steps.version.outputs.version }} --no-git-tag-version --allow-same-version --workspace=packages/core --workspace=packages/cli
-          # Update the CLI's dependency on core to match
-          cd packages/cli
+          npm version ${{ steps.version.outputs.version }} --no-git-tag-version --allow-same-version --workspace=packages/core --workspace=packages/engine-client --workspace=packages/cli
+          # Pin the workspace dependencies to the version being published
+          cd packages/engine-client
           npm pkg set "dependencies.@michaelborck/cite-sight-core=${{ steps.version.outputs.version }}"
+          cd ../cli
+          npm pkg set "dependencies.@michaelborck/cite-sight-core=${{ steps.version.outputs.version }}"
+          npm pkg set "dependencies.@michaelborck/cite-sight-engine-client=${{ steps.version.outputs.version }}"
 
       - name: Build core
         run: npm run build:core
+
+      - name: Build engine-client
+        run: npm run build:engine-client
 
       - name: Build CLI
         run: npx tsc -p packages/cli/tsconfig.json
@@ -48,6 +54,15 @@ jobs:
           npm publish --access public --tag next
           npm dist-tag add @michaelborck/cite-sight-core@${{ steps.version.outputs.version }} latest || true
           npm dist-tag rm @michaelborck/cite-sight-core next || true
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish engine-client
+        working-directory: packages/engine-client
+        run: |
+          npm publish --access public --tag next
+          npm dist-tag add @michaelborck/cite-sight-engine-client@${{ steps.version.outputs.version }} latest || true
+          npm dist-tag rm @michaelborck/cite-sight-engine-client next || true
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 

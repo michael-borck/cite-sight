@@ -19,7 +19,7 @@ jobs:
     with:
       product-name: CiteSight
       node-version: '24'
-      build-command: npm run build:core && npm run build:desktop
+      build-command: npm run build:core && npm run build:engine-client && npm run build:desktop
       package-command: |
         cd packages/desktop
         npx electron-builder --$PLATFORM --publish never
