@@ -3,7 +3,8 @@ import multer from 'multer';
 import { tmpdir } from 'os';
 import { rename, unlink, open } from 'fs/promises';
 import path from 'path';
-import { analyzePipeline, verifyReferences, DISCLAIMER } from '@michaelborck/cite-sight-core';
+import { verifyReferences, DISCLAIMER } from '@michaelborck/cite-sight-core';
+import { analyseDocument } from './engine.js';
 import type { ProcessingOptions } from '@michaelborck/cite-sight-core';
 import { isQueueAvailable, addJob, getJob, cancelJob } from './queue.js';
 import { subscribe, type StreamMessage } from './stream.js';
@@ -209,7 +210,7 @@ function analyzeUpload(allowQueue: boolean): RequestHandler {
         openAlexApiKey: process.env.OPENALEX_API_KEY,
       };
 
-      const result = await analyzePipeline(filePath, options);
+      const result = await analyseDocument(filePath, req.file.originalname, options);
       result.fileName = req.file.originalname;
       res.json(allowQueue
         ? { status: 'complete', result, disclaimer: DISCLAIMER, expiresAt: new Date(Date.now() + REPORT_TTL_SECONDS * 1000).toISOString() }

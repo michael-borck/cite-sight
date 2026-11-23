@@ -12,11 +12,28 @@ services:
       # that origin (or "*" to allow any — not recommended for public deploys).
       # - CORS_ORIGIN=https://your-frontend.example
       - REDIS_URL=redis://redis:6379
+      # Analysis engine migration: delegate to the Python successor
+      # (cite-analyser) over HTTP. auto = analyser first, bundled engine as
+      # fallback; local = bundled engine only.
+      - CITE_ANALYSER_URL=http://cite-analyser:8006
+      - CITE_ANALYSIS_ENGINE=${CITE_ANALYSIS_ENGINE:-auto}
     restart: unless-stopped
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     depends_on:
       - redis
+      - cite-analyser
+
+  # The Python successor engine (lens family contract). Installed from PyPI on
+  # start for dev simplicity; production should pull a built image (below).
+  cite-analyser:
+    image: python:3.13-slim
+    command: >
+      sh -c "pip install --no-cache-dir cite-analyser==0.2.1 &&
+             cite-analyser serve --host 0.0.0.0 --port 8006"
+    expose:
+      - "8006"
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine

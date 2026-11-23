@@ -17,8 +17,23 @@ services:
       - REDIS_URL=redis://redis:6379
       - OPENALEX_API_KEY=${OPENALEX_API_KEY:-}
       - SEMANTIC_SCHOLAR_API_KEY=${SEMANTIC_SCHOLAR_API_KEY:-}
+      # Delegate analysis to the Python engine (cite-analyser).
+      - CITE_ANALYSER_URL=http://cite-analyser:8006
+      - CITE_ANALYSIS_ENGINE=${CITE_ANALYSIS_ENGINE:-auto}
     depends_on:
       - redis
+      - cite-analyser
+    restart: unless-stopped
+    networks:
+      - caddy_default
+
+  cite-analyser:
+    # Build from the cite-analyser repo (Dockerfile included) and push to your
+    # registry, or override with CITE_ANALYSER_IMAGE.
+    image: ${CITE_ANALYSER_IMAGE:-ghcr.io/michael-borck/cite-analyser:0.2.1}
+    container_name: cite-analyser
+    expose:
+      - "8006"
     restart: unless-stopped
     networks:
       - caddy_default

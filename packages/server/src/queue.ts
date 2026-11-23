@@ -8,7 +8,7 @@
 
 import { unlink } from 'fs/promises';
 import { randomUUID } from 'crypto';
-import { analyzePipeline } from '@michaelborck/cite-sight-core';
+import { analyseDocument } from './engine.js';
 import type { AnalysisResult, ProcessingOptions } from '@michaelborck/cite-sight-core';
 import { emit } from './stream.js';
 import { loadOutcome, saveOutcome, reportWithoutDocument } from './retention.js';
@@ -83,8 +83,9 @@ async function init(): Promise<void> {
         const jobId = job.id ?? '';
 
         try {
-          const result = await analyzePipeline(
+          const result = await analyseDocument(
             filePath,
+            job.data.fileName ?? filePath,
             options,
             (p) =>
               emit({ type: 'progress', jobId, stage: p.stage, message: p.message, progress: p.progress }),
@@ -213,7 +214,7 @@ export async function getJob(
  * Cancel a job that has not started yet.
  *
  * Only a *waiting* job can be pulled out: BullMQ holds a lock on an active job
- * and has no way to interrupt one, and `analyzePipeline` takes no abort signal,
+ * and has no way to interrupt one, and `analyseDocument` takes no abort signal,
  * so a run already in progress plays out to the end regardless. The caller gets
  * an honest answer either way:
  *
