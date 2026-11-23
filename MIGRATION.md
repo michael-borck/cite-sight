@@ -21,10 +21,18 @@ Decision (2026-11): the TypeScript engine moves to Python. Rationale:
    engines; the golden JSON from this engine is committed in cite-analyser
    and its test suite must match it field-by-field. Parity is proven, then
    this engine is retired.
-4. **Rewire**: cite-sight's server package delegates `/analyse` to
-   cite-analyser (same response shape), so the dashboards and the Python
-   wrapper (`packages/python`) keep working unchanged. Then this repo's
-   engine is archived.
+4. **Rewire** (done): cite-sight's server delegates analysis to
+   cite-analyser over HTTP. Configure with `CITE_ANALYSER_URL`
+   (e.g. `http://cite-analyser:8006` — both compose files wire it up) and
+   `CITE_ANALYSIS_ENGINE`:
+   - `auto` (default) — use the analyser, fall back to the bundled engine
+     if it is unreachable (transitional safety)
+   - `analyser` — delegate only; fail loudly if the analyser is down
+   - `local` — pre-migration behaviour (bundled engine)
+   The analyser's `/analyse` response mirrors `ReferenceAnalysisResult`
+   field-for-field, so the adapter is a straight mapping
+   (`packages/server/src/engine.ts`). The CLI and desktop keep the bundled
+   engine until the archive step.
 
 ## Non-goals
 
