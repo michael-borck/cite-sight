@@ -31,8 +31,12 @@ Decision (2026-11): the TypeScript engine moves to Python. Rationale:
    - `local` — pre-migration behaviour (bundled engine)
    The analyser's `/analyse` response mirrors `ReferenceAnalysisResult`
    field-for-field, so the adapter is a straight mapping
-   (`packages/server/src/engine.ts`). The CLI and desktop keep the bundled
-   engine until the archive step.
+   (`packages/server/src/engine.ts`). The CLI and desktop delegate through the same shared engine client
+   (`packages/engine-client`) and keep the bundled engine only as the
+   injected fallback. Claim--evidence checking is ported (cite-analyser
+   0.3.0, provider-based): student copy is framed as **"Does your supplied
+   source support this sentence?"** with findings explicitly advisory.
+   The resumable local-runner and benchmark harnesses were not ported.
 
 ## Non-goals
 

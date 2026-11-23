@@ -30,7 +30,7 @@ services:
   cite-analyser:
     # Build from the cite-analyser repo (Dockerfile included) and push to your
     # registry, or override with CITE_ANALYSER_IMAGE.
-    image: ${CITE_ANALYSER_IMAGE:-ghcr.io/michael-borck/cite-analyser:0.2.2}
+    image: ${CITE_ANALYSER_IMAGE:-ghcr.io/michael-borck/cite-analyser:0.3.0}
     container_name: cite-analyser
     expose:
       - "8006"
