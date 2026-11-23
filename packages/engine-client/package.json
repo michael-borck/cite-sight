@@ -1,6 +1,6 @@
 {
   "name": "@michaelborck/cite-sight-engine-client",
-  "version": "0.13.3",
+  "version": "0.14.0",
   "description": "Delegates cite-sight analysis to the cite-analyser engine over HTTP (lens family contract), with a bundled-engine fallback during migration",
   "type": "module",
   "main": "dist/index.js",

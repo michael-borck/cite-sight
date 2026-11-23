@@ -14,7 +14,7 @@ authors:
     orcid: "https://orcid.org/0000-0002-0950-6396"
     affiliation: "Curtin University"
     email: "michael.borck@curtin.edu.au"
-version: "0.13.3"
+version: "0.14.0"
 date-released: "2026-10-31"
 doi: "10.5281/zenodo.23864197"
 license: MIT
