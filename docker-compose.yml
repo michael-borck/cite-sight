@@ -29,7 +29,7 @@ services:
   cite-analyser:
     image: python:3.13-slim
     command: >
-      sh -c "pip install --no-cache-dir cite-analyser==0.2.1 &&
+      sh -c "pip install --no-cache-dir cite-analyser==0.2.2 &&
              cite-analyser serve --host 0.0.0.0 --port 8006"
     expose:
       - "8006"
