@@ -9,6 +9,7 @@
     "packages/desktop",
     "packages/cli",
     "packages/server",
+    "packages/engine-client",
     "packages/web",
     "packages/standalone"
   ],

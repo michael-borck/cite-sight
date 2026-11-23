@@ -7,6 +7,7 @@ import { analyzePipeline, analyzeClaimsFile, readClaimSources, planFiles, unitSo
 import type { VerificationStatus } from '@michaelborck/cite-sight-core';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import type { AnalysisResult, ProcessingOptions, ProgressCallback } from '@michaelborck/cite-sight-core';
+import { analyseDocument, type FallbackEngine } from '@michaelborck/cite-sight-engine-client';
 import { readFileSync } from 'node:fs';
 import { SUPPORTED_EXTENSIONS, collectInputs } from './inputs.js';
 import { configPath, readConfig, resetConfig, updateConfig } from './config.js';
@@ -434,7 +435,7 @@ async function analyzeOne(
   onProgress: ProgressCallback | undefined,
 ): Promise<FileOutcome> {
   try {
-    const result = await analyzePipeline(filePath, options, onProgress);
+    const result = await analyseDocument({ filePath, fileName: filePath, options, fallback: analyzePipeline as FallbackEngine, onProgress });
     return { file: filePath, result };
   } catch (err: unknown) {
     return { file: filePath, error: err instanceof Error ? err.message : String(err) };

@@ -1,4 +1,5 @@
 import { analyzePipeline, verifyReferences, withVerifications } from '@michaelborck/cite-sight-core';
+import { analyseDocument, type FallbackEngine } from '@michaelborck/cite-sight-engine-client';
 import type { ProcessingOptions } from '@michaelborck/cite-sight-core';
 import type { FileOutcome } from './reports.js';
 
@@ -6,7 +7,7 @@ export async function retryOutcomes(outcomes: FileOutcome[], options: Processing
   const refreshed: FileOutcome[] = [];
   for (const outcome of outcomes) {
     if (outcome.error && only !== 'unavailable') {
-      try { refreshed.push({ file: outcome.file, result: await analyzePipeline(outcome.file, options) }); }
+      try { refreshed.push({ file: outcome.file, result: await analyseDocument({ filePath: outcome.file, fileName: outcome.file, options, fallback: analyzePipeline as FallbackEngine }) }); }
       catch (err) { refreshed.push({ file: outcome.file, error: err instanceof Error ? err.message : String(err) }); }
     } else if (outcome.result && only !== 'failed') {
       const result = outcome.result;

@@ -1,5 +1,6 @@
 import { ipcMain, dialog, BrowserWindow, app, shell } from 'electron';
 import { analyzePipeline, analyzeClaimsFile, verifyReferences, planFiles } from '@michaelborck/cite-sight-core';
+import { analyseDocument, type FallbackEngine } from '@michaelborck/cite-sight-engine-client';
 import { takeScreenshot } from './screenshot.js';
 import { saveSession, openSession } from './sessions.js';
 import { saveLookupCache, loadDismissals, setDismissal, cacheInfo, clearCacheFile, clearDismissalsFile } from './cacheStore.js';
@@ -147,20 +148,22 @@ export function registerIpcHandlers(window: BrowserWindow): void {
         semanticScholarApiKey: options.semanticScholarApiKey ?? process.env.SEMANTIC_SCHOLAR_API_KEY,
         openAlexApiKey: options.openAlexApiKey ?? process.env.OPENALEX_API_KEY,
       };
-      const result: AnalysisResult = await analyzePipeline(
+      const result: AnalysisResult = await analyseDocument({
         filePath,
-        mergedOptions,
-        (update) => {
+        fileName: filePath,
+        options: mergedOptions,
+        fallback: analyzePipeline as FallbackEngine,
+        onProgress: (update) => {
           if (!mainWindow.isDestroyed()) {
             mainWindow.webContents.send('cite-sight:progress', update);
           }
         },
-        (verification, index, total) => {
+        onReference: (verification, index, total) => {
           if (!mainWindow.isDestroyed()) {
             mainWindow.webContents.send('cite-sight:reference', { verification, index, total });
           }
         },
-      );
+      });
 
       // Take screenshots of live URLs if requested
       if (!mergedOptions.offline && options.screenshotUrls && result.references?.verifications) {

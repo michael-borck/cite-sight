@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@michaelborck/cite-sight-core": "*",
+    "@michaelborck/cite-sight-engine-client": "*",
     "@michaelborck/cite-sight-ui": "*",
     "electron-updater": "^6.3.0",
     "jspdf": "^4.2.1",
