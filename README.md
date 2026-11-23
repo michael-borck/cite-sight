@@ -1,5 +1,15 @@
 # CiteSight
 
+> [!IMPORTANT]
+> **Engine status: frozen at 0.13.x.** The analysis engine in `packages/core`
+> is in maintenance mode — bug fixes only, no new features. Its successor is
+> [cite-analyser](https://github.com/michael-borck/cite-analyser), a Python
+> member of the [lens family](https://github.com/michael-borck/lens-analysers)
+> being ported module-by-module with this repo's `demo-corpus/` as the
+> conformance suite. The React dashboards and desktop UI stay; they will be
+> pointed at the new engine's API once parity is reached. See
+> [MIGRATION.md](MIGRATION.md).
+
 <!-- BADGES:START -->
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23864196.svg)](https://doi.org/10.5281/zenodo.23864196) [![edtech](https://img.shields.io/badge/-edtech-4caf50?style=flat-square)](https://github.com/topics/edtech) [![academic-integrity](https://img.shields.io/badge/-academic--integrity-blue?style=flat-square)](https://github.com/topics/academic-integrity) [![citation-analysis](https://img.shields.io/badge/-citation--analysis-blue?style=flat-square)](https://github.com/topics/citation-analysis) [![document-analysis](https://img.shields.io/badge/-document--analysis-blue?style=flat-square)](https://github.com/topics/document-analysis) [![frontend](https://img.shields.io/badge/-frontend-blue?style=flat-square)](https://github.com/topics/frontend) [![react](https://img.shields.io/badge/-react-61dafb?style=flat-square)](https://github.com/topics/react) [![research](https://img.shields.io/badge/-research-3f51b5?style=flat-square)](https://github.com/topics/research) [![typescript](https://img.shields.io/badge/-typescript-3178c6?style=flat-square)](https://github.com/topics/typescript) [![vite](https://img.shields.io/badge/-vite-blue?style=flat-square)](https://github.com/topics/vite) [![web-app](https://img.shields.io/badge/-web--app-blue?style=flat-square)](https://github.com/topics/web-app)
 <!-- BADGES:END -->
