@@ -1,0 +1,49 @@
+# The Role of Scaffolding in AI-Assisted Learning
+
+## Abstract
+
+This paper examines how structured scaffolding improves student outcomes when working with large language models in higher education. Drawing on established learning theory (Vygotsky, 1978) and recent empirical work on AI in education (Kasneci et al., 2023), we argue that conversational engagement with AI tools produces stronger learning outcomes than passive delegation.
+
+## Introduction
+
+The rapid adoption of AI tools in university assessment has created new challenges for educators. Students who engage in active dialogue with AI systems consistently outperform those who passively accept generated outputs (Mollick and Mollick, 2023). This finding aligns with Laurillard's (2002) conversational framework, which positions iterative dialogue as the primary mechanism of learning in higher education.
+
+Research on student behaviour patterns reveals a significant subgroup of "assignment delegators" who use AI primarily to generate output rather than to support thinking (Stojanov et al., 2024). Behavioural nudging, grounded in choice architecture principles (Thaler and Sunstein, 2008), offers a low-cost intervention to redirect these students toward more productive interaction patterns.
+
+Recent work on guided versus unguided LLM use confirms that structured engagement consistently outperforms unstructured use (Frontiers in Psychology, 2025). The theoretical foundation extends back to Vygotsky's (1978) zone of proximal development, which argues that structured support enables capability development that does not occur without it.
+
+## Method
+
+We conducted a controlled experiment across three university units. Students were randomly assigned to a nudge condition or a control condition. All interactions were logged automatically. Task quality was assessed using a pre-specified rubric with two independent raters achieving Cohen's kappa above 0.80.
+
+The study was approved under the university's low-risk ethics review pathway, consistent with the National Statement on Ethical Conduct in Human Research (2023). No personally identifiable information was collected.
+
+## Results
+
+Students in the nudge condition produced significantly higher-quality outputs (d = 0.45, p < .01). The effect was most pronounced among students from low socioeconomic backgrounds, consistent with the hypothesis that scaffolding benefits are greatest for students with fewer informal support networks.
+
+## Discussion
+
+These findings support the Conversation, Not Delegation framework (Borck, 2026), which argues that the quality of AI-assisted work depends on whether the student directs the AI through active conversation or passively accepts its output. The nudge makes the conversational path structurally easier without mandating it.
+
+A broken link is included here for testing: see https://example.com/this-page-does-not-exist-404 for additional resources. The project repository is available at https://github.com/michael-borck/keep-asking for replication.
+
+## References
+
+Borck, M. (2026). *Conversation, Not Delegation.* KDP.
+
+Frontiers in Psychology. (2025). Optimizing academic engagement and mental health through AI: An experimental study on LLM integration in higher education. *Frontiers in Psychology, 16.* https://doi.org/10.3389/fpsyg.2025.1641212
+
+Kasneci, E., Sessler, K., Küchemann, S., Bannert, M., Dementieva, D., Fischer, F., ... and Kasneci, G. (2023). ChatGPT for good? On opportunities and challenges of large language models for education. *Learning and Individual Differences, 103,* 102274. https://doi.org/10.1016/j.lindif.2023.102274
+
+Laurillard, D. (2002). *Rethinking University Teaching: A Conversational Framework for the Effective Use of Learning Technologies* (2nd ed.). RoutledgeFalmer.
+
+Mollick, E. R., and Mollick, L. (2023). Assigning AI: Seven approaches for students, with prompts. *The Wharton School Research Paper.* https://ssrn.com/abstract=4475995
+
+National Health and Medical Research Council. (2023). *National Statement on Ethical Conduct in Human Research* (2023 update). Australian Government.
+
+Stojanov, A., Grønbæk, N., and Kulahci, M. (2024). Can we delegate learning to automation? A comparative study of LLM chatbots, search engines, and books. *arXiv preprint.* https://arxiv.org/abs/2410.01396
+
+Thaler, R. H., and Sunstein, C. R. (2008). *Nudge: Improving Decisions About Health, Wealth, and Happiness.* Yale University Press.
+
+Vygotsky, L. S. (1978). *Mind in Society: The Development of Higher Psychological Processes.* Harvard University Press.

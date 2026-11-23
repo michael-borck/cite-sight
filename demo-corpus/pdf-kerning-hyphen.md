@@ -1,0 +1,1 @@
+R eferences Chan, C. K. Y., & Lee, K. K. W. (2023). The AI generation gap. Smart Learning Environments, 10, 1-23. https://doi.org/10.1186/s40561-023-00269-3 Cong - Lem, N., & Tran, T. (2024). Academic integrity in the age of generative AI. Journal of University Teaching, 21(2), 45-60. Dempere, L. (2023). The emergence of ChatGPT. Journal of Applied Research, 8(1), 12-30.
